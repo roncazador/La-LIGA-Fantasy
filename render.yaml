@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: laliga-fantasy-manager
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LALIGA_API_BASE_URL
+        value: https://fantasy-api.llt-services.com
+      - key: LALIGA_COMPETITION_ID
+        value: "1"
+      - key: SESSION_COOKIE_NAME
+        value: fm_session
