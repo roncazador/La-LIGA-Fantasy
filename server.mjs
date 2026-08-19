@@ -822,87 +822,115 @@ http.createServer(
       }
 
 
-      /* -------------------------
-         NEXT FIXTURES
-      ------------------------- */
+      /* --------------------------------
+   NEXT FIXTURES
+-------------------------------- */
 
-      if(
-        u.pathname ===
-        '/api/fixtures/next'
-      ){
+if (
+  u.pathname ===
+  '/api/fixtures/next'
+) {
+  if (!FOOTBALL_DATA_TOKEN) {
+    return reply(
+      res,
+      503,
+      {
+        error:
+          'FOOTBALL_DATA_NOT_CONFIGURED',
+        message:
+          'Configura FOOTBALL_DATA_TOKEN en Render > Environment.'
+      }
+    );
+  }
 
-        if(
-          !FOOTBALL_DATA_TOKEN
-        ){
+  const today =
+    new Date();
 
-          return reply(
-            res,
-            503,
-            {
-              error:
-                'FOOTBALL_DATA_NOT_CONFIGURED',
+  const from =
+    today
+      .toISOString()
+      .slice(0, 10);
 
-              message:
-                'Configura FOOTBALL_DATA_TOKEN en Render.'
-            }
-          );
+  const future =
+    new Date(
+      today.getTime() +
+      FOOTBALL_DATA_DAYS *
+      86400000
+    )
+      .toISOString()
+      .slice(0, 10);
 
-        }
+  const data =
+    await footballData(
+      `/competitions/${encodeURIComponent(
+        FOOTBALL_DATA_COMPETITION
+      )}/matches?dateFrom=${from}&dateTo=${future}`
+    );
 
+  const rawMatches =
+    Array.isArray(data?.matches)
+      ? data.matches
+      : [];
 
-        const today =
-          new Date();
+  /*
+   * Importante:
+   *
+   * - utcDate = fecha/hora real del partido.
+   * - matchday = jornada oficial proporcionada
+   *   por football-data.org.
+   *
+   * Nunca calculamos la jornada a partir de
+   * la posición del partido ni de su fecha.
+   */
 
+  const matches =
+    rawMatches
+      .map((match) => ({
+        ...match,
 
-        const from =
-          today
-            .toISOString()
-            .slice(
-              0,
-              10
-            );
+        calendarDate:
+          match?.utcDate
+            ? match.utcDate
+                .slice(0, 10)
+            : null,
 
+        calendarTime:
+          match?.utcDate
+            ? match.utcDate
+                .slice(11, 16)
+            : null,
 
-        const future =
-          new Date(
-            today.getTime() +
-            FOOTBALL_DATA_DAYS *
-            86400000
-          );
+        officialMatchday:
+          Number.isFinite(
+            Number(match?.matchday)
+          )
+            ? Number(match.matchday)
+            : null
+      }))
+      .sort(
+        (a, b) =>
+          new Date(a?.utcDate || 0).getTime() -
+          new Date(b?.utcDate || 0).getTime()
+      );
 
+  return reply(
+    res,
+    200,
+    {
+      source:
+        'football-data.org',
 
-        const to =
-          future
-            .toISOString()
-            .slice(
-              0,
-              10
-            );
+      competition:
+        FOOTBALL_DATA_COMPETITION,
 
+      from,
 
-        const data =
-          await footballData(
-            `/competitions/${encodeURIComponent(
-              FOOTBALL_DATA_COMPETITION
-            )}/matches?dateFrom=${from}&dateTo=${to}`
-          );
+      to: future,
 
-
-        return reply(
-          res,
-          200,
-          {
-            source:
-              'football-data.org',
-
-            competition:
-              FOOTBALL_DATA_COMPETITION,
-
-            from,
-
-            to,
-
-            matches:
+      matches
+    }
+  );
+}
               Array.isArray(
                 data.matches
               )
