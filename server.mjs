@@ -931,15 +931,7 @@ if (
     }
   );
 }
-              Array.isArray(
-                data.matches
-              )
-                ? data.matches
-                : []
-          }
-        );
 
-      }
 
 
       /* -------------------------
