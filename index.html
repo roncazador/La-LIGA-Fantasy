@@ -3417,7 +3417,20 @@ async function loadExternalFixtures(){
       matches.map(match=>({
 
         date:
-          match.utcDate,
+    new Intl.DateTimeFormat("es-ES",{
+        day:"2-digit",
+        month:"2-digit",
+        year:"numeric",
+        timeZone:"Europe/Madrid"
+    }).format(new Date(match.utcDate)),
+
+time:
+    new Intl.DateTimeFormat("es-ES",{
+        hour:"2-digit",
+        minute:"2-digit",
+        hour12:false,
+        timeZone:"Europe/Madrid"
+    }).format(new Date(match.utcDate)),
 
         home:
           match.homeTeam?.name||
@@ -3428,7 +3441,7 @@ async function loadExternalFixtures(){
           "—",
 
         round:
-          match.matchday,
+    match.officialMatchday ?? match.matchday,
 
         status:
           match.status,
