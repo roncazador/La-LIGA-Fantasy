@@ -3769,8 +3769,13 @@ document.getElementById(
       refreshAll();
 
 
-      status.textContent=
-        "✅ Datos importados y recalculados.";
+      status.textContent =
+  "✅ Importados: " +
+  "Jugadores=" + state.players.length +
+  " · Mercado=" + state.market.length +
+  " · Rivales=" + state.rivals.length +
+  " · Partidos=" + state.fixtures.length +
+  " · XI=" + state.probableXIs.length;
 
 
     }catch(error){
