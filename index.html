@@ -2181,7 +2181,21 @@ document
 ========================================= */
 
 function renderBrain(){
+  const playerCount = Array.isArray(state.players)
+    ? state.players.length
+    : 0;
 
+  let motorStatus = "Esperando datos";
+
+  if(playerCount > 0 && playerCount < 11){
+    motorStatus =
+      `Activo · ${playerCount} jugadores · Datos parciales`;
+  }
+
+  if(playerCount >= 11){
+    motorStatus =
+      `Activo · ${playerCount} jugadores`;
+  }
   const filter=
     document.getElementById(
       "brainFilter"
