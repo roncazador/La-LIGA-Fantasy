@@ -2984,17 +2984,9 @@ function renderFixtures(){
         game.awayTeam?.name||
         "—";
 
-      const date = game.utcDate
-    ? new Intl.DateTimeFormat("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-        timeZone: "Europe/Madrid"
-    }).format(new Date(game.utcDate)).replace(",", " · ")
-    : "";
+      const date = [game.date, game.time]
+    .filter(Boolean)
+    .join(" · ");
 
 
       return `
