@@ -2215,7 +2215,12 @@ function renderBrain(){
     document.getElementById(
       "brainRows"
     );
+const brainStatus =
+    document.getElementById("brainStatus");
 
+if(brainStatus){
+    brainStatus.textContent = motorStatus;
+}
   if(!rows.length){
 
     tbody.innerHTML=`
