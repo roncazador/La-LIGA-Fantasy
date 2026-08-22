@@ -1752,99 +1752,168 @@ function normalizePosition(position){
 
 function normalizePlayer(player){
 
-  const p={
+  const p = {
     ...player
   };
 
-  p.name=
+  /* =========================
+     IDENTIDAD
+     ========================= */
+
+  p.name =
     String(
-      p.name||
-      p.player||
-      p.playerName||
+      p.name ??
+      p.player ??
+      p.playerName ??
+      p.fullName ??
+      p.displayName ??
       ""
     ).trim();
 
-  p.position=
+  p.position =
     normalizePosition(
-      p.position||
-      p.pos
+      p.position ??
+      p.pos ??
+      p.positionName ??
+      p.role
     );
 
-  p.points=
+  /* =========================
+     PUNTOS FANTASY
+     ========================= */
+
+  p.points =
     number(
-      p.points??
-      p.pfsy??
-      p.score??
-      p.pfsY
+      p.points ??
+      p.pfsy ??
+      p.pfsY ??
+      p.fantasyPoints ??
+      p.totalPoints ??
+      p.score
     );
 
-  p.starts=
+  /* =========================
+     MINUTOS / TITULARIDAD
+     ========================= */
+
+  p.starts =
     number(
-      p.starts
+      p.starts ??
+      p.startCount ??
+      p.startsCount ??
+      p.appearancesStarted
     );
 
-  p.minutes=
+  p.minutes =
     number(
-      p.minutes
+      p.minutes ??
+      p.totalMinutes ??
+      p.playedMinutes ??
+      p.minutesPlayed
     );
 
-  p.trend1d=
+  /* =========================
+     TENDENCIAS
+     ========================= */
+
+  p.trend1d =
     number(
-      p.trend1d??
-      p.change1d
+      p.trend1d ??
+      p.change1d ??
+      p.dailyChange ??
+      0
     );
 
-  p.trend3d=
+  p.trend3d =
     number(
-      p.trend3d??
-      p.change3d
+      p.trend3d ??
+      p.change3d ??
+      p.threeDayChange ??
+      0
     );
 
-  p.trend7d=
+  p.trend7d =
     number(
-      p.trend7d??
-      p.change7d
+      p.trend7d ??
+      p.change7d ??
+      p.weekChange ??
+      0
     );
 
-  p.price=
+  /* =========================
+     MERCADO
+     ========================= */
+
+  p.price =
     number(
-      p.price??
-      p.marketPrice
+      p.price ??
+      p.marketPrice ??
+      p.currentPrice ??
+      p.cost
     );
 
-  p.value=
+  p.value =
     number(
-      p.value??
-      p.marketValue
+      p.value ??
+      p.marketValue ??
+      p.estimatedValue ??
+      p.fairValue
     );
 
-  p.fixture=
-    Array.isArray(p.fixture)
-      ? p.fixture
-          .slice(0,4)
-          .map(x=>clamp(x,0,100))
-      : [50,50,50,50];
+  /* =========================
+     CALENDARIO / CONTEXTO
+     ========================= */
 
-  while(p.fixture.length<4){
+  if(Array.isArray(p.fixture)){
+
+    p.fixture =
+      p.fixture
+        .slice(0,4)
+        .map(value => clamp(
+          number(value),
+          0,
+          100
+        ));
+
+  }else{
+
+    p.fixture = [50,50,50,50];
+
+  }
+
+  while(p.fixture.length < 4){
     p.fixture.push(50);
   }
 
-  p.rotationRisk=
+  /* =========================
+     RIESGO
+     ========================= */
+
+  p.rotationRisk =
     clamp(
-      p.rotationRisk,
+      number(
+        p.rotationRisk ??
+        p.rotation ??
+        p.rotationProbability ??
+        0
+      ),
       0,
       1
     );
 
-  p.injuryRisk=
+  p.injuryRisk =
     clamp(
-      p.injuryRisk,
+      number(
+        p.injuryRisk ??
+        p.injury ??
+        p.injuryProbability ??
+        0
+      ),
       0,
       1
     );
 
   return p;
-
 }
 
 
