@@ -1755,7 +1755,178 @@ function normalizePlayer(player){
   const p = {
     ...player
   };
+function calculateFixtureStrength(
+  playerTeam,
+  fixtures
+){
 
+  if(!playerTeam || !Array.isArray(fixtures)){
+    return [50,50,50,50];
+  }
+
+  const normalizeTeamName = name =>
+    String(name||"")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/\b(fc|cf|club|rcd|ca|ud|real|deportivo)\b/g,"")
+      .replace(/[^a-z0-9]/g,"");
+
+  const playerTeamKey =
+    normalizeTeamName(playerTeam);
+
+  const now =
+    Date.now();
+
+  const upcoming =
+    fixtures
+      .filter(match=>{
+
+        const homeKey =
+          normalizeTeamName(
+            match.home||
+            match.homeTeam?.name||
+            ""
+          );
+
+        const awayKey =
+          normalizeTeamName(
+            match.away||
+            match.awayTeam?.name||
+            ""
+          );
+
+        const isPlayerMatch =
+          homeKey===playerTeamKey ||
+          awayKey===playerTeamKey;
+
+        const matchTime =
+          new Date(
+            match.utcDate||
+            match.date||
+            0
+          ).getTime();
+
+        return (
+          isPlayerMatch &&
+          (!matchTime || matchTime>=now)
+        );
+      })
+      .sort(
+        (a,b)=>
+          new Date(
+            a.utcDate||
+            a.date||
+            0
+          ).getTime()
+          -
+          new Date(
+            b.utcDate||
+            b.date||
+            0
+          ).getTime()
+      )
+      .slice(0,4);
+
+  const values =
+    upcoming.map(match=>{
+
+      const homeKey =
+        normalizeTeamName(
+          match.home||
+          match.homeTeam?.name||
+          ""
+        );
+
+      const isHome =
+        homeKey===playerTeamKey;
+
+      const opponent =
+        isHome
+          ? (
+              match.away||
+              match.awayTeam?.name||
+              ""
+            )
+          : (
+              match.home||
+              match.homeTeam?.name||
+              ""
+            );
+
+      return fixtureDifficulty(
+        opponent,
+        isHome
+      );
+
+    });
+
+  while(values.length<4){
+    values.push(50);
+  }
+
+  return values.slice(0,4);
+}
+function fixtureDifficulty(
+  opponent,
+  isHome
+){
+
+  const team =
+    String(opponent||"")
+      .toLowerCase();
+
+  let score = 50;
+
+  if(
+    team.includes("barcelona")||
+    team.includes("real madrid")||
+    team.includes("atletico")||
+    team.includes("athletic")
+  ){
+    score = 25;
+  }
+
+  else if(
+    team.includes("villarreal")||
+    team.includes("real sociedad")||
+    team.includes("betis")||
+    team.includes("sevilla")
+  ){
+    score = 40;
+  }
+
+  else if(
+    team.includes("valencia")||
+    team.includes("celta")||
+    team.includes("osasuna")||
+    team.includes("getafe")
+  ){
+    score = 55;
+  }
+
+  else if(
+    team.includes("rayo")||
+    team.includes("espanyol")||
+    team.includes("levante")||
+    team.includes("alaves")||
+    team.includes("elche")||
+    team.includes("malaga")||
+    team.includes("deportivo")||
+    team.includes("santander")
+  ){
+    score = 70;
+  }
+
+  if(isHome){
+    score += 5;
+  }
+
+  return Math.max(
+    0,
+    Math.min(100,score)
+  );
+}
   /* =========================
      IDENTIDAD
      ========================= */
@@ -1769,7 +1940,13 @@ function normalizePlayer(player){
       p.displayName ??
       ""
     ).trim();
-
+p.team=
+  String(
+    p.team||
+    p.club||
+    p.teamName||
+    ""
+  ).trim();
   p.position =
     normalizePosition(
       p.position ??
@@ -1915,7 +2092,36 @@ function normalizePlayer(player){
 
   return p;
 }
+function applyFixturesToPlayers(){
 
+  if(!Array.isArray(state.players)){
+    return;
+  }
+
+  if(!Array.isArray(state.fixtures)){
+    return;
+  }
+
+  state.players =
+    state.players.map(player=>{
+
+      const normalized =
+        normalizePlayer(player);
+
+      const calculated =
+        calculateFixtureStrength(
+          normalized.team,
+          state.fixtures
+        );
+
+      return {
+        ...normalized,
+        fixture: calculated
+      };
+
+    });
+
+}
 
 /* =========================================
    CEREBRO
@@ -3781,7 +3987,8 @@ document.getElementById(
 
       state.lastSync=
         new Date().toISOString();
-
+        
+applyFixturesToPlayers();
 
       saveState();
 
