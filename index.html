@@ -2109,10 +2109,12 @@ function applyFixturesToPlayers(){
         normalizePlayer(player);
 
       const calculated =
-        calculateFixtureStrength(
-          normalized.team,
-          state.fixtures
-        );
+  typeof calculateFixtureStrength === "function"
+    ? calculateFixtureStrength(
+        normalized.team,
+        state.fixtures
+      )
+    : normalized.fixture;
 
       return {
         ...normalized,
