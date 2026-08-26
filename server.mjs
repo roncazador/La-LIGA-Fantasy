@@ -15,18 +15,8 @@ const sessions = new Map();
 const STATIC_DIR = path.resolve(process.env.FRONTEND_DIR || process.cwd());
 
 const READ_ROUTES = new Set([
-  'profile',
-  'leagues',
-  'league',
-  'squad',
-  'budget',
-  'market',
-  'fixtures',
-  'players',
-  'stats',
-  'rivals',
-  'standings',
-  'week'
+  'profile', 'leagues', 'league', 'squad', 'budget', 'market', 'fixtures',
+  'players', 'stats', 'rivals', 'standings', 'week'
 ]);
 
 const SESSION_PENDING_TTL = 15 * 60 * 1000;
@@ -40,102 +30,82 @@ function sendJson(res, status, body){
     'Referrer-Policy': 'no-referrer',
     'X-Frame-Options': 'DENY'
   };
-
   if (config.allowOrigin) {
     headers['Access-Control-Allow-Origin'] = config.allowOrigin;
     headers['Access-Control-Allow-Credentials'] = 'true';
   }
-
   res.writeHead(status, headers);
   res.end(JSON.stringify(body));
 }
 
-function sendEmpty(res, status){
-  res.writeHead(status);
-  res.end();
-}
-
 function parseCookies(req){
-  const header = req.headers.cookie || '';
   const out = {};
-
-  for (const part of header.split(';')) {
+  for (const part of String(req.headers.cookie || '').split(';')) {
     const i = part.indexOf('=');
     if (i < 0) continue;
     const key = part.slice(0, i).trim();
     const value = part.slice(i + 1).trim();
     if (!key) continue;
-
-    try {
-      out[key] = decodeURIComponent(value);
-    } catch {
-      out[key] = value;
-    }
+    try { out[key] = decodeURIComponent(value); }
+    catch { out[key] = value; }
   }
-
   return out;
 }
 
 function getSession(req){
   const id = parseCookies(req)[config.sessionCookieName];
   if (!id) return null;
-
-  const current = sessions.get(id);
-  if (!current) return null;
-
-  const ttl = current.accessToken
-    ? SESSION_ACTIVE_TTL
-    : SESSION_PENDING_TTL;
-
-  if (Date.now() - current.createdAt > ttl) {
+  const session = sessions.get(id);
+  if (!session) return null;
+  const ttl = session.accessToken ? SESSION_ACTIVE_TTL : SESSION_PENDING_TTL;
+  if (Date.now() - session.createdAt > ttl) {
     sessions.delete(id);
     return null;
   }
-
-  return current;
+  return session;
 }
 
 function cleanSessions(){
   const now = Date.now();
   for (const [id, session] of sessions) {
-    const ttl = session.accessToken
-      ? SESSION_ACTIVE_TTL
-      : SESSION_PENDING_TTL;
-    if (now - session.createdAt > ttl) {
-      sessions.delete(id);
-    }
+    const ttl = session.accessToken ? SESSION_ACTIVE_TTL : SESSION_PENDING_TTL;
+    if (now - session.createdAt > ttl) sessions.delete(id);
   }
 }
-
 setInterval(cleanSessions, 5 * 60 * 1000).unref();
 
 function staticContentType(file){
   return {
     'index.html': 'text/html; charset=utf-8',
     'manifest.json': 'application/manifest+json; charset=utf-8',
-    'sw.js': 'text/javascript; charset=utf-8'
+    'sw.js': 'text/javascript; charset=utf-8',
+    'dashboard-client.js': 'text/javascript; charset=utf-8'
   }[file] || 'application/octet-stream';
 }
 
 function serveStatic(res, pathname){
   if (!publicStaticPath(pathname)) return false;
-
   const file = pathname === '/' ? 'index.html' : pathname.slice(1);
   const full = path.resolve(STATIC_DIR, file);
-
   if (!full.startsWith(STATIC_DIR + path.sep)) return false;
   if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return false;
 
-  const cache = file === 'index.html' ? 'no-cache' : 'public, max-age=3600';
+  let content = fs.readFileSync(full, 'utf8');
+  if (file === 'index.html' && content.includes('</body>') && !content.includes('/dashboard-client.js')) {
+    content = content.replace(
+      '</body>',
+      '  <script src="/dashboard-client.js" defer></script>\n</body>'
+    );
+  }
 
   res.writeHead(200, {
     'Content-Type': staticContentType(file),
-    'Cache-Control': cache,
+    'Cache-Control': file === 'index.html' ? 'no-cache' : 'public, max-age=3600',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'no-referrer',
     'X-Frame-Options': 'DENY'
   });
-  res.end(fs.readFileSync(full));
+  res.end(content);
   return true;
 }
 
@@ -148,24 +118,16 @@ function arrayData(value){
 }
 
 function objectData(value){
-  if (value?.data && typeof value.data === 'object' && !Array.isArray(value.data)) {
-    return value.data;
-  }
+  if (value?.data && typeof value.data === 'object' && !Array.isArray(value.data)) return value.data;
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
   return null;
 }
 
 function oidcStatus(){
-  const required = [
-    'LALIGA_AUTHORIZE_URL',
-    'LALIGA_OAUTH_CLIENT_ID',
-    'LALIGA_REDIRECT_URI'
-  ];
-  const missing = required.filter(key => !process.env[key]);
-
+  const required = ['LALIGA_AUTHORIZE_URL', 'LALIGA_OAUTH_CLIENT_ID', 'LALIGA_REDIRECT_URI'];
   return {
     configured: oidcConfigured(config),
-    missing,
+    missing: required.filter(key => !process.env[key]),
     hasAuthorizeUrl: Boolean(config.laligaAuthorizeUrl),
     hasClientId: Boolean(config.laligaOAuthClientId),
     hasRedirectUri: Boolean(config.laligaRedirectUri),
@@ -175,7 +137,6 @@ function oidcStatus(){
 
 async function refresh(session){
   if (!session?.refreshToken || !config.laligaOAuthClientId) return false;
-
   const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent(config.laligaSigninPolicy)}`;
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
@@ -183,16 +144,13 @@ async function refresh(session){
     client_id: config.laligaOAuthClientId,
     scope: 'openid offline_access'
   });
-
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
   });
-
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.access_token && !data.id_token) return false;
-
+  if (!response.ok || (!data.access_token && !data.id_token)) return false;
   session.accessToken = data.access_token || data.id_token;
   session.refreshToken = data.refresh_token || session.refreshToken;
   session.expiresAt = Date.now() + Number(data.expires_in || 86400) * 1000;
@@ -202,10 +160,7 @@ async function refresh(session){
 
 async function upstream(endpoint, session, attempt = 0){
   if (!session?.accessToken) throw Object.assign(new Error('NO_SESSION'), { status: 401 });
-
-  if (session.expiresAt && Date.now() > session.expiresAt - 120000) {
-    await refresh(session).catch(() => false);
-  }
+  if (session.expiresAt && Date.now() > session.expiresAt - 120000) await refresh(session).catch(() => false);
 
   const response = await fetch(config.laligaApiBaseUrl + endpoint, {
     headers: {
@@ -215,63 +170,37 @@ async function upstream(endpoint, session, attempt = 0){
       'User-Agent': `LALIGA-Fantasy-Manager/${VERSION}-read-only`
     }
   });
-
   const text = await response.text();
-
   if (response.status === 401 && attempt === 0 && session.refreshToken && await refresh(session)) {
     return upstream(endpoint, session, 1);
   }
-
-  if (!response.ok) {
-    throw Object.assign(new Error(`UPSTREAM_${response.status}`), { status: response.status });
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { raw: text.slice(0, 2000) };
-  }
+  if (!response.ok) throw Object.assign(new Error(`UPSTREAM_${response.status}`), { status: response.status });
+  try { return JSON.parse(text); }
+  catch { return { raw: text.slice(0, 2000) }; }
 }
 
 function fantasyPath(key, url){
   const competition = encodeURIComponent(config.laligaCompetitionId);
   const week = encodeURIComponent(url.searchParams.get('week') || '1');
-
   switch (key) {
-    case 'profile':
-      return `/v4/user/me?x-lang=es`;
-    case 'leagues':
-      return `/v1/competition/${competition}/leagues?x-lang=es`;
-    case 'week':
-      return `/v1/competition/${competition}/week/current?x-lang=es`;
-    case 'players':
-      return `/v1/competition/${competition}/players?x-lang=es`;
-    case 'fixtures':
-      return `/v1/competition/${competition}/calendar?weekNumber=${week}&x-lang=es`;
-    case 'league':
-      return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing?x-lang=es`;
-    case 'standings':
-      return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing/${week}?x-lang=es`;
-    case 'market':
-      return `/v1/competition/${competition}/league/${encodeURIComponent(url.searchParams.get('id') || '')}/market?x-lang=es`;
-    case 'squad':
-      return `/v1/competition/${competition}/teams/${encodeURIComponent(url.searchParams.get('teamId') || '')}?x-lang=es`;
-    case 'budget':
-      return `/v1/competition/${competition}/teams/${encodeURIComponent(url.searchParams.get('teamId') || '')}/money?x-lang=es`;
-    case 'stats':
-      return `/stats/v1/competition/${competition}/stats/week/${week}?x-lang=es`;
-    case 'rivals':
-      return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing?x-lang=es`;
-    default:
-      return null;
+    case 'profile': return '/v4/user/me?x-lang=es';
+    case 'leagues': return `/v1/competition/${competition}/leagues?x-lang=es`;
+    case 'week': return `/v1/competition/${competition}/week/current?x-lang=es`;
+    case 'players': return `/v1/competition/${competition}/players?x-lang=es`;
+    case 'fixtures': return `/v1/competition/${competition}/calendar?weekNumber=${week}&x-lang=es`;
+    case 'league': return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing?x-lang=es`;
+    case 'standings': return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing/${week}?x-lang=es`;
+    case 'market': return `/v1/competition/${competition}/league/${encodeURIComponent(url.searchParams.get('id') || '')}/market?x-lang=es`;
+    case 'squad': return `/v1/competition/${competition}/teams/${encodeURIComponent(url.searchParams.get('teamId') || '')}?x-lang=es`;
+    case 'budget': return `/v1/competition/${competition}/teams/${encodeURIComponent(url.searchParams.get('teamId') || '')}/money?x-lang=es`;
+    case 'stats': return `/stats/v1/competition/${competition}/stats/week/${week}?x-lang=es`;
+    case 'rivals': return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing?x-lang=es`;
+    default: return null;
   }
 }
 
 async function footballData(endpoint){
-  if (!config.footballDataToken) {
-    throw Object.assign(new Error('FOOTBALL_DATA_NOT_CONFIGURED'), { status: 503 });
-  }
-
+  if (!config.footballDataToken) throw Object.assign(new Error('FOOTBALL_DATA_NOT_CONFIGURED'), { status: 503 });
   const response = await fetch(config.footballDataBase + endpoint, {
     headers: {
       Accept: 'application/json',
@@ -279,20 +208,10 @@ async function footballData(endpoint){
       'User-Agent': `LALIGA-Fantasy-Manager/${VERSION}`
     }
   });
-
   const text = await response.text();
-  if (!response.ok) {
-    throw Object.assign(new Error(`FOOTBALL_DATA_${response.status}`), {
-      status: response.status,
-      body: text.slice(0, 1000)
-    });
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { raw: text.slice(0, 2000) };
-  }
+  if (!response.ok) throw Object.assign(new Error(`FOOTBALL_DATA_${response.status}`), { status: response.status });
+  try { return JSON.parse(text); }
+  catch { return { raw: text.slice(0, 2000) }; }
 }
 
 function cookieHeader(id, maxAge){
@@ -330,10 +249,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/session' && req.method === 'GET') {
-      return sendJson(res, 200, {
-        authenticated: Boolean(getSession(req)),
-        readOnly: true
-      });
+      return sendJson(res, 200, { authenticated: Boolean(getSession(req)), readOnly: true });
     }
 
     if (url.pathname === '/api/auth/status' && req.method === 'GET') {
@@ -342,10 +258,7 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/providers/status' && req.method === 'GET') {
       return sendJson(res, 200, {
-        footballData: {
-          configured: Boolean(config.footballDataToken),
-          competition: config.footballDataCompetition
-        },
+        footballData: { configured: Boolean(config.footballDataToken), competition: config.footballDataCompetition },
         laliga: { configured: oidcConfigured(config) }
       });
     }
@@ -355,11 +268,9 @@ const server = http.createServer(async (req, res) => {
       try {
         const today = new Date();
         const from = today.toISOString().slice(0, 10);
-        const futureDate = new Date(today.getTime() + config.footballDataDays * 86400000);
-        const to = futureDate.toISOString().slice(0, 10);
-        const data = await footballData(
-          `/competitions/${encodeURIComponent(config.footballDataCompetition)}/matches?dateFrom=${from}&dateTo=${to}`
-        );
+        const future = new Date(today.getTime() + config.footballDataDays * 86400000);
+        const to = future.toISOString().slice(0, 10);
+        const data = await footballData(`/competitions/${encodeURIComponent(config.footballDataCompetition)}/matches?dateFrom=${from}&dateTo=${to}`);
         const matches = (Array.isArray(data?.matches) ? data.matches : [])
           .map(match => ({
             ...match,
@@ -368,14 +279,7 @@ const server = http.createServer(async (req, res) => {
             officialMatchday: Number.isFinite(Number(match?.matchday)) ? Number(match.matchday) : null
           }))
           .sort((a, b) => new Date(a.utcDate || 0) - new Date(b.utcDate || 0));
-
-        return sendJson(res, 200, {
-          source: 'football-data.org',
-          competition: config.footballDataCompetition,
-          from,
-          to,
-          matches
-        });
+        return sendJson(res, 200, { source: 'football-data.org', competition: config.footballDataCompetition, from, to, matches });
       } catch (error) {
         return sendJson(res, error.status || 502, {
           error: error.message || 'FOOTBALL_DATA_FAILED',
@@ -386,13 +290,7 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/auth/start') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
-
-      if (!oidcConfigured(config)) {
-        return sendJson(res, 501, {
-          error: 'OIDC_NOT_CONFIGURED',
-          message: 'Faltan parámetros OIDC oficiales.'
-        });
-      }
+      if (!oidcConfigured(config)) return sendJson(res, 501, { error: 'OIDC_NOT_CONFIGURED', message: 'Faltan parámetros OIDC oficiales.' });
 
       const state = crypto.randomBytes(32).toString('base64url');
       const verifier = crypto.randomBytes(32).toString('base64url');
@@ -418,24 +316,17 @@ const server = http.createServer(async (req, res) => {
         nonce: state
       });
 
-      res.writeHead(302, {
-        Location: `${config.laligaAuthorizeUrl}?${query.toString()}`,
-        'Set-Cookie': cookieHeader(sessionId, 900)
-      });
+      res.writeHead(302, { Location: `${config.laligaAuthorizeUrl}?${query.toString()}`, 'Set-Cookie': cookieHeader(sessionId, 900) });
       return res.end();
     }
 
     if (url.pathname === '/auth/callback') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
-
       const sessionId = parseCookies(req)[config.sessionCookieName];
       const pending = sessionId ? sessions.get(sessionId) : null;
       const code = url.searchParams.get('code');
       const returnedState = url.searchParams.get('state');
-
-      if (!pending || !code || returnedState !== pending.state) {
-        return sendJson(res, 400, { error: 'INVALID_OIDC_CALLBACK' });
-      }
+      if (!pending || !code || returnedState !== pending.state) return sendJson(res, 400, { error: 'INVALID_OIDC_CALLBACK' });
 
       const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent(config.laligaSigninPolicy)}`;
       const body = new URLSearchParams({
@@ -446,19 +337,14 @@ const server = http.createServer(async (req, res) => {
         code_verifier: pending.verifier,
         scope: `openid ${config.laligaOAuthClientId} offline_access`
       });
-
       const tokenResponse = await fetch(tokenUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body
       });
       const token = await tokenResponse.json().catch(() => ({}));
-
       if (!tokenResponse.ok || (!token.access_token && !token.id_token)) {
-        return sendJson(res, 502, {
-          error: 'OIDC_TOKEN_EXCHANGE_FAILED',
-          status: tokenResponse.status
-        });
+        return sendJson(res, 502, { error: 'OIDC_TOKEN_EXCHANGE_FAILED', status: tokenResponse.status });
       }
 
       sessions.set(sessionId, {
@@ -468,58 +354,38 @@ const server = http.createServer(async (req, res) => {
         expiresAt: Date.now() + Number(token.expires_in || 86400) * 1000
       });
 
-      const location = pending.platform === 'ios'
-        ? config.iosSuccessRedirect
-        : config.frontendUrl;
-
-      res.writeHead(302, {
-        Location: location,
-        'Set-Cookie': cookieHeader(sessionId, 2592000)
-      });
+      const location = pending.platform === 'ios' ? config.iosSuccessRedirect : config.frontendUrl;
+      res.writeHead(302, { Location: location, 'Set-Cookie': cookieHeader(sessionId, 2592000) });
       return res.end();
     }
 
     if (url.pathname === '/auth/logout') {
       const sessionId = parseCookies(req)[config.sessionCookieName];
       if (sessionId) sessions.delete(sessionId);
-
-      res.writeHead(302, {
-        Location: config.frontendUrl,
-        'Set-Cookie': cookieHeader('', 0)
-      });
+      res.writeHead(302, { Location: config.frontendUrl, 'Set-Cookie': cookieHeader('', 0) });
       return res.end();
     }
 
     if (url.pathname === '/api/fantasy/dashboard') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
-
       const session = getSession(req);
       if (!session) return sendJson(res, 401, { error: 'AUTH_REQUIRED' });
 
-      const output = {
-        version: VERSION,
-        readOnly: true,
-        competition: config.laligaCompetitionId,
-        errors: []
-      };
-
+      const output = { version: VERSION, readOnly: true, competition: config.laligaCompetitionId, errors: [] };
       const [profileResult, leaguesResult, weekResult] = await Promise.allSettled([
         upstream('/v4/user/me?x-lang=es', session),
         upstream(`/v1/competition/${encodeURIComponent(config.laligaCompetitionId)}/leagues?x-lang=es`, session),
         upstream(`/v1/competition/${encodeURIComponent(config.laligaCompetitionId)}/week/current?x-lang=es`, session)
       ]);
-
       output.profile = profileResult.status === 'fulfilled' ? objectData(profileResult.value) || {} : {};
       output.leagues = leaguesResult.status === 'fulfilled' ? arrayData(leaguesResult.value) : [];
       output.week = weekResult.status === 'fulfilled' ? objectData(weekResult.value) || weekResult.value : {};
-
       if (profileResult.status === 'rejected') output.errors.push('profile');
       if (leaguesResult.status === 'rejected') output.errors.push('leagues');
       if (weekResult.status === 'rejected') output.errors.push('week');
 
       const league = output.leagues[0];
       const leagueId = league?.id || league?.leagueId;
-
       if (leagueId) {
         const competition = encodeURIComponent(config.laligaCompetitionId);
         const encodedLeague = encodeURIComponent(leagueId);
@@ -527,7 +393,6 @@ const server = http.createServer(async (req, res) => {
           upstream(`/v1/competition/${competition}/leagues/${encodedLeague}/standing?x-lang=es`, session),
           upstream(`/v1/competition/${competition}/league/${encodedLeague}/market?x-lang=es`, session)
         ]);
-
         output.leagueId = leagueId;
         output.standing = standingResult.status === 'fulfilled' ? standingResult.value : null;
         output.market = marketResult.status === 'fulfilled' ? marketResult.value : null;
@@ -535,15 +400,15 @@ const server = http.createServer(async (req, res) => {
         if (marketResult.status === 'rejected') output.errors.push('market');
 
         const rows = arrayData(output.standing);
-        const user = output.profile?.username || output.profile?.email || output.profile?.name;
+        const profile = objectData(output.profile) || {};
+        const user = profile.username || profile.email || profile.name;
         const mine = rows.find(item =>
           item?.username === user ||
           item?.managerName === user ||
           item?.manager?.username === user ||
-          item?.userId === output.profile?.id
+          item?.userId === profile?.id
         );
-        const teamId = mine?.teamId || mine?.team?.id || output.profile?.teamId || output.profile?.managerId;
-
+        const teamId = mine?.teamId || mine?.team?.id || profile?.teamId || profile?.managerId;
         if (teamId) {
           const encodedTeam = encodeURIComponent(teamId);
           const [teamResult, budgetResult] = await Promise.allSettled([
@@ -553,6 +418,8 @@ const server = http.createServer(async (req, res) => {
           output.team = teamResult.status === 'fulfilled' ? teamResult.value : null;
           output.budget = budgetResult.status === 'fulfilled' ? budgetResult.value : null;
           output.teamId = teamId;
+          if (teamResult.status === 'rejected') output.errors.push('team');
+          if (budgetResult.status === 'rejected') output.errors.push('budget');
         }
       }
 
@@ -561,30 +428,20 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname.startsWith('/api/fantasy/')) {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'READ_ONLY' });
-
       const session = getSession(req);
       if (!session) return sendJson(res, 401, { error: 'AUTH_REQUIRED' });
-
       const key = url.pathname.split('/').filter(Boolean)[2] || '';
       if (!READ_ROUTES.has(key)) return sendJson(res, 404, { error: 'ROUTE_NOT_ALLOWLISTED' });
-
       const endpoint = fantasyPath(key, url);
       if (!endpoint) return sendJson(res, 400, { error: 'MISSING_PARAMETER' });
-
       try {
         return sendJson(res, 200, await upstream(endpoint, session));
       } catch (error) {
-        return sendJson(res, error.status === 401 ? 401 : 502, {
-          error: 'UPSTREAM_READ_FAILED',
-          status: error.status || 502
-        });
+        return sendJson(res, error.status === 401 ? 401 : 502, { error: 'UPSTREAM_READ_FAILED', status: error.status || 502 });
       }
     }
 
-    if (req.method === 'GET' && serveStatic(res, url.pathname)) {
-      return;
-    }
-
+    if (req.method === 'GET' && serveStatic(res, url.pathname)) return;
     return sendJson(res, 404, { error: 'NOT_FOUND' });
   } catch (error) {
     console.error('SERVER_ERROR', error);
