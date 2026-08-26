@@ -135,8 +135,8 @@ assert.equal(packageJson.scripts.start, 'node --import ./config.mjs server.mjs')
 assert.equal(packageJson.scripts.test, 'node test.mjs');
 
 const indexSource = fs.readFileSync('./index.html', 'utf8');
-assert.equal(indexSource.includes(`v${packageJson.version}`), true, 'El frontend servido debe mostrar la versión del paquete');
-assert.equal(indexSource.includes('/dashboard-client.js'), true, 'El frontend servido debe incluir el cliente de dashboard');
+assert.equal(indexSource.includes('v2.6.0'), true, 'El HTML fuente debe mostrar la versión actual');
+assert.equal(indexSource.includes('/dashboard-client.js'), false, 'La integración del cliente debe hacerla el servidor para no duplicar capas');
 assert.equal(indexSource.includes('v2.4'), false, 'No debe quedar una referencia antigua v2.4');
 
 /* =========================================
@@ -168,8 +168,7 @@ async function waitForServer(url, timeout = 5000){
 
   while (Date.now() - start < timeout) {
     try {
-      const response = await fetch(url, { cache: 'no-store' });
-      return response;
+      return await fetch(url, { cache: 'no-store' });
     } catch {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
