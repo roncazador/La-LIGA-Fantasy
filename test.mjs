@@ -114,7 +114,7 @@ assert.equal(publicStaticPath('/secret.json'), false);
 ========================================= */
 
 const swSource = fs.readFileSync('./sw.js', 'utf8');
-assert.equal(swSource.includes('fm-v25'), true);
+assert.equal(swSource.includes('fm-v251'), true);
 assert.equal(swSource.includes("request.mode === 'navigate'"), true);
 assert.equal(swSource.includes("cache: 'no-store'"), true);
 assert.equal(swSource.includes('skipWaiting()'), true);
@@ -132,6 +132,10 @@ const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 assert.equal(packageJson.version, '2.5.0');
 assert.equal(packageJson.scripts.start, 'node --import ./config.mjs server.mjs');
 assert.equal(packageJson.scripts.test, 'node test.mjs');
+
+const indexSource = fs.readFileSync('./index.html', 'utf8');
+assert.equal(indexSource.includes(`v${packageJson.version}`), true, 'El frontend debe mostrar la versión del paquete');
+assert.equal(indexSource.includes('v2.4'), false, 'No debe quedar una referencia antigua v2.4');
 
 /* =========================================
    8) TOKENS: NUNCA EN CÓDIGO
@@ -233,6 +237,6 @@ console.log('✅ Test 3: compatibilidad con variables antiguas OK');
 console.log('✅ Test 4: OIDC requiere configuración oficial OK');
 console.log('✅ Test 5: lista blanca pública definida OK');
 console.log('✅ Test 6: Service Worker y PWA OK');
-console.log('✅ Test 7: arranque y versionado OK');
+console.log('✅ Test 7: arranque, versionado y sincronización frontend/backend OK');
 console.log('✅ Test 8: no se detectan tokens hardcodeados OK');
 console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/INTEGRACIÓN OK');
