@@ -3,150 +3,18 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const PORT = Number(process.env.PORT || 3005);
-const HOST = process.env.HOST || '0.0.0.0';
+import {
+  VERSION,
+  readConfig,
+  oidcConfigured,
+  publicStaticPath
+} from './config.mjs';
 
-const API_BASE = (
-  process.env.LALIGA_API_BASE_URL ||
-  'https://fantasy-api.llt-services.com'
-).replace(/\/+$/, '');
-
-const COMP = (
-  process.env.LALIGA_COMPETITION_ID ||
-  '1'
-);
-
-const COOKIE = (
-  process.env.SESSION_COOKIE_NAME ||
-  'fm_session'
-);
-
-const ORIGIN = (
-  process.env.ALLOW_ORIGIN ||
-  '*'
-);
-
-const VERSION = '2.4.0';
-
-const IOS_SUCCESS_REDIRECT =
-  process.env.IOS_SUCCESS_REDIRECT ||
-  'laligafantasy://auth-complete';
-
-/*
-  Proveedor externo opcional.
-
-  Nunca se guarda el token en index.html,
-  GitHub, README ni código fuente.
-
-  El token se introduce únicamente como:
-  FOOTBALL_DATA_TOKEN
-  en Render > Environment.
-*/
-const FOOTBALL_DATA_BASE =
-  'https://api.football-data.org/v4';
-
-const FOOTBALL_DATA_TOKEN =
-  process.env.FOOTBALL_DATA_TOKEN || '';
-
-const FOOTBALL_DATA_COMPETITION =
-  process.env.FOOTBALL_DATA_COMPETITION || 'PD';
-
-const FOOTBALL_DATA_DAYS =
-  Math.min(
-    Math.max(
-      Number(process.env.FOOTBALL_DATA_DAYS || 30),
-      1
-    ),
-    90
-  );
-
+const config = readConfig();
 const sessions = new Map();
+const STATIC_DIR = path.resolve(process.env.FRONTEND_DIR || process.cwd());
 
-const STATIC_DIR = path.resolve(
-  process.env.FRONTEND_DIR ||
-  process.cwd()
-);
-
-
-/* =========================================
-   STATIC
-========================================= */
-
-function serveStatic(res, pathname){
-
-  const file =
-    pathname === '/'
-      ? 'index.html'
-      : pathname.replace(/^\/+/, '');
-
-  const full =
-    path.resolve(
-      STATIC_DIR,
-      file
-    );
-
-  if(
-    !full.startsWith(
-      STATIC_DIR + path.sep
-    ) ||
-    !fs.existsSync(full) ||
-    !fs.statSync(full).isFile()
-  ){
-
-    return false;
-
-  }
-
-  const types = {
-    '.html':
-      'text/html; charset=utf-8',
-
-    '.js':
-      'text/javascript; charset=utf-8',
-
-    '.json':
-      'application/json; charset=utf-8',
-
-    '.css':
-      'text/css; charset=utf-8',
-
-    '.webmanifest':
-      'application/manifest+json'
-  };
-
-  res.writeHead(
-    200,
-    {
-      'Content-Type':
-        types[
-          path.extname(full)
-        ] ||
-        'application/octet-stream',
-
-      'Cache-Control':
-        file === 'index.html'
-          ? 'no-cache'
-          : 'public, max-age=3600',
-
-      'X-Content-Type-Options':
-        'nosniff'
-    }
-  );
-
-  res.end(
-    fs.readFileSync(full)
-  );
-
-  return true;
-
-}
-
-
-/* =========================================
-   API
-========================================= */
-
-const allow = new Set([
+const READ_ROUTES = new Set([
   'profile',
   'leagues',
   'league',
@@ -161,1768 +29,569 @@ const allow = new Set([
   'week'
 ]);
 
+const SESSION_PENDING_TTL = 15 * 60 * 1000;
+const SESSION_ACTIVE_TTL = 30 * 24 * 60 * 60 * 1000;
 
-function reply(
-  res,
-  status,
-  body
-){
+function sendJson(res, status, body){
+  const headers = {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'X-Frame-Options': 'DENY'
+  };
 
-  res.writeHead(
-    status,
-    {
-      'Content-Type':
-        'application/json; charset=utf-8',
+  if (config.allowOrigin) {
+    headers['Access-Control-Allow-Origin'] = config.allowOrigin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  }
 
-      'Cache-Control':
-        'no-store',
+  res.writeHead(status, headers);
+  res.end(JSON.stringify(body));
+}
 
-      'Access-Control-Allow-Origin':
-        ORIGIN,
+function sendEmpty(res, status){
+  res.writeHead(status);
+  res.end();
+}
 
-      'Access-Control-Allow-Credentials':
-        'true',
+function parseCookies(req){
+  const header = req.headers.cookie || '';
+  const out = {};
 
-      'X-Content-Type-Options':
-        'nosniff',
+  for (const part of header.split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    const key = part.slice(0, i).trim();
+    const value = part.slice(i + 1).trim();
+    if (!key) continue;
 
-      'Referrer-Policy':
-        'no-referrer',
-
-      'X-Frame-Options':
-        'DENY'
+    try {
+      out[key] = decodeURIComponent(value);
+    } catch {
+      out[key] = value;
     }
-  );
+  }
 
-  res.end(
-    JSON.stringify(body)
-  );
-
+  return out;
 }
 
+function getSession(req){
+  const id = parseCookies(req)[config.sessionCookieName];
+  if (!id) return null;
 
-function cookies(req){
+  const current = sessions.get(id);
+  if (!current) return null;
 
-  return Object.fromEntries(
-    (req.headers.cookie || '')
-      .split(';')
-      .map(
-        s => s.trim()
-      )
-      .filter(Boolean)
-      .map(
-        s => {
+  const ttl = current.accessToken
+    ? SESSION_ACTIVE_TTL
+    : SESSION_PENDING_TTL;
 
-          const i =
-            s.indexOf('=');
+  if (Date.now() - current.createdAt > ttl) {
+    sessions.delete(id);
+    return null;
+  }
 
-          return [
-            s.slice(0, i),
-            decodeURIComponent(
-              s.slice(i + 1)
-            )
-          ];
-
-        }
-      )
-  );
-
+  return current;
 }
 
-
-function session(req){
-
-  const id =
-    cookies(req)[COOKIE];
-
-  return id
-    ? sessions.get(id)
-    : null;
-
+function cleanSessions(){
+  const now = Date.now();
+  for (const [id, session] of sessions) {
+    const ttl = session.accessToken
+      ? SESSION_ACTIVE_TTL
+      : SESSION_PENDING_TTL;
+    if (now - session.createdAt > ttl) {
+      sessions.delete(id);
+    }
+  }
 }
 
+setInterval(cleanSessions, 5 * 60 * 1000).unref();
 
-function arr(x){
+function staticContentType(file){
+  return {
+    'index.html': 'text/html; charset=utf-8',
+    'manifest.json': 'application/manifest+json; charset=utf-8',
+    'sw.js': 'text/javascript; charset=utf-8'
+  }[file] || 'application/octet-stream';
+}
 
-  if(Array.isArray(x)){
-    return x;
-  }
+function serveStatic(res, pathname){
+  if (!publicStaticPath(pathname)) return false;
 
-  if(
-    Array.isArray(x?.data)
-  ){
-    return x.data;
-  }
+  const file = pathname === '/' ? 'index.html' : pathname.slice(1);
+  const full = path.resolve(STATIC_DIR, file);
 
-  if(
-    Array.isArray(x?.items)
-  ){
-    return x.items;
-  }
+  if (!full.startsWith(STATIC_DIR + path.sep)) return false;
+  if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return false;
 
-  if(
-    Array.isArray(x?.content)
-  ){
-    return x.content;
-  }
+  const cache = file === 'index.html' ? 'no-cache' : 'public, max-age=3600';
 
+  res.writeHead(200, {
+    'Content-Type': staticContentType(file),
+    'Cache-Control': cache,
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'X-Frame-Options': 'DENY'
+  });
+  res.end(fs.readFileSync(full));
+  return true;
+}
+
+function arrayData(value){
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.items)) return value.items;
+  if (Array.isArray(value?.content)) return value.content;
   return [];
-
 }
 
-
-function obj(x){
-
-  return (
-    x?.data &&
-    typeof x.data === 'object' &&
-    !Array.isArray(x.data)
-  )
-    ? x.data
-    : (
-      x &&
-      typeof x === 'object' &&
-      !Array.isArray(x)
-    )
-      ? x
-      : null;
-
+function objectData(value){
+  if (value?.data && typeof value.data === 'object' && !Array.isArray(value.data)) {
+    return value.data;
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  return null;
 }
-
-
-/* =========================================
-   LALIGA OIDC
-========================================= */
 
 function oidcStatus(){
-
   const required = [
     'LALIGA_AUTHORIZE_URL',
     'LALIGA_OAUTH_CLIENT_ID',
     'LALIGA_REDIRECT_URI'
   ];
-
-  const missing =
-    required.filter(
-      key => !process.env[key]
-    );
+  const missing = required.filter(key => !process.env[key]);
 
   return {
-    configured:
-      missing.length === 0,
-
+    configured: oidcConfigured(config),
     missing,
-
-    hasAuthorizeUrl:
-      !!process.env.LALIGA_AUTHORIZE_URL,
-
-    hasClientId:
-      !!process.env.LALIGA_OAUTH_CLIENT_ID,
-
-    hasRedirectUri:
-      !!process.env.LALIGA_REDIRECT_URI,
-
-    policy:
-      process.env.LALIGA_SIGNIN_POLICY ||
-      'B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN'
+    hasAuthorizeUrl: Boolean(config.laligaAuthorizeUrl),
+    hasClientId: Boolean(config.laligaOAuthClientId),
+    hasRedirectUri: Boolean(config.laligaRedirectUri),
+    policy: config.laligaSigninPolicy
   };
-
 }
 
+async function refresh(session){
+  if (!session?.refreshToken || !config.laligaOAuthClientId) return false;
 
-async function refresh(s){
+  const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent(config.laligaSigninPolicy)}`;
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: session.refreshToken,
+    client_id: config.laligaOAuthClientId,
+    scope: 'openid offline_access'
+  });
 
-  if(
-    !s?.refreshToken ||
-    !process.env.LALIGA_OAUTH_CLIENT_ID
-  ){
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
 
-    return false;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token && !data.id_token) return false;
 
-  }
-
-
-  const url =
-    (
-      process.env.LALIGA_TOKEN_URL ||
-      'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/token'
-    ) +
-    '?p=' +
-    (
-      process.env.LALIGA_SIGNIN_POLICY ||
-      'B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN'
-    );
-
-
-  const body =
-    new URLSearchParams({
-      grant_type:
-        'refresh_token',
-
-      refresh_token:
-        s.refreshToken,
-
-      client_id:
-        process.env.LALIGA_OAUTH_CLIENT_ID,
-
-      scope:
-        'openid offline_access'
-    });
-
-
-  const r =
-    await fetch(
-      url,
-      {
-        method:'POST',
-
-        headers:{
-          'Content-Type':
-            'application/x-www-form-urlencoded'
-        },
-
-        body
-      }
-    );
-
-
-  const j =
-    await r
-      .json()
-      .catch(
-        () => ({})
-      );
-
-
-  if(!r.ok){
-
-    return false;
-
-  }
-
-
-  s.accessToken =
-    j.access_token ||
-    j.id_token ||
-    s.accessToken;
-
-  s.refreshToken =
-    j.refresh_token ||
-    s.refreshToken;
-
-  s.expiresAt =
-    Date.now() +
-    Number(
-      j.expires_in ||
-      j.id_token_expires_in ||
-      86400
-    ) *
-    1000;
-
+  session.accessToken = data.access_token || data.id_token;
+  session.refreshToken = data.refresh_token || session.refreshToken;
+  session.expiresAt = Date.now() + Number(data.expires_in || 86400) * 1000;
+  session.createdAt = Date.now();
   return true;
-
 }
 
+async function upstream(endpoint, session, attempt = 0){
+  if (!session?.accessToken) throw Object.assign(new Error('NO_SESSION'), { status: 401 });
 
-/* =========================================
-   LALIGA UPSTREAM
-========================================= */
-
-async function upstream(
-  endpoint,
-  s,
-  attempt = 0
-){
-
-  if(!s?.accessToken){
-
-    throw Error(
-      'NO_SESSION'
-    );
-
+  if (session.expiresAt && Date.now() > session.expiresAt - 120000) {
+    await refresh(session).catch(() => false);
   }
 
-
-  if(
-    s.expiresAt &&
-    Date.now() >
-      s.expiresAt - 120000
-  ){
-
-    await refresh(s)
-      .catch(
-        () => false
-      );
-
-  }
-
-
-  const r =
-    await fetch(
-      API_BASE + endpoint,
-      {
-        headers:{
-          Accept:
-            'application/json',
-
-          'x-lang':
-            'es',
-
-          Authorization:
-            'Bearer ' +
-            s.accessToken,
-
-          'User-Agent':
-            'LALIGA-Fantasy-Manager/2.4.0-read-only'
-        }
-      }
-    );
-
-
-  const text =
-    await r.text();
-
-
-  if(
-    r.status === 401 &&
-    attempt === 0 &&
-    s.refreshToken &&
-    await refresh(s)
-  ){
-
-    return upstream(
-      endpoint,
-      s,
-      1
-    );
-
-  }
-
-
-  if(!r.ok){
-
-    const error =
-      Error(
-        'UPSTREAM_' +
-        r.status
-      );
-
-    error.status =
-      r.status;
-
-    throw error;
-
-  }
-
-
-  try{
-
-    return JSON.parse(text);
-
-  }catch{
-
-    return {
-      raw:
-        text.slice(
-          0,
-          2000
-        )
-    };
-
-  }
-
-}
-
-
-/* =========================================
-   LALIGA PATHS
-========================================= */
-
-const paths = {
-
-  profile:
-    '/v4/user/me?x-lang=es',
-
-  leagues:
-    `/v1/competition/${COMP}/leagues?x-lang=es`,
-
-  week:
-    `/v1/competition/${COMP}/week/current?x-lang=es`,
-
-  players:
-    `/v1/competition/${COMP}/players?x-lang=es`,
-
-  fixtures:
-    week =>
-      `/v1/competition/${COMP}/calendar?weekNumber=${encodeURIComponent(
-        week
-      )}&x-lang=es`,
-
-  league:
-    id =>
-      `/v1/competition/${COMP}/leagues/${encodeURIComponent(
-        id
-      )}/standing?x-lang=es`,
-
-  standings:
-    (id, week) =>
-      `/v1/competition/${COMP}/leagues/${encodeURIComponent(
-        id
-      )}/standing/${encodeURIComponent(
-        week
-      )}?x-lang=es`,
-
-  market:
-    id =>
-      `/v1/competition/${COMP}/league/${encodeURIComponent(
-        id
-      )}/market?x-lang=es`,
-
-  squad:
-    id =>
-      `/v1/competition/${COMP}/teams/${encodeURIComponent(
-        id
-      )}?x-lang=es`,
-
-  budget:
-    id =>
-      `/v1/competition/${COMP}/teams/${encodeURIComponent(
-        id
-      )}/money?x-lang=es`,
-
-  stats:
-    week =>
-      `/stats/v1/competition/${COMP}/stats/week/${encodeURIComponent(
-        week
-      )}?x-lang=es`
-};
-
-
-/* =========================================
-   FOOTBALL-DATA.ORG
-========================================= */
-
-async function footballData(
-  endpoint
-){
-
-  if(!FOOTBALL_DATA_TOKEN){
-
-    const error =
-      Error(
-        'FOOTBALL_DATA_NOT_CONFIGURED'
-      );
-
-    error.status =
-      503;
-
-    throw error;
-
-  }
-
-
-  const r =
-    await fetch(
-      FOOTBALL_DATA_BASE +
-      endpoint,
-      {
-        headers:{
-          Accept:
-            'application/json',
-
-          'X-Auth-Token':
-            FOOTBALL_DATA_TOKEN,
-
-          'User-Agent':
-            'LALIGA-Fantasy-Manager/2.4.0'
-        }
-      }
-    );
-
-
-  const text =
-    await r.text();
-
-
-  if(!r.ok){
-
-    const error =
-      Error(
-        'FOOTBALL_DATA_' +
-        r.status
-      );
-
-    error.status =
-      r.status;
-
-    error.body =
-      text.slice(
-        0,
-        1000
-      );
-
-    throw error;
-
-  }
-
-
-  try{
-
-    return JSON.parse(text);
-
-  }catch{
-
-    return {
-      raw:
-        text.slice(
-          0,
-          2000
-        )
-    };
-
-  }
-
-}
-
-
-/* =========================================
-   SERVIDOR
-========================================= */
-
-http.createServer(
-  async(req,res)=>{
-
-    try{
-
-      if(
-        req.method ===
-        'OPTIONS'
-      ){
-
-        return reply(
-          res,
-          204,
-          {}
-        );
-
-      }
-
-
-      const u =
-        new URL(
-          req.url,
-          'http://' +
-          req.headers.host
-        );
-
-
-      /* -------------------------
-         HEALTH
-      ------------------------- */
-
-      if(
-        u.pathname ===
-        '/api/health'
-      ){
-
-        return reply(
-          res,
-          200,
-          {
-            ok:true,
-
-            readOnly:true,
-
-            competition:COMP,
-
-            version:VERSION,
-
-            providers:{
-              laligaOAuth:
-                oidcStatus().configured,
-
-              footballData:
-                !!FOOTBALL_DATA_TOKEN
-            }
-          }
-        );
-
-      }
-
-
-      /* -------------------------
-         SESSION
-      ------------------------- */
-
-      if(
-        u.pathname ===
-        '/api/session'
-      ){
-
-        return reply(
-          res,
-          200,
-          {
-            authenticated:
-              !!session(req),
-
-            readOnly:true
-          }
-        );
-
-      }
-
-
-      /* -------------------------
-         AUTH STATUS
-      ------------------------- */
-
-      if(
-        u.pathname ===
-        '/api/auth/status'
-      ){
-
-        return reply(
-          res,
-          200,
-          oidcStatus()
-        );
-
-      }
-
-
-      /* -------------------------
-         FOOTBALL-DATA STATUS
-      ------------------------- */
-
-      if(
-        u.pathname ===
-        '/api/providers/status'
-      ){
-
-        return reply(
-          res,
-          200,
-          {
-            footballData:{
-              configured:
-                !!FOOTBALL_DATA_TOKEN,
-
-              competition:
-                FOOTBALL_DATA_COMPETITION
-            },
-
-            laliga:{
-              configured:
-                oidcStatus().configured
-            }
-          }
-        );
-
-      }
-
-
-      /* --------------------------------
-   NEXT FIXTURES
--------------------------------- */
-
-if (
-  u.pathname ===
-  '/api/fixtures/next'
-) {
-  if (!FOOTBALL_DATA_TOKEN) {
-    return reply(
-      res,
-      503,
-      {
-        error:
-          'FOOTBALL_DATA_NOT_CONFIGURED',
-        message:
-          'Configura FOOTBALL_DATA_TOKEN en Render > Environment.'
-      }
-    );
-  }
-
-  const today =
-    new Date();
-
-  const from =
-    today
-      .toISOString()
-      .slice(0, 10);
-
-  const future =
-    new Date(
-      today.getTime() +
-      FOOTBALL_DATA_DAYS *
-      86400000
-    )
-      .toISOString()
-      .slice(0, 10);
-
-  const data =
-    await footballData(
-      `/competitions/${encodeURIComponent(
-        FOOTBALL_DATA_COMPETITION
-      )}/matches?dateFrom=${from}&dateTo=${future}`
-    );
-
-  const rawMatches =
-    Array.isArray(data?.matches)
-      ? data.matches
-      : [];
-
-  /*
-   * Importante:
-   *
-   * - utcDate = fecha/hora real del partido.
-   * - matchday = jornada oficial proporcionada
-   *   por football-data.org.
-   *
-   * Nunca calculamos la jornada a partir de
-   * la posición del partido ni de su fecha.
-   */
-
-  const matches =
-    rawMatches
-      .map((match) => ({
-        ...match,
-
-        calendarDate:
-          match?.utcDate
-            ? match.utcDate
-                .slice(0, 10)
-            : null,
-
-        calendarTime:
-          match?.utcDate
-            ? match.utcDate
-                .slice(11, 16)
-            : null,
-
-        officialMatchday:
-          Number.isFinite(
-            Number(match?.matchday)
-          )
-            ? Number(match.matchday)
-            : null
-      }))
-      .sort(
-        (a, b) =>
-          new Date(a?.utcDate || 0).getTime() -
-          new Date(b?.utcDate || 0).getTime()
-      );
-
-  return reply(
-    res,
-    200,
-    {
-      source:
-        'football-data.org',
-
-      competition:
-        FOOTBALL_DATA_COMPETITION,
-
-      from,
-
-      to: future,
-
-      matches
+  const response = await fetch(config.laligaApiBaseUrl + endpoint, {
+    headers: {
+      Accept: 'application/json',
+      'x-lang': 'es',
+      Authorization: `Bearer ${session.accessToken}`,
+      'User-Agent': `LALIGA-Fantasy-Manager/${VERSION}-read-only`
     }
-  );
+  });
+
+  const text = await response.text();
+
+  if (response.status === 401 && attempt === 0 && session.refreshToken && await refresh(session)) {
+    return upstream(endpoint, session, 1);
+  }
+
+  if (!response.ok) {
+    throw Object.assign(new Error(`UPSTREAM_${response.status}`), { status: response.status });
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text.slice(0, 2000) };
+  }
 }
 
+function fantasyPath(key, url){
+  const competition = encodeURIComponent(config.laligaCompetitionId);
+  const week = encodeURIComponent(url.searchParams.get('week') || '1');
 
+  switch (key) {
+    case 'profile':
+      return `/v4/user/me?x-lang=es`;
+    case 'leagues':
+      return `/v1/competition/${competition}/leagues?x-lang=es`;
+    case 'week':
+      return `/v1/competition/${competition}/week/current?x-lang=es`;
+    case 'players':
+      return `/v1/competition/${competition}/players?x-lang=es`;
+    case 'fixtures':
+      return `/v1/competition/${competition}/calendar?weekNumber=${week}&x-lang=es`;
+    case 'league':
+      return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing?x-lang=es`;
+    case 'standings':
+      return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing/${week}?x-lang=es`;
+    case 'market':
+      return `/v1/competition/${competition}/league/${encodeURIComponent(url.searchParams.get('id') || '')}/market?x-lang=es`;
+    case 'squad':
+      return `/v1/competition/${competition}/teams/${encodeURIComponent(url.searchParams.get('teamId') || '')}?x-lang=es`;
+    case 'budget':
+      return `/v1/competition/${competition}/teams/${encodeURIComponent(url.searchParams.get('teamId') || '')}/money?x-lang=es`;
+    case 'stats':
+      return `/stats/v1/competition/${competition}/stats/week/${week}?x-lang=es`;
+    case 'rivals':
+      return `/v1/competition/${competition}/leagues/${encodeURIComponent(url.searchParams.get('id') || '')}/standing?x-lang=es`;
+    default:
+      return null;
+  }
+}
 
-      /* -------------------------
-         AUTH START
-      ------------------------- */
+async function footballData(endpoint){
+  if (!config.footballDataToken) {
+    throw Object.assign(new Error('FOOTBALL_DATA_NOT_CONFIGURED'), { status: 503 });
+  }
 
-      if(
-        u.pathname ===
-        '/auth/start'
-      ){
+  const response = await fetch(config.footballDataBase + endpoint, {
+    headers: {
+      Accept: 'application/json',
+      'X-Auth-Token': config.footballDataToken,
+      'User-Agent': `LALIGA-Fantasy-Manager/${VERSION}`
+    }
+  });
 
-        const authorize =
-          process.env.LALIGA_AUTHORIZE_URL;
+  const text = await response.text();
+  if (!response.ok) {
+    throw Object.assign(new Error(`FOOTBALL_DATA_${response.status}`), {
+      status: response.status,
+      body: text.slice(0, 1000)
+    });
+  }
 
-        const clientId =
-          process.env.LALIGA_OAUTH_CLIENT_ID;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text.slice(0, 2000) };
+  }
+}
 
-        const redirectUri =
-          process.env.LALIGA_REDIRECT_URI;
+function cookieHeader(id, maxAge){
+  const secure = config.secureCookie ? 'Secure; ' : '';
+  return `${config.sessionCookieName}=${encodeURIComponent(id)}; HttpOnly; SameSite=Lax; ${secure}Path=/; Max-Age=${maxAge}`;
+}
 
-        const policy =
-          process.env.LALIGA_SIGNIN_POLICY ||
-          'B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN';
+const server = http.createServer(async (req, res) => {
+  try {
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
+    if (req.method === 'OPTIONS') {
+      const headers = {};
+      if (config.allowOrigin) {
+        headers['Access-Control-Allow-Origin'] = config.allowOrigin;
+        headers['Access-Control-Allow-Credentials'] = 'true';
+        headers['Access-Control-Allow-Methods'] = 'GET,OPTIONS';
+        headers['Access-Control-Allow-Headers'] = 'Content-Type';
+      }
+      res.writeHead(204, headers);
+      return res.end();
+    }
 
-        if(
-          !authorize ||
-          !clientId ||
-          !redirectUri
-        ){
-
-          return reply(
-            res,
-            501,
-            {
-              error:
-                'OIDC_NOT_CONFIGURED',
-
-              message:
-                'Faltan parámetros OIDC oficiales.'
-            }
-          );
-
+    if (url.pathname === '/api/health' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        ok: true,
+        readOnly: true,
+        competition: config.laligaCompetitionId,
+        version: VERSION,
+        providers: {
+          laligaOAuth: oidcConfigured(config),
+          footballData: Boolean(config.footballDataToken)
         }
+      });
+    }
 
+    if (url.pathname === '/api/session' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        authenticated: Boolean(getSession(req)),
+        readOnly: true
+      });
+    }
 
-        const bytes =
-          crypto.getRandomValues(
-            new Uint8Array(32)
-          );
+    if (url.pathname === '/api/auth/status' && req.method === 'GET') {
+      return sendJson(res, 200, oidcStatus());
+    }
 
+    if (url.pathname === '/api/providers/status' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        footballData: {
+          configured: Boolean(config.footballDataToken),
+          competition: config.footballDataCompetition
+        },
+        laliga: { configured: oidcConfigured(config) }
+      });
+    }
 
-        const state =
-          Buffer
-            .from(bytes)
-            .toString(
-              'base64url'
-            );
-
-
-        const verifier =
-          Buffer
-            .from(
-              crypto.getRandomValues(
-                new Uint8Array(32)
-              )
-            )
-            .toString(
-              'base64url'
-            );
-
-
-        const challenge =
-          Buffer
-            .from(
-              await crypto.subtle.digest(
-                'SHA-256',
-                Buffer.from(
-                  verifier
-                )
-              )
-            )
-            .toString(
-              'base64url'
-            );
-
-
-        const sid =
-          crypto.randomUUID();
-
-
-        sessions.set(
-          sid,
-          {
-            createdAt:
-              Date.now(),
-
-            state,
-
-            verifier,
-
-            platform:
-              u.searchParams.get(
-                'platform'
-              ) === 'ios'
-                ?'ios'
-                :'web'
-          }
+    if (url.pathname === '/api/fixtures/next') {
+      if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
+      try {
+        const today = new Date();
+        const from = today.toISOString().slice(0, 10);
+        const futureDate = new Date(today.getTime() + config.footballDataDays * 86400000);
+        const to = futureDate.toISOString().slice(0, 10);
+        const data = await footballData(
+          `/competitions/${encodeURIComponent(config.footballDataCompetition)}/matches?dateFrom=${from}&dateTo=${to}`
         );
+        const matches = (Array.isArray(data?.matches) ? data.matches : [])
+          .map(match => ({
+            ...match,
+            calendarDate: match?.utcDate ? match.utcDate.slice(0, 10) : null,
+            calendarTime: match?.utcDate ? match.utcDate.slice(11, 16) : null,
+            officialMatchday: Number.isFinite(Number(match?.matchday)) ? Number(match.matchday) : null
+          }))
+          .sort((a, b) => new Date(a.utcDate || 0) - new Date(b.utcDate || 0));
 
+        return sendJson(res, 200, {
+          source: 'football-data.org',
+          competition: config.footballDataCompetition,
+          from,
+          to,
+          matches
+        });
+      } catch (error) {
+        return sendJson(res, error.status || 502, {
+          error: error.message || 'FOOTBALL_DATA_FAILED',
+          message: error.status === 503 ? 'Configura FOOTBALL_DATA_TOKEN en el entorno del servicio.' : undefined
+        });
+      }
+    }
 
-        const q =
-          new URLSearchParams({
-            p:
-              policy,
+    if (url.pathname === '/auth/start') {
+      if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
 
-            client_id:
-              clientId,
-
-            response_type:
-              'code',
-
-            redirect_uri:
-              redirectUri,
-
-            scope:
-              `openid ${clientId} offline_access`,
-
-            code_challenge:
-              challenge,
-
-            code_challenge_method:
-              'S256',
-
-            state,
-
-            nonce:
-              state
-          });
-
-
-        res.writeHead(
-          302,
-          {
-            Location:
-              authorize +
-              '?' +
-              q.toString(),
-
-            'Set-Cookie':
-              `${COOKIE}=${encodeURIComponent(
-                sid
-              )}; HttpOnly; SameSite=Lax; Secure; Path=/; Max-Age=900`
-          }
-        );
-
-
-        return res.end();
-
+      if (!oidcConfigured(config)) {
+        return sendJson(res, 501, {
+          error: 'OIDC_NOT_CONFIGURED',
+          message: 'Faltan parámetros OIDC oficiales.'
+        });
       }
 
+      const state = crypto.randomBytes(32).toString('base64url');
+      const verifier = crypto.randomBytes(32).toString('base64url');
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+      const sessionId = crypto.randomUUID();
 
-      /* -------------------------
-         AUTH CALLBACK
-      ------------------------- */
+      sessions.set(sessionId, {
+        createdAt: Date.now(),
+        state,
+        verifier,
+        platform: url.searchParams.get('platform') === 'ios' ? 'ios' : 'web'
+      });
 
-      if(
-        u.pathname ===
-        '/auth/callback'
-      ){
+      const query = new URLSearchParams({
+        p: config.laligaSigninPolicy,
+        client_id: config.laligaOAuthClientId,
+        response_type: 'code',
+        redirect_uri: config.laligaRedirectUri,
+        scope: `openid ${config.laligaOAuthClientId} offline_access`,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state,
+        nonce: state
+      });
 
-        const sid =
-          cookies(req)[COOKIE];
+      res.writeHead(302, {
+        Location: `${config.laligaAuthorizeUrl}?${query.toString()}`,
+        'Set-Cookie': cookieHeader(sessionId, 900)
+      });
+      return res.end();
+    }
 
-        const pending =
-          sid
-            ? sessions.get(sid)
-            : null;
+    if (url.pathname === '/auth/callback') {
+      if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
 
-        const code =
-          u.searchParams.get(
-            'code'
-          );
+      const sessionId = parseCookies(req)[config.sessionCookieName];
+      const pending = sessionId ? sessions.get(sessionId) : null;
+      const code = url.searchParams.get('code');
+      const returnedState = url.searchParams.get('state');
 
-        const state =
-          u.searchParams.get(
-            'state'
-          );
-
-
-        if(
-          !pending ||
-          !code ||
-          state !== pending.state
-        ){
-
-          return reply(
-            res,
-            400,
-            {
-              error:
-                'INVALID_OIDC_CALLBACK'
-            }
-          );
-
-        }
-
-
-        const tokenUrl =
-          (
-            process.env.LALIGA_TOKEN_URL ||
-            'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/token'
-          ) +
-          '?p=' +
-          (
-            process.env.LALIGA_SIGNIN_POLICY ||
-            'B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN'
-          );
-
-
-        const body =
-          new URLSearchParams({
-            grant_type:
-              'authorization_code',
-
-            client_id:
-              process.env.LALIGA_OAUTH_CLIENT_ID,
-
-            code,
-
-            redirect_uri:
-              process.env.LALIGA_REDIRECT_URI,
-
-            code_verifier:
-              pending.verifier,
-
-            scope:
-              `openid ${process.env.LALIGA_OAUTH_CLIENT_ID} offline_access`
-          });
-
-
-        const tr =
-          await fetch(
-            tokenUrl,
-            {
-              method:
-                'POST',
-
-              headers:{
-                'Content-Type':
-                  'application/x-www-form-urlencoded'
-              },
-
-              body
-            }
-          );
-
-
-        const tj =
-          await tr
-            .json()
-            .catch(
-              () => ({})
-            );
-
-
-        if(!tr.ok){
-
-          return reply(
-            res,
-            502,
-            {
-              error:
-                'OIDC_TOKEN_EXCHANGE_FAILED',
-
-              status:
-                tr.status
-            }
-          );
-
-        }
-
-
-        sessions.set(
-          sid,
-          {
-            createdAt:
-              Date.now(),
-
-            accessToken:
-              tj.access_token ||
-              tj.id_token,
-
-            refreshToken:
-              tj.refresh_token,
-
-            expiresAt:
-              Date.now() +
-              Number(
-                tj.expires_in ||
-                86400
-              ) *
-              1000
-          }
-        );
-
-
-        const location =
-          pending.platform === 'ios'
-            ? IOS_SUCCESS_REDIRECT
-            : (
-              process.env.FRONTEND_URL ||
-              '/'
-            );
-
-
-        res.writeHead(
-          302,
-          {
-            Location:
-              location,
-
-            'Set-Cookie':
-              `${COOKIE}=${encodeURIComponent(
-                sid
-              )}; HttpOnly; SameSite=Lax; ${
-                process.env.SECURE_COOKIE === 'false'
-                  ? ''
-                  : 'Secure;'
-              } Path=/; Max-Age=2592000`
-          }
-        );
-
-
-        return res.end();
-
+      if (!pending || !code || returnedState !== pending.state) {
+        return sendJson(res, 400, { error: 'INVALID_OIDC_CALLBACK' });
       }
 
+      const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent(config.laligaSigninPolicy)}`;
+      const body = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: config.laligaOAuthClientId,
+        code,
+        redirect_uri: config.laligaRedirectUri,
+        code_verifier: pending.verifier,
+        scope: `openid ${config.laligaOAuthClientId} offline_access`
+      });
 
-      /* -------------------------
-         LOGOUT
-      ------------------------- */
+      const tokenResponse = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      });
+      const token = await tokenResponse.json().catch(() => ({}));
 
-      if(
-        u.pathname ===
-        '/auth/logout'
-      ){
-
-        const sid =
-          cookies(req)[COOKIE];
-
-
-        if(sid){
-
-          sessions.delete(
-            sid
-          );
-
-        }
-
-
-        res.writeHead(
-          302,
-          {
-            Location:
-              process.env.FRONTEND_URL ||
-              '/',
-
-            'Set-Cookie':
-              `${COOKIE}=; HttpOnly; SameSite=Lax; ${
-                process.env.SECURE_COOKIE === 'false'
-                  ? ''
-                  : 'Secure;'
-              } Path=/; Max-Age=0`
-          }
-        );
-
-
-        return res.end();
-
+      if (!tokenResponse.ok || (!token.access_token && !token.id_token)) {
+        return sendJson(res, 502, {
+          error: 'OIDC_TOKEN_EXCHANGE_FAILED',
+          status: tokenResponse.status
+        });
       }
 
+      sessions.set(sessionId, {
+        createdAt: Date.now(),
+        accessToken: token.access_token || token.id_token,
+        refreshToken: token.refresh_token,
+        expiresAt: Date.now() + Number(token.expires_in || 86400) * 1000
+      });
 
-      /* -------------------------
-         FANTASY DASHBOARD
-      ------------------------- */
+      const location = pending.platform === 'ios'
+        ? config.iosSuccessRedirect
+        : config.frontendUrl;
 
-      if(
-        u.pathname ===
-        '/api/fantasy/dashboard'
-      ){
+      res.writeHead(302, {
+        Location: location,
+        'Set-Cookie': cookieHeader(sessionId, 2592000)
+      });
+      return res.end();
+    }
 
-        const s =
-          session(req);
+    if (url.pathname === '/auth/logout') {
+      const sessionId = parseCookies(req)[config.sessionCookieName];
+      if (sessionId) sessions.delete(sessionId);
 
+      res.writeHead(302, {
+        Location: config.frontendUrl,
+        'Set-Cookie': cookieHeader('', 0)
+      });
+      return res.end();
+    }
 
-        if(!s){
+    if (url.pathname === '/api/fantasy/dashboard') {
+      if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
 
-          return reply(
-            res,
-            401,
-            {
-              error:
-                'AUTH_REQUIRED'
-            }
-          );
+      const session = getSession(req);
+      if (!session) return sendJson(res, 401, { error: 'AUTH_REQUIRED' });
 
-        }
+      const output = {
+        version: VERSION,
+        readOnly: true,
+        competition: config.laligaCompetitionId,
+        errors: []
+      };
 
+      const [profileResult, leaguesResult, weekResult] = await Promise.allSettled([
+        upstream('/v4/user/me?x-lang=es', session),
+        upstream(`/v1/competition/${encodeURIComponent(config.laligaCompetitionId)}/leagues?x-lang=es`, session),
+        upstream(`/v1/competition/${encodeURIComponent(config.laligaCompetitionId)}/week/current?x-lang=es`, session)
+      ]);
 
-        const out = {
-          version:
-            VERSION,
+      output.profile = profileResult.status === 'fulfilled' ? objectData(profileResult.value) || {} : {};
+      output.leagues = leaguesResult.status === 'fulfilled' ? arrayData(leaguesResult.value) : [];
+      output.week = weekResult.status === 'fulfilled' ? objectData(weekResult.value) || weekResult.value : {};
 
-          readOnly:
-            true,
+      if (profileResult.status === 'rejected') output.errors.push('profile');
+      if (leaguesResult.status === 'rejected') output.errors.push('leagues');
+      if (weekResult.status === 'rejected') output.errors.push('week');
 
-          competition:
-            COMP,
+      const league = output.leagues[0];
+      const leagueId = league?.id || league?.leagueId;
 
-          errors:[]
-        };
+      if (leagueId) {
+        const competition = encodeURIComponent(config.laligaCompetitionId);
+        const encodedLeague = encodeURIComponent(leagueId);
+        const [standingResult, marketResult] = await Promise.allSettled([
+          upstream(`/v1/competition/${competition}/leagues/${encodedLeague}/standing?x-lang=es`, session),
+          upstream(`/v1/competition/${competition}/league/${encodedLeague}/market?x-lang=es`, session)
+        ]);
 
+        output.leagueId = leagueId;
+        output.standing = standingResult.status === 'fulfilled' ? standingResult.value : null;
+        output.market = marketResult.status === 'fulfilled' ? marketResult.value : null;
+        if (standingResult.status === 'rejected') output.errors.push('standing');
+        if (marketResult.status === 'rejected') output.errors.push('market');
 
-        const [
-          pr,
-          ls,
-          wk
-        ] =
-          await Promise.allSettled([
-            upstream(
-              paths.profile,
-              s
-            ),
+        const rows = arrayData(output.standing);
+        const user = output.profile?.username || output.profile?.email || output.profile?.name;
+        const mine = rows.find(item =>
+          item?.username === user ||
+          item?.managerName === user ||
+          item?.manager?.username === user ||
+          item?.userId === output.profile?.id
+        );
+        const teamId = mine?.teamId || mine?.team?.id || output.profile?.teamId || output.profile?.managerId;
 
-            upstream(
-              paths.leagues,
-              s
-            ),
-
-            upstream(
-              paths.week,
-              s
-            )
+        if (teamId) {
+          const encodedTeam = encodeURIComponent(teamId);
+          const [teamResult, budgetResult] = await Promise.allSettled([
+            upstream(`/v1/competition/${competition}/teams/${encodedTeam}?x-lang=es`, session),
+            upstream(`/v1/competition/${competition}/teams/${encodedTeam}/money?x-lang=es`, session)
           ]);
-
-
-        out.profile =
-          pr.status === 'fulfilled'
-            ? obj(pr.value) || {}
-            : {};
-
-
-        out.leagues =
-          ls.status === 'fulfilled'
-            ? arr(ls.value)
-            : [];
-
-
-        out.week =
-          wk.status === 'fulfilled'
-            ? obj(wk.value) ||
-              wk.value
-            : {};
-
-
-        if(
-          pr.status === 'rejected'
-        ){
-
-          out.errors.push(
-            'profile'
-          );
-
+          output.team = teamResult.status === 'fulfilled' ? teamResult.value : null;
+          output.budget = budgetResult.status === 'fulfilled' ? budgetResult.value : null;
+          output.teamId = teamId;
         }
-
-
-        if(
-          ls.status === 'rejected'
-        ){
-
-          out.errors.push(
-            'leagues'
-          );
-
-        }
-
-
-        if(
-          wk.status === 'rejected'
-        ){
-
-          out.errors.push(
-            'week'
-          );
-
-        }
-
-
-        const league =
-          out.leagues[0];
-
-
-        const leagueId =
-          league?.id ||
-          league?.leagueId;
-
-
-        if(leagueId){
-
-          const [
-            st,
-            m
-          ] =
-            await Promise.allSettled([
-              upstream(
-                paths.league(
-                  leagueId
-                ),
-                s
-              ),
-
-              upstream(
-                paths.market(
-                  leagueId
-                ),
-                s
-              )
-            ]);
-
-
-          out.leagueId =
-            leagueId;
-
-
-          out.standing =
-            st.status === 'fulfilled'
-              ? st.value
-              : null;
-
-
-          out.market =
-            m.status === 'fulfilled'
-              ? m.value
-              : null;
-
-
-          if(
-            st.status ===
-            'rejected'
-          ){
-
-            out.errors.push(
-              'standing'
-            );
-
-          }
-
-
-          if(
-            m.status ===
-            'rejected'
-          ){
-
-            out.errors.push(
-              'market'
-            );
-
-          }
-
-
-          const rows =
-            arr(
-              out.standing
-            );
-
-
-          const user =
-            out.profile?.username ||
-            out.profile?.email ||
-            out.profile?.name;
-
-
-          const mine =
-            rows.find(
-              x =>
-                x?.username === user ||
-                x?.managerName === user ||
-                x?.manager?.username === user ||
-                x?.userId === out.profile?.id
-            );
-
-
-          const teamId =
-            mine?.teamId ||
-            mine?.team?.id ||
-            out.profile?.teamId ||
-            out.profile?.managerId;
-
-
-          if(teamId){
-
-            const [
-              tm,
-              bd
-            ] =
-              await Promise.allSettled([
-                upstream(
-                  paths.squad(
-                    teamId
-                  ),
-                  s
-                ),
-
-                upstream(
-                  paths.budget(
-                    teamId
-                  ),
-                  s
-                )
-              ]);
-
-
-            out.team =
-              tm.status === 'fulfilled'
-                ? tm.value
-                : null;
-
-
-            out.budget =
-              bd.status === 'fulfilled'
-                ? bd.value
-                : null;
-
-
-            out.teamId =
-              teamId;
-
-          }
-
-        }
-
-
-        return reply(
-          res,
-          200,
-          out
-        );
-
       }
 
-
-      /* -------------------------
-         GENERIC FANTASY READ API
-      ------------------------- */
-
-      if(
-        u.pathname.startsWith(
-          '/api/fantasy/'
-        )
-      ){
-
-        if(
-          req.method !==
-          'GET'
-        ){
-
-          return reply(
-            res,
-            405,
-            {
-              error:
-                'READ_ONLY'
-            }
-          );
-
-        }
-
-
-        const s =
-          session(req);
-
-
-        if(!s){
-
-          return reply(
-            res,
-            401,
-            {
-              error:
-                'AUTH_REQUIRED'
-            }
-          );
-
-        }
-
-
-        const key =
-          u.pathname
-            .split('/')
-            .filter(Boolean)[2] ||
-          '';
-
-
-        if(
-          !allow.has(key)
-        ){
-
-          return reply(
-            res,
-            404,
-            {
-              error:
-                'ROUTE_NOT_ALLOWLISTED'
-            }
-          );
-
-        }
-
-
-        let endpoint;
-
-
-        if(
-          key ===
-          'profile'
-        ){
-
-          endpoint =
-            paths.profile;
-
-        }
-
-
-        if(
-          key ===
-          'leagues'
-        ){
-
-          endpoint =
-            paths.leagues;
-
-        }
-
-
-        if(
-          key ===
-          'week'
-        ){
-
-          endpoint =
-            paths.week;
-
-        }
-
-
-        if(
-          key ===
-          'players'
-        ){
-
-          endpoint =
-            paths.players;
-
-        }
-
-
-        if(
-          key ===
-          'fixtures'
-        ){
-
-          endpoint =
-            paths.fixtures(
-              u.searchParams.get(
-                'week'
-              ) || 1
-            );
-
-        }
-
-
-        if(
-          key ===
-          'stats'
-        ){
-
-          endpoint =
-            paths.stats(
-              u.searchParams.get(
-                'week'
-              ) || 1
-            );
-
-        }
-
-
-        if(
-          key ===
-          'league'
-        ){
-
-          endpoint =
-            paths.league(
-              u.searchParams.get(
-                'id'
-              )
-            );
-
-        }
-
-
-        if(
-          key ===
-          'standings'
-        ){
-
-          endpoint =
-            paths.standings(
-              u.searchParams.get(
-                'id'
-              ),
-              u.searchParams.get(
-                'week'
-              ) || 1
-            );
-
-        }
-
-
-        if(
-          key ===
-          'market'
-        ){
-
-          endpoint =
-            paths.market(
-              u.searchParams.get(
-                'id'
-              )
-            );
-
-        }
-
-
-        if(
-          key ===
-          'squad'
-        ){
-
-          endpoint =
-            paths.squad(
-              u.searchParams.get(
-                'teamId'
-              )
-            );
-
-        }
-
-
-        if(
-          key ===
-          'budget'
-        ){
-
-          endpoint =
-            paths.budget(
-              u.searchParams.get(
-                'teamId'
-              )
-            );
-
-        }
-
-
-        if(
-          key ===
-          'rivals'
-        ){
-
-          endpoint =
-            paths.league(
-              u.searchParams.get(
-                'id'
-              )
-            );
-
-        }
-
-
-        if(!endpoint){
-
-          return reply(
-            res,
-            400,
-            {
-              error:
-                'MISSING_PARAMETER'
-            }
-          );
-
-        }
-
-
-        try{
-
-          return reply(
-            res,
-            200,
-            await upstream(
-              endpoint,
-              s
-            )
-          );
-
-        }catch(e){
-
-          return reply(
-            res,
-            e.status === 401
-              ? 401
-              : 502,
-            {
-              error:
-                'UPSTREAM_READ_FAILED',
-
-              status:
-                e.status || 502
-            }
-          );
-
-        }
-
-      }
-
-
-      /* -------------------------
-         STATIC
-      ------------------------- */
-
-      if(
-        req.method ===
-        'GET' &&
-        serveStatic(
-          res,
-          u.pathname
-        )
-      ){
-
-        return;
-
-      }
-
-
-      return reply(
-        res,
-        404,
-        {
-          error:
-            'NOT_FOUND'
-        }
-      );
-
-
-    }catch(error){
-
-      console.error(
-        'SERVER_ERROR',
-        error
-      );
-
-
-      return reply(
-        res,
-        500,
-        {
-          error:
-            'INTERNAL_SERVER_ERROR'
-        }
-      );
-
+      return sendJson(res, 200, output);
     }
 
-  }
+    if (url.pathname.startsWith('/api/fantasy/')) {
+      if (req.method !== 'GET') return sendJson(res, 405, { error: 'READ_ONLY' });
 
-).listen(
-  PORT,
-  HOST,
-  ()=>{
-    console.log(
-      `Fantasy Manager backend on ${HOST}:${PORT}`
-    );
+      const session = getSession(req);
+      if (!session) return sendJson(res, 401, { error: 'AUTH_REQUIRED' });
+
+      const key = url.pathname.split('/').filter(Boolean)[2] || '';
+      if (!READ_ROUTES.has(key)) return sendJson(res, 404, { error: 'ROUTE_NOT_ALLOWLISTED' });
+
+      const endpoint = fantasyPath(key, url);
+      if (!endpoint) return sendJson(res, 400, { error: 'MISSING_PARAMETER' });
+
+      try {
+        return sendJson(res, 200, await upstream(endpoint, session));
+      } catch (error) {
+        return sendJson(res, error.status === 401 ? 401 : 502, {
+          error: 'UPSTREAM_READ_FAILED',
+          status: error.status || 502
+        });
+      }
+    }
+
+    if (req.method === 'GET' && serveStatic(res, url.pathname)) {
+      return;
+    }
+
+    return sendJson(res, 404, { error: 'NOT_FOUND' });
+  } catch (error) {
+    console.error('SERVER_ERROR', error);
+    return sendJson(res, 500, { error: 'INTERNAL_SERVER_ERROR' });
   }
-);
+});
+
+server.listen(config.port, config.host, () => {
+  console.log(`Fantasy Manager backend on ${config.host}:${config.port}`);
+});
