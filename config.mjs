@@ -13,6 +13,21 @@ export const DEFAULTS = {
   laligaTokenUrl: 'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/token'
 };
 
+/* Compatibilidad con las variables antiguas que usamos durante el montaje.
+   Se convierten a los nombres canónicos antes de arrancar server.mjs. */
+const aliases = {
+  LALIGA_COMPETITION_ID: 'LALIGA_CONCOMPETENCIA_ID',
+  SESSION_COOKIE_NAME: 'SESIÓN_NOMBRE_DE LA_COOKIE',
+  FOOTBALL_DATA_COMPETITION: 'COMPETENCIA_DE_DATOS_DE_FÚTBOL',
+  FOOTBALL_DATA_DAYS: 'DÍAS_DE_DATOS_DE_FÚTBOL'
+};
+
+for (const [canonical, legacy] of Object.entries(aliases)) {
+  if (!process.env[canonical] && process.env[legacy]) {
+    process.env[canonical] = process.env[legacy];
+  }
+}
+
 function nonEmpty(value, fallback){
   const text = String(value ?? '').trim();
   return text || fallback;
