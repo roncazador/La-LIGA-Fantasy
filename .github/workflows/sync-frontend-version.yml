@@ -1,0 +1,47 @@
+name: Sync frontend version
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  sync-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync index.html version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const file = './index.html';
+          let html = fs.readFileSync(file, 'utf8');
+          const version = `v${pkg.version}`;
+          html = html.replace(/v\d+\.\d+(?:\.\d+)?/g, version);
+          fs.writeFileSync(file, html);
+          NODE
+          git diff --check
+
+      - name: Commit synchronized version
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- index.html; then
+            echo "Frontend version already synchronized."
+            exit 0
+          fi
+          git add index.html
+          git commit -m "ci: sincronizar version del frontend con package.json"
+          git push
