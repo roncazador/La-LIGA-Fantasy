@@ -1755,6 +1755,172 @@ function normalizePlayer(player){
   const p = {
     ...player
   };
+
+  /* =========================
+     IDENTIDAD
+     ========================= */
+
+  p.name =
+    String(
+      p.name ??
+      p.player ??
+      p.playerName ??
+      p.fullName ??
+      p.displayName ??
+      ""
+    ).trim();
+p.team=
+  String(
+    p.team||
+    p.club||
+    p.teamName||
+    ""
+  ).trim();
+  p.position =
+    normalizePosition(
+      p.position ??
+      p.pos ??
+      p.positionName ??
+      p.role
+    );
+
+  /* =========================
+     PUNTOS FANTASY
+     ========================= */
+
+  p.points =
+    number(
+      p.points ??
+      p.pfsy ??
+      p.pfsY ??
+      p.fantasyPoints ??
+      p.totalPoints ??
+      p.score
+    );
+
+  /* =========================
+     MINUTOS / TITULARIDAD
+     ========================= */
+
+  p.starts =
+    number(
+      p.starts ??
+      p.startCount ??
+      p.startsCount ??
+      p.appearancesStarted
+    );
+
+  p.minutes =
+    number(
+      p.minutes ??
+      p.totalMinutes ??
+      p.playedMinutes ??
+      p.minutesPlayed
+    );
+
+  /* =========================
+     TENDENCIAS
+     ========================= */
+
+  p.trend1d =
+    number(
+      p.trend1d ??
+      p.change1d ??
+      p.dailyChange ??
+      0
+    );
+
+  p.trend3d =
+    number(
+      p.trend3d ??
+      p.change3d ??
+      p.threeDayChange ??
+      0
+    );
+
+  p.trend7d =
+    number(
+      p.trend7d ??
+      p.change7d ??
+      p.weekChange ??
+      0
+    );
+
+  /* =========================
+     MERCADO
+     ========================= */
+
+  p.price =
+    number(
+      p.price ??
+      p.marketPrice ??
+      p.currentPrice ??
+      p.cost
+    );
+
+  p.value =
+    number(
+      p.value ??
+      p.marketValue ??
+      p.estimatedValue ??
+      p.fairValue
+    );
+
+  /* =========================
+     CALENDARIO / CONTEXTO
+     ========================= */
+
+  if(Array.isArray(p.fixture)){
+
+    p.fixture =
+      p.fixture
+        .slice(0,4)
+        .map(value => clamp(
+          number(value),
+          0,
+          100
+        ));
+
+  }else{
+
+    p.fixture = [50,50,50,50];
+
+  }
+
+  while(p.fixture.length < 4){
+    p.fixture.push(50);
+  }
+
+  /* =========================
+     RIESGO
+     ========================= */
+
+  p.rotationRisk =
+    clamp(
+      number(
+        p.rotationRisk ??
+        p.rotation ??
+        p.rotationProbability ??
+        0
+      ),
+      0,
+      1
+    );
+
+  p.injuryRisk =
+    clamp(
+      number(
+        p.injuryRisk ??
+        p.injury ??
+        p.injuryProbability ??
+        0
+      ),
+      0,
+      1
+    );
+
+  return p;
+}
 function calculateFixtureStrength(
   playerTeam,
   fixtures
@@ -1926,171 +2092,6 @@ function fixtureDifficulty(
     0,
     Math.min(100,score)
   );
-}
-  /* =========================
-     IDENTIDAD
-     ========================= */
-
-  p.name =
-    String(
-      p.name ??
-      p.player ??
-      p.playerName ??
-      p.fullName ??
-      p.displayName ??
-      ""
-    ).trim();
-p.team=
-  String(
-    p.team||
-    p.club||
-    p.teamName||
-    ""
-  ).trim();
-  p.position =
-    normalizePosition(
-      p.position ??
-      p.pos ??
-      p.positionName ??
-      p.role
-    );
-
-  /* =========================
-     PUNTOS FANTASY
-     ========================= */
-
-  p.points =
-    number(
-      p.points ??
-      p.pfsy ??
-      p.pfsY ??
-      p.fantasyPoints ??
-      p.totalPoints ??
-      p.score
-    );
-
-  /* =========================
-     MINUTOS / TITULARIDAD
-     ========================= */
-
-  p.starts =
-    number(
-      p.starts ??
-      p.startCount ??
-      p.startsCount ??
-      p.appearancesStarted
-    );
-
-  p.minutes =
-    number(
-      p.minutes ??
-      p.totalMinutes ??
-      p.playedMinutes ??
-      p.minutesPlayed
-    );
-
-  /* =========================
-     TENDENCIAS
-     ========================= */
-
-  p.trend1d =
-    number(
-      p.trend1d ??
-      p.change1d ??
-      p.dailyChange ??
-      0
-    );
-
-  p.trend3d =
-    number(
-      p.trend3d ??
-      p.change3d ??
-      p.threeDayChange ??
-      0
-    );
-
-  p.trend7d =
-    number(
-      p.trend7d ??
-      p.change7d ??
-      p.weekChange ??
-      0
-    );
-
-  /* =========================
-     MERCADO
-     ========================= */
-
-  p.price =
-    number(
-      p.price ??
-      p.marketPrice ??
-      p.currentPrice ??
-      p.cost
-    );
-
-  p.value =
-    number(
-      p.value ??
-      p.marketValue ??
-      p.estimatedValue ??
-      p.fairValue
-    );
-
-  /* =========================
-     CALENDARIO / CONTEXTO
-     ========================= */
-
-  if(Array.isArray(p.fixture)){
-
-    p.fixture =
-      p.fixture
-        .slice(0,4)
-        .map(value => clamp(
-          number(value),
-          0,
-          100
-        ));
-
-  }else{
-
-    p.fixture = [50,50,50,50];
-
-  }
-
-  while(p.fixture.length < 4){
-    p.fixture.push(50);
-  }
-
-  /* =========================
-     RIESGO
-     ========================= */
-
-  p.rotationRisk =
-    clamp(
-      number(
-        p.rotationRisk ??
-        p.rotation ??
-        p.rotationProbability ??
-        0
-      ),
-      0,
-      1
-    );
-
-  p.injuryRisk =
-    clamp(
-      number(
-        p.injuryRisk ??
-        p.injury ??
-        p.injuryProbability ??
-        0
-      ),
-      0,
-      1
-    );
-
-  return p;
 }
 function applyFixturesToPlayers(){
 
