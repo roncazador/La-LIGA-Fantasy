@@ -66,7 +66,7 @@ assert.equal(config.secureCookie, true);
 const configSource = fs.readFileSync('./config.mjs', 'utf8');
 for (const alias of [
   'LALIGA_CONCOMPETENCIA_ID',
-  'SESIÓN_NOMBRE_DE LA COOKIE',
+  'SESIÓN_NOMBRE_DE LA_COOKIE',
   'COMPETENCIA_DE_DATOS_DE_FÚTBOL',
   'DÍAS_DE_DATOS_DE_FÚTBOL'
 ]) {
