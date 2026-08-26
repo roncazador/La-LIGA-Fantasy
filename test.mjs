@@ -66,7 +66,7 @@ assert.equal(config.secureCookie, true);
 const configSource = fs.readFileSync('./config.mjs', 'utf8');
 for (const alias of [
   'LALIGA_CONCOMPETENCIA_ID',
-  'SESIÓN_NOMBRE_DE LA_COOKIE',
+  'SESIÓN_NOMBRE_DE LA COOKIE',
   'COMPETENCIA_DE_DATOS_DE_FÚTBOL',
   'DÍAS_DE_DATOS_DE_FÚTBOL'
 ]) {
@@ -240,3 +240,5 @@ console.log('✅ Test 6: Service Worker y PWA OK');
 console.log('✅ Test 7: arranque, versionado y sincronización frontend/backend OK');
 console.log('✅ Test 8: no se detectan tokens hardcodeados OK');
 console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/INTEGRACIÓN OK');
+
+// Regresión ejecutada también sobre el commit posterior a la sincronización del frontend.
