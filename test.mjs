@@ -120,6 +120,10 @@ assert.equal(swSource.includes("cache: 'no-store'"), true);
 assert.equal(swSource.includes('skipWaiting()'), true);
 assert.equal(swSource.includes('clients.claim()'), true);
 
+const manifest = JSON.parse(fs.readFileSync('./manifest.json', 'utf8'));
+assert.equal(manifest.orientation, 'landscape');
+assert.equal(manifest.lang, 'es');
+
 /* =========================================
    7) ARRANQUE Y VERSIONADO
 ========================================= */
@@ -228,7 +232,7 @@ console.log('✅ Test 2: configuración canónica OK');
 console.log('✅ Test 3: compatibilidad con variables antiguas OK');
 console.log('✅ Test 4: OIDC requiere configuración oficial OK');
 console.log('✅ Test 5: lista blanca pública definida OK');
-console.log('✅ Test 6: Service Worker anti-cache antigua OK');
+console.log('✅ Test 6: Service Worker y PWA OK');
 console.log('✅ Test 7: arranque y versionado OK');
 console.log('✅ Test 8: no se detectan tokens hardcodeados OK');
 console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/INTEGRACIÓN OK');
