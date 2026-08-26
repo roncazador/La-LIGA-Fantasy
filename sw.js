@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fm-v25';
+const CACHE_NAME = 'fm-v251';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
