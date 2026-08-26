@@ -1,4 +1,7 @@
-export const VERSION = '2.5.0';
+import fs from 'node:fs';
+import path from 'node:path';
+
+export const VERSION = '2.6.0';
 
 export const DEFAULTS = {
   laligaApiBaseUrl: 'https://fantasy-api.llt-services.com',
@@ -75,6 +78,32 @@ export function publicStaticPath(pathname){
     '/',
     '/index.html',
     '/manifest.json',
-    '/sw.js'
+    '/sw.js',
+    '/dashboard-client.js'
   ]).has(pathname);
 }
+
+/* El frontend histórico permanece en un único HTML para no introducir una
+   segunda capa de aplicación. Inyectamos solo el cliente de sincronización
+   de la v2.6 en el punto de servicio, sin modificar la interfaz existente. */
+const originalReadFileSync = fs.readFileSync.bind(fs);
+fs.readFileSync = function patchedReadFileSync(filePath, ...args) {
+  const result = originalReadFileSync(filePath, ...args);
+  if (typeof result !== 'string') return result;
+  if (path.basename(String(filePath)) !== 'index.html') return result;
+  if (!result.includes('</body>')) return result;
+
+  let html = result
+    .replace(/· v2\.4(?:\.0)?/g, `· v${VERSION}`)
+    .replace(/· v2\.5\.0/g, `· v${VERSION}`)
+    .replace(/v2\.4(?:\.0)?/g, `v${VERSION}`);
+
+  if (!html.includes('/dashboard-client.js')) {
+    html = html.replace(
+      '</body>',
+      '  <script src="/dashboard-client.js" defer></script>\n</body>'
+    );
+  }
+
+  return html;
+};
