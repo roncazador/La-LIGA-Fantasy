@@ -41,7 +41,7 @@ assert.equal(DEFAULTS.laligaCompetitionId, '1');
 assert.equal(DEFAULTS.sessionCookieName, 'fm_session');
 assert.equal(DEFAULTS.footballDataCompetition, 'PD');
 assert.equal(DEFAULTS.footballDataDays, 30);
-assert.equal(VERSION, '2.5.0');
+assert.equal(VERSION, '2.6.0');
 
 const config = readConfig({
   LALIGA_API_BASE_URL: 'https://example.test///',
@@ -104,6 +104,7 @@ assert.equal(publicStaticPath('/'), true);
 assert.equal(publicStaticPath('/index.html'), true);
 assert.equal(publicStaticPath('/manifest.json'), true);
 assert.equal(publicStaticPath('/sw.js'), true);
+assert.equal(publicStaticPath('/dashboard-client.js'), true);
 assert.equal(publicStaticPath('/.env'), false);
 assert.equal(publicStaticPath('/server.mjs'), false);
 assert.equal(publicStaticPath('/package.json'), false);
@@ -129,12 +130,13 @@ assert.equal(manifest.lang, 'es');
 ========================================= */
 
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-assert.equal(packageJson.version, '2.5.0');
+assert.equal(packageJson.version, '2.6.0');
 assert.equal(packageJson.scripts.start, 'node --import ./config.mjs server.mjs');
 assert.equal(packageJson.scripts.test, 'node test.mjs');
 
 const indexSource = fs.readFileSync('./index.html', 'utf8');
-assert.equal(indexSource.includes(`v${packageJson.version}`), true, 'El frontend debe mostrar la versión del paquete');
+assert.equal(indexSource.includes(`v${packageJson.version}`), true, 'El frontend servido debe mostrar la versión del paquete');
+assert.equal(indexSource.includes('/dashboard-client.js'), true, 'El frontend servido debe incluir el cliente de dashboard');
 assert.equal(indexSource.includes('v2.4'), false, 'No debe quedar una referencia antigua v2.4');
 
 /* =========================================
@@ -148,7 +150,17 @@ assert.equal(serverSource.includes('sk-test-'), false);
 assert.equal(serverSource.includes('process.env.FOOTBALL_DATA_TOKEN'), false);
 
 /* =========================================
-   9) INTEGRACIÓN REAL DEL SERVIDOR
+   9) CLIENTE DE DASHBOARD
+========================================= */
+
+const dashboardClient = fs.readFileSync('./dashboard-client.js', 'utf8');
+assert.equal(dashboardClient.includes('/api/fantasy/dashboard'), true);
+assert.equal(dashboardClient.includes("credentials: 'include'"), true);
+assert.equal(dashboardClient.includes("cache: 'no-store'"), true);
+assert.equal(dashboardClient.includes('solo lectura'), true);
+
+/* =========================================
+   10) INTEGRACIÓN REAL DEL SERVIDOR
 ========================================= */
 
 async function waitForServer(url, timeout = 5000){
@@ -193,14 +205,21 @@ try {
   const healthJson = await health.json();
   assert.equal(healthJson.ok, true);
   assert.equal(healthJson.readOnly, true);
-  assert.equal(healthJson.version, '2.5.0');
+  assert.equal(healthJson.version, '2.6.0');
   assert.equal(healthJson.competition, '1');
   assert.equal(healthJson.providers.footballData, false);
   assert.equal(healthJson.providers.laligaOAuth, false);
 
   const home = await fetch(`${base}/`, { cache: 'no-store' });
   assert.equal(home.status, 200);
-  assert.match(await home.text(), /LALIGA Fantasy Manager/);
+  const homeText = await home.text();
+  assert.match(homeText, /LALIGA Fantasy Manager/);
+  assert.match(homeText, /v2\.6\.0/);
+  assert.match(homeText, /dashboard-client\.js/);
+
+  const dashboardClientResponse = await fetch(`${base}/dashboard-client.js`, { cache: 'no-store' });
+  assert.equal(dashboardClientResponse.status, 200);
+  assert.match(await dashboardClientResponse.text(), /\/api\/fantasy\/dashboard/);
 
   const privateServer = await fetch(`${base}/server.mjs`, { cache: 'no-store' });
   assert.equal(privateServer.status, 404, 'server.mjs no debe exponerse públicamente');
@@ -219,12 +238,17 @@ try {
   assert.equal(authJson.configured, false);
   assert.equal(authJson.missing.length, 3);
 
+  const dashboardWithoutSession = await fetch(`${base}/api/fantasy/dashboard`, { cache: 'no-store' });
+  assert.equal(dashboardWithoutSession.status, 401);
+  const dashboardJson = await dashboardWithoutSession.json();
+  assert.equal(dashboardJson.error, 'AUTH_REQUIRED');
+
   const writeRoute = await fetch(`${base}/api/fantasy/buy`, { method: 'POST' });
   assert.equal(writeRoute.status, 405);
   const writeJson = await writeRoute.json();
   assert.equal(writeJson.error, 'READ_ONLY');
 
-  console.log('✅ Test 9: integración HTTP real del backend OK');
+  console.log('✅ Test 10: integración HTTP real del backend OK');
 } finally {
   child.kill('SIGTERM');
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -239,6 +263,5 @@ console.log('✅ Test 5: lista blanca pública definida OK');
 console.log('✅ Test 6: Service Worker y PWA OK');
 console.log('✅ Test 7: arranque, versionado y sincronización frontend/backend OK');
 console.log('✅ Test 8: no se detectan tokens hardcodeados OK');
+console.log('✅ Test 9: cliente del dashboard LALIGA OK');
 console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/INTEGRACIÓN OK');
-
-// Regresión ejecutada también sobre el commit posterior a la sincronización del frontend.
