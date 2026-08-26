@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.mjs",
+    "start": "node --import ./config.mjs server.mjs",
     "test": "node test.mjs"
   },
   "engines": {
