@@ -1,0 +1,19 @@
+name: Recording UI contract tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  recording-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run 100 recording/UI checks
+        run: node recording-ui.test.mjs
