@@ -10,6 +10,13 @@ import {
   publicStaticPath
 } from './config.mjs';
 
+import {
+  providerStatus,
+  fetchApiFootballFixtures,
+  fetchSportmonksFixtures,
+  fetchMultiProviderFixtures
+} from './providers.mjs';
+
 const config = readConfig();
 const sessions = new Map();
 const STATIC_DIR = path.resolve(process.env.FRONTEND_DIR || process.cwd());
@@ -243,7 +250,8 @@ const server = http.createServer(async (req, res) => {
         version: VERSION,
         providers: {
           laligaOAuth: oidcConfigured(config),
-          footballData: Boolean(config.footballDataToken)
+          footballData: Boolean(config.footballDataToken),
+          ...providerStatus(config)
         }
       });
     }
@@ -257,10 +265,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/providers/status' && req.method === 'GET') {
-      return sendJson(res, 200, {
-        footballData: { configured: Boolean(config.footballDataToken), competition: config.footballDataCompetition },
-        laliga: { configured: oidcConfigured(config) }
-      });
+      return sendJson(res, 200, providerStatus(config));
     }
 
     if (url.pathname === '/api/fixtures/next') {
@@ -287,6 +292,62 @@ const server = http.createServer(async (req, res) => {
         });
       }
     }
+
+    /* =========================================
+       MULTI-PROVIDER FOOTBALL DATA
+    ========================================= */
+
+    if (url.pathname === '/api/providers/fixtures/next' && req.method === 'GET') {
+      try {
+        const data = await fetchMultiProviderFixtures(config);
+        return sendJson(res, 200, {
+          ok: true,
+          readOnly: true,
+          ...data
+        });
+      } catch (error) {
+        return sendJson(res, error.status || 502, {
+          error: error.message || 'MULTI_PROVIDER_FAILED',
+          provider: error.provider || null
+        });
+      }
+    }
+
+    if (url.pathname === '/api/providers/api-football/fixtures' && req.method === 'GET') {
+      try {
+        const now = new Date();
+        const from = url.searchParams.get('from') || now.toISOString().slice(0, 10);
+        const to = url.searchParams.get('to') || new Date(now.getTime() + config.footballDataDays * 86400000).toISOString().slice(0, 10);
+        const matches = await fetchApiFootballFixtures(config, from, to);
+        return sendJson(res, 200, { ok: true, provider: 'api-football', from, to, matches });
+      } catch (error) {
+        return sendJson(res, error.status || 502, { error: error.message || 'API_FOOTBALL_FAILED' });
+      }
+    }
+
+    if (url.pathname === '/api/providers/sportmonks/fixtures' && req.method === 'GET') {
+      try {
+        const now = new Date();
+        const from = url.searchParams.get('from') || now.toISOString().slice(0, 10);
+        const to = url.searchParams.get('to') || new Date(now.getTime() + config.footballDataDays * 86400000).toISOString().slice(0, 10);
+        const matches = await fetchSportmonksFixtures(config, from, to);
+        return sendJson(res, 200, { ok: true, provider: 'sportmonks', from, to, matches });
+      } catch (error) {
+        return sendJson(res, error.status || 502, { error: error.message || 'SPORTMONKS_FAILED' });
+      }
+    }
+
+    if (url.pathname === '/api/providers/opta/status' && req.method === 'GET') {
+      const status = providerStatus(config).opta;
+      return sendJson(res, 200, {
+        provider: 'opta',
+        ...status
+      });
+    }
+
+    /* -------------------------
+       AUTH START
+    ------------------------- */
 
     if (url.pathname === '/auth/start') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
@@ -319,6 +380,10 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(302, { Location: `${config.laligaAuthorizeUrl}?${query.toString()}`, 'Set-Cookie': cookieHeader(sessionId, 900) });
       return res.end();
     }
+
+    /* -------------------------
+       AUTH CALLBACK
+    ------------------------- */
 
     if (url.pathname === '/auth/callback') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
@@ -359,12 +424,20 @@ const server = http.createServer(async (req, res) => {
       return res.end();
     }
 
+    /* -------------------------
+       LOGOUT
+    ------------------------- */
+
     if (url.pathname === '/auth/logout') {
       const sessionId = parseCookies(req)[config.sessionCookieName];
       if (sessionId) sessions.delete(sessionId);
       res.writeHead(302, { Location: config.frontendUrl, 'Set-Cookie': cookieHeader('', 0) });
       return res.end();
     }
+
+    /* -------------------------
+       FANTASY DASHBOARD
+    ------------------------- */
 
     if (url.pathname === '/api/fantasy/dashboard') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
@@ -425,6 +498,10 @@ const server = http.createServer(async (req, res) => {
 
       return sendJson(res, 200, output);
     }
+
+    /* -------------------------
+       GENERIC FANTASY READ API
+    ------------------------- */
 
     if (url.pathname.startsWith('/api/fantasy/')) {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'READ_ONLY' });
