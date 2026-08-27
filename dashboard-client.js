@@ -49,10 +49,10 @@
 
     const entries = [
       ['LALIGA', status?.laliga?.configured ? 'LISTO' : 'PENDIENTE', status?.laliga?.configured],
-      ['football-data.org', status?.footballData?.configured ? 'LISTO' : 'SIN TOKEN', status?.footballData?.configured],
-      ['API-Football', status?.apiFootball?.configured ? 'LISTO' : 'SIN CLAVE', status?.apiFootball?.configured],
-      ['Sportmonks', status?.sportmonks?.configured ? 'LISTO' : 'SIN COBERTURA/CLAVE', status?.sportmonks?.configured],
-      ['Opta / Stats Perform', status?.opta?.configured ? 'LISTO' : (status?.opta?.contractReady ? 'FALTA CREDENCIAL' : 'SIN CONTRATO/ENDPOINT'), status?.opta?.configured]
+      ['API-Football', status?.apiFootball?.configured ? 'PRINCIPAL · LISTO' : 'SIN CLAVE', status?.apiFootball?.configured],
+      ['football-data.org', status?.footballData?.configured ? 'RESPALDO · LISTO' : 'SIN TOKEN', status?.footballData?.configured],
+      ['Sportmonks', status?.sportmonks?.configured ? 'RESPALDO · LISTO' : 'SIN COBERTURA/CLAVE', status?.sportmonks?.configured],
+      ['Opta / Stats Perform', status?.opta?.configured ? 'RESPALDO · LISTO' : (status?.opta?.contractReady ? 'FALTA CREDENCIAL' : 'SIN CONTRATO/ENDPOINT'), status?.opta?.configured]
     ];
 
     node.replaceChildren(...entries.map(([name, state, ok]) => {
@@ -100,6 +100,83 @@
       });
       node.appendChild(button);
     }
+  }
+
+  function ensureFixtureProviderInfo() {
+    let node = document.getElementById('fixtureProviderInfo');
+    if (node) return node;
+    const status = document.getElementById('fixturesStatus');
+    if (!status?.parentNode) return null;
+
+    node = document.createElement('div');
+    node.id = 'fixtureProviderInfo';
+    node.style.cssText = 'margin-top:8px;padding:9px 10px;border-radius:10px;background:#0f141e;border:1px solid #2a3141;font-size:10px;line-height:1.45;';
+    status.parentNode.insertBefore(node, status.nextSibling);
+    return node;
+  }
+
+  function setFixtureProviderInfo(data) {
+    const node = ensureFixtureProviderInfo();
+    if (!node) return;
+
+    const primary = data?.primaryProvider || 'ninguno';
+    const labels = {
+      'api-football': 'API-Football',
+      'football-data.org': 'football-data.org',
+      sportmonks: 'Sportmonks',
+      opta: 'Opta / Stats Perform'
+    };
+    const primaryLabel = labels[primary] || primary;
+    const providers = data?.providers || {};
+    const active = Object.entries(providers)
+      .filter(([, result]) => result?.ok)
+      .map(([name, result]) => `${labels[name] || name}: ${Number(result.count || 0)}`)
+      .join(' · ');
+
+    node.innerHTML = `<b>Motor de partidos:</b> ${primaryLabel}`
+      + (active ? ` · Fuentes activas: ${active}` : '')
+      + `<br><span style="opacity:.72">Los partidos se combinan y deduplican antes de mostrarse.</span>`;
+  }
+
+  async function refreshFixtureProviderInfo() {
+    try {
+      const response = await fetch('/api/fixtures/next', { credentials: 'include', cache: 'no-store' });
+      const data = await response.json().catch(() => ({}));
+      setFixtureProviderInfo(data);
+      return data;
+    } catch {
+      setFixtureProviderInfo({ primaryProvider: null, providers: {} });
+      return {};
+    }
+  }
+
+  function bootFixtures() {
+    if (window.__laligaFixturesBooted) return;
+    const button = document.getElementById('loadFixtures');
+    if (!button) return;
+    window.__laligaFixturesBooted = true;
+
+    const status = document.getElementById('fixturesStatus');
+    if (status) status.textContent = '⏳ Cargando partidos con el sistema multi-proveedor…';
+    ensureFixtureProviderInfo();
+
+    // The legacy UI already knows how to render state.fixtures. Trigger it once
+    // so the new unified backend feeds the existing renderer without duplicating state.
+    window.setTimeout(() => button.click(), 250);
+
+    // The legacy renderer does not know about the new `primaryProvider` field.
+    // This small observer keeps its status human-readable while the backend response loads.
+    if (status && !window.__laligaFixtureObserver) {
+      window.__laligaFixtureObserver = new MutationObserver(() => {
+        const value = text(status.textContent);
+        if (value.includes('football-data.org')) {
+          status.textContent = value.replaceAll('football-data.org', 'sistema multi-proveedor');
+        }
+      });
+      window.__laligaFixtureObserver.observe(status, { childList: true, characterData: true, subtree: true });
+    }
+
+    refreshFixtureProviderInfo();
   }
 
   async function loadProviderState() {
@@ -173,7 +250,7 @@
     setText('kCash', cash === null ? '—' : money(cash));
 
     const leagueLabel = leagueName(league);
-    const version = payload.version || '2.7.0';
+    const version = payload.version || '2.8.0';
     const errors = Array.isArray(payload.errors) ? payload.errors : [];
     const summary = [
       user ? `Manager: ${user}` : null,
@@ -197,6 +274,7 @@
 
   async function loadDashboard() {
     await Promise.all([loadProviderState(), loadAuthState()]);
+    bootFixtures();
     try {
       const sessionResponse = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
       const session = await sessionResponse.json().catch(() => ({}));
