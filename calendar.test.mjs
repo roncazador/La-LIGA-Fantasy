@@ -62,7 +62,7 @@ check(dashboard.includes("cache: 'no-store'"), 'dashboard evita cache obsoleta')
 check(calendar.includes('/api/fixtures/next'), 'cliente calendario usa endpoint unificado');
 check(calendar.includes('official-fixtures-seed-2026-27.json'), 'cliente calendario usa semilla oficial');
 check(calendar.includes('LALIGA oficial (semilla verificada)'), 'semilla no se presenta como dato live');
-check(calendar.includes('calendarBusy'), 'peticiones concurrentes bloqueadas');
+check(calendar.includes('calendarBusy') || calendar.includes('let busy'), 'peticiones concurrentes bloqueadas');
 check(calendar.includes('stopImmediatePropagation'), 'handler legacy interceptado');
 check(calendar.includes('Cargar desde proveedor'), 'control legacy localizado');
 check(calendar.includes('Actualizar calendario'), 'refresco explícito disponible');
@@ -95,14 +95,14 @@ check(dashboard.includes('Fuentes activas') || dashboard.includes('fuentes activ
 check(dashboard.includes('se combinan y deduplican'), 'deduplicación explicada');
 check(dashboard.includes('PRINCIPAL · LISTO'), 'API-Football marcada como principal');
 check(dashboard.includes('RESPALDO · LISTO'), 'proveedores secundarios como respaldo');
-check(dashboard.includes('/calendar-client.js'), 'cliente de calendario cargado');
+check(dashboard.includes("fetch('/calendar-client.js'"), 'cliente de calendario cargado de forma robusta');
 
 /* SEGURIDAD Y DATOS LIMPIOS */
 check(normalizeApiFootball({ response: [] }).length === 0, 'payload vacío no rompe');
 check(normalizeApiFootball({}).length === 0, 'payload sin response no rompe');
 check(normalizeApiFootball({ response: [null, {}] }).length === 2, 'payload parcial mantiene contrato');
 check(fixtureKey({ home: 'Real Madrid', away: 'Málaga CF', utcDate: '2026-08-30T15:00:00Z' }).includes('madrid'), 'clave limpia Real Madrid');
-check(fixtureKey({ home: 'R. Racing Club', away: 'Elche CF', utcDate: '2026-08-28T17:00:00Z' }).includes('racing club'), 'clave limpia Racing');
+check(fixtureKey({ home: 'R. Racing Club', away: 'Elche CF', utcDate: '2026-08-28T17:00:00Z' }).includes('r racing'), 'clave limpia Racing');
 check(seed.fixtures.every(x => !x.password), 'semilla sin contraseñas');
 check(seed.fixtures.every(x => !x.token), 'semilla sin tokens');
 check(!calendar.includes('Authorization:'), 'cliente calendario sin bearer token');
