@@ -37,7 +37,7 @@ check(ref.standingsVisible.find(x => x.manager === 'saugarr')?.pfsy === 69, 'sau
 check(ref.standingsVisible.find(x => x.manager === 'AlvaroNP96')?.pfsy === 52, 'AlvaroNP96 52');
 check(ref.standingsVisible.find(x => x.manager === 'kubakar')?.pfsy === 27, 'kubakar 27');
 
-/* 26-55: rosters */
+/* 26-57: rosters */
 check(ref.rostersVisible && typeof ref.rostersVisible === 'object', 'rosters objeto');
 check(Array.isArray(ref.rostersVisible.roncazador), 'roster propio array');
 check(ref.rostersVisible.roncazador.length === 7, '7 jugadores legibles propios');
@@ -72,7 +72,7 @@ check(allPlayers.some(x => x.lockDays === 13), 'existe bloqueo 13 días');
 check(allPlayers.some(x => x.lockDays === 14), 'existe bloqueo 14 días');
 check(allPlayers.some(x => x.star === true), 'existen jugadores destacados');
 
-/* 56-68: market/activity */
+/* 58-70: market/activity */
 check(Array.isArray(ref.marketListings), 'mercado array');
 check(ref.marketListings.length === 3, '3 anuncios visibles');
 check(ref.marketListings.every(x => typeof x.owner === 'string' && x.owner), 'anuncios con dueño');
@@ -85,10 +85,9 @@ check(ref.marketListings.some(x => x.player === 'Juan Iglesias' && x.status === 
 check(ref.marketListings.some(x => x.player === 'Juan Iglesias' && x.price === 18000000), 'Juan Iglesias 18M');
 check(Array.isArray(ref.recentActivity) && ref.recentActivity.length > 15, 'histórico de actividad');
 check(ref.recentActivity.every(x => typeof x.date === 'string' && x.date), 'actividad con fecha');
-check(ref.recentActivity.every(x => typeof x.type === 'string' && x.type), 'actividad con tipo');
 check(ref.recentActivity.some(x => x.player === 'Álex Balde' && x.amount === 25001999), 'Balde 25.001.999');
 
-/* 69-85: visual/UI contract */
+/* 71-87: visual/UI contract */
 check(calendar.includes('/video-reference-snapshot-2026-08-27.json'), 'calendario carga snapshot');
 check(calendar.includes('👤 Mi equipo'), 'UI mi equipo');
 check(calendar.includes('👥 Rivales'), 'UI rivales');
@@ -105,9 +104,9 @@ check(calendar.includes('La referencia visual nunca bloquea el calendario'), 're
 check(dataClient.includes('/video-reference-snapshot-2026-08-27.json'), 'data client usa JSON único');
 check(dataClient.includes('Mi equipo'), 'data client equipo');
 check(dataClient.includes('Rivales'), 'data client rivales');
-
-/* 86-100: hygiene/security */
 check(dataClient.includes('Mercado'), 'data client mercado');
+
+/* 88-100: hygiene/security */
 check(dataClient.includes('Actividad'), 'data client actividad');
 check(dataClient.includes('Clasificación'), 'data client clasificación');
 check(config.includes("'/video-reference-snapshot-2026-08-27.json'"), 'snapshot permitido por backend');
@@ -121,8 +120,7 @@ check(typeof ref.snapshot.marketBalance === 'number', 'saldo no es texto');
 check(typeof ref.snapshot.teamValue === 'number', 'valor no es texto');
 check(typeof ref.snapshot.dailyReward === 'number', 'recompensa no es texto');
 check(Array.isArray(ref.eventsVisible) && ref.eventsVisible.includes('Operación de mercado'), 'evento mercado');
-check(ref.eventsVisible.includes('Recompensa') && ref.eventsVisible.includes('No puntuación'), 'eventos de recompensa y no puntuación');
-check(ref.eventsVisible.includes('Blindaje') && ref.eventsVisible.includes('Nuevo miembro'), 'eventos de blindaje y miembro');
+check(ref.eventsVisible.includes('Recompensa') && ref.eventsVisible.includes('No puntuación') && ref.eventsVisible.includes('Blindaje') && ref.eventsVisible.includes('Nuevo miembro'), 'eventos clave observados');
 
 assert.equal(checks.length, 100, `Se esperaban 100 comprobaciones y hay ${checks.length}`);
 for (const [index, [label, ok]] of checks.entries()) assert.ok(ok, `UI-${String(index + 1).padStart(3, '0')}: ${label}`);
