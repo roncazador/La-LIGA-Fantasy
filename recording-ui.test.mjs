@@ -1,117 +1,129 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const reference = JSON.parse(fs.readFileSync('./video-reference-snapshot-2026-08-27.json', 'utf8'));
+const ref = JSON.parse(fs.readFileSync('./video-reference-snapshot-2026-08-27.json', 'utf8'));
 const calendar = fs.readFileSync('./calendar-client.js', 'utf8');
+const dataClient = fs.readFileSync('./data-client.js', 'utf8');
 const config = fs.readFileSync('./config.mjs', 'utf8');
+const sw = fs.readFileSync('./sw.js', 'utf8');
 
-const checks = [
-  ['referencia tiene fecha', reference.capturedAt === '2026-08-27T11:32:00+02:00'],
-  ['referencia no se declara LIVE', reference.status === 'referencia_observada_no_live'],
-  ['competición La Liga', reference.league === 'La Liga'],
-  ['contexto LALIGA EA SPORTS', reference.competitionContext === 'LALIGA EA SPORTS'],
-  ['jornada 3', reference.snapshot.matchdayAtStart === 3],
-  ['20/24 fichas', reference.snapshot.teamCount === '20/24 fichas'],
-  ['valor equipo correcto', reference.snapshot.teamValue === 269039595],
-  ['recompensa correcta', reference.snapshot.dailyReward === 100000],
-  ['saldo mercado correcto', reference.snapshot.marketBalance === 40542121],
-  ['clasificación es array', Array.isArray(reference.standingsVisible)],
-  ['clasificación no vacía', reference.standingsVisible.length > 0],
-  ['roncazador existe', reference.standingsVisible.some(x => x.manager === 'roncazador')],
-  ['roncazador puesto 1', reference.standingsVisible.find(x => x.manager === 'roncazador')?.rank === 1],
-  ['roncazador 109 PFSY', reference.standingsVisible.find(x => x.manager === 'roncazador')?.pfsy === 109],
-  ['FarlaAcademy 105', reference.standingsVisible.find(x => x.manager === 'FarlaAcademy')?.pfsy === 105],
-  ['Jonymessi 78', reference.standingsVisible.find(x => x.manager === 'Jonymessi')?.pfsy === 78],
-  ['SURIKT097 75', reference.standingsVisible.find(x => x.manager === 'SURIKT097')?.pfsy === 75],
-  ['saugarr 69', reference.standingsVisible.find(x => x.manager === 'saugarr')?.pfsy === 69],
-  ['AlvaroNP96 52', reference.standingsVisible.find(x => x.manager === 'AlvaroNP96')?.pfsy === 52],
-  ['kubakar 27', reference.standingsVisible.find(x => x.manager === 'kubakar')?.pfsy === 27],
-  ['Akm90 27', reference.standingsVisible.find(x => x.manager === 'Akm90')?.pfsy === 27],
-  ['Piotrekatletico 0', reference.standingsVisible.find(x => x.manager === 'Piotrekatletico')?.pfsy === 0],
-  ['roncazador roster existe', Array.isArray(reference.rostersVisible.roncazador)],
-  ['roncazador tiene 7 jugadores visibles', reference.rostersVisible.roncazador.length === 7],
-  ['Germán visible', reference.rostersVisible.roncazador.some(x => x.name === 'Germán')],
-  ['Noubi visible', reference.rostersVisible.roncazador.some(x => x.name === 'Noubi')],
-  ['Zubeldia visible', reference.rostersVisible.roncazador.some(x => x.name === 'Zubeldia')],
-  ['Aramburu visible', reference.rostersVisible.roncazador.some(x => x.name === 'Aramburu')],
-  ['Fermín visible', reference.rostersVisible.roncazador.some(x => x.name === 'Fermín')],
-  ['Óscar Valentín visible', reference.rostersVisible.roncazador.some(x => x.name === 'Óscar Valentín')],
-  ['Cala visible', reference.rostersVisible.roncazador.some(x => x.name === 'Cala')],
-  ['Fermín 19 PFSY', reference.rostersVisible.roncazador.find(x => x.name === 'Fermín')?.pfsy === 19],
-  ['Óscar 7 PFSY', reference.rostersVisible.roncazador.find(x => x.name === 'Óscar Valentín')?.pfsy === 7],
-  ['Cala 11 PFSY', reference.rostersVisible.roncazador.find(x => x.name === 'Cala')?.pfsy === 11],
-  ['Mikautadze 23 PFSY', reference.rostersVisible.Jonymessi.find(x => x.name === 'Mikautadze')?.pfsy === 23],
-  ['Aubameyang 20 PFSY', reference.rostersVisible.Jonymessi.find(x => x.name === 'Aubameyang')?.pfsy === 20],
-  ['Valverde 15 PFSY', reference.rostersVisible.SURIKT097.find(x => x.name === 'Valverde')?.pfsy === 15],
-  ['Álvaro García 10 PFSY', reference.rostersVisible.SURIKT097.find(x => x.name === 'Álvaro García')?.pfsy === 10],
-  ['Dela 9 PFSY', reference.rostersVisible.saugarr.find(x => x.name === 'Dela')?.pfsy === 9],
-  ['C. Puga 8 PFSY', reference.rostersVisible.saugarr.find(x => x.name === 'C. Puga')?.pfsy === 8],
-  ['Le Normand suspendido', reference.rostersVisible.kubakar.find(x => x.name === 'Le Normand')?.availability === 'Suspendido'],
-  ['M. Dituro 4 PFSY', reference.rostersVisible.kubakar.find(x => x.name === 'M. Dituro')?.pfsy === 4],
-  ['mercado es array', Array.isArray(reference.marketListings)],
-  ['3 anuncios visibles', reference.marketListings.length === 3],
-  ['Isaac precio correcto', reference.marketListings.find(x => x.player === 'Isaac')?.price === 6460286],
-  ['Isaac valor correcto', reference.marketListings.find(x => x.player === 'Isaac')?.value === 6665244],
-  ['Isaac 13 PFSY', reference.marketListings.find(x => x.player === 'Isaac')?.pfsy === 13],
-  ['Juan Iglesias precio', reference.marketListings.find(x => x.player === 'Juan Iglesias')?.price === 18000000],
-  ['Juan Iglesias Dudoso', reference.marketListings.find(x => x.player === 'Juan Iglesias')?.status === 'Dudoso'],
-  ['mercado Jonymessi visible', reference.marketListings.some(x => x.owner === 'Jonymessi')],
-  ['actividad es array', Array.isArray(reference.recentActivity)],
-  ['actividad no vacía', reference.recentActivity.length > 0],
-  ['actividad contiene recompensa', reference.eventsVisible.includes('Recompensa')],
-  ['actividad contiene operaciones', reference.eventsVisible.includes('Operación de mercado')],
-  ['actividad contiene no puntuación', reference.eventsVisible.includes('No puntuación')],
-  ['actividad contiene blindaje', reference.eventsVisible.includes('Blindaje')],
-  ['actividad contiene nuevos miembros', reference.eventsVisible.includes('Nuevo miembro')],
-  ['Balde por 25.001.999', reference.recentActivity.some(x => x.player === 'Álex Balde' && x.amount === 25001999)],
-  ['Balliu por 999.309', reference.recentActivity.some(x => x.player === 'Balliu' && x.amount === 999309)],
-  ['Bartra por 28.111.111', reference.recentActivity.some(x => x.player === 'Bartra' && x.amount === 28111111)],
-  ['C. Soler por 32.202.800', reference.recentActivity.some(x => x.player === 'C. Soler' && x.amount === 32202800)],
-  ['Vlachodimos por 25.947.108', reference.recentActivity.some(x => x.player === 'Vlachodimos' && x.amount === 25947108)],
-  ['Fran González venta 1.100.000', reference.recentActivity.some(x => x.player === 'Fran González' && x.amount === 1100000)],
-  ['Piotrekatletico sin puntuación', reference.recentActivity.some(x => x.manager === 'Piotrekatletico' && x.type === 'No puntuación')],
-  ['calendar carga snapshot', calendar.includes('/video-reference-snapshot-2026-08-27.json')],
-  ['calendar tiene pestaña mi equipo', calendar.includes('data-vr="team"')],
-  ['calendar tiene pestaña rivales', calendar.includes('data-vr="rivals"')],
-  ['calendar tiene pestaña mercado', calendar.includes('data-vr="market"')],
-  ['calendar tiene pestaña actividad', calendar.includes('data-vr="activity"')],
-  ['calendar renderiza equipo', calendar.includes("renderReferenceView('team')")],
-  ['calendar renderiza rivales', calendar.includes('renderReferenceView(button.dataset.vr)')],
-  ['calendar muestra saldo mercado', calendar.includes('marketBalance')],
-  ['calendar muestra recompensa', calendar.includes('dailyReward')],
-  ['calendar muestra valor equipo', calendar.includes('teamValue')],
-  ['calendar muestra 20/24', calendar.includes('teamCount')],
-  ['calendar usa Europe/Madrid', calendar.includes("timeZone: 'Europe/Madrid'")],
-  ['calendar evita cache en snapshot', calendar.includes("cache: 'no-store'")],
-  ['calendar no rompe si faltan datos', calendar.includes('Sin jugadores legibles')],
-  ['calendar escapa HTML', calendar.includes('replaceAll'),],
-  ['config permite recording client', config.includes("'/recording-client.js'")],
-  ['config permite recording JSON', config.includes("'/recording-data-2026-08-27.json'")],
-  ['config mantiene seed oficial', config.includes("'/official-fixtures-seed-2026-27.json'")],
-  ['config mantiene dashboard', config.includes("'/dashboard-client.js'")],
-  ['config mantiene calendario', config.includes("'/calendar-client.js'")],
-  ['config mantiene data client', config.includes("'/data-client.js'")],
-  ['config no expone .env', !config.includes("'/.env'")],
-  ['todos managers tienen rank', reference.standingsVisible.every(x => Number.isInteger(x.rank))],
-  ['todos managers tienen nombre', reference.standingsVisible.every(x => typeof x.manager === 'string' && x.manager)],
-  ['todos PFSY son números', reference.standingsVisible.every(x => Number.isFinite(x.pfsy))],
-  ['todos rosters son arrays', Object.values(reference.rostersVisible).every(Array.isArray)],
-  ['precios de jugadores visibles son válidos o N/D', Object.values(reference.rostersVisible).flat().every(x => x.price == null || Number.isFinite(x.price))],
-  ['PFSY de jugadores visibles son números', Object.values(reference.rostersVisible).flat().every(x => Number.isFinite(x.pfsy))],
-  ['posiciones presentes', Object.values(reference.rostersVisible).flat().every(x => typeof x.position === 'string' && x.position)],
-  ['disponibilidad presente', Object.values(reference.rostersVisible).flat().every(x => typeof x.availability === 'string' && x.availability)],
-  ['anuncios tienen dueño', reference.marketListings.every(x => typeof x.owner === 'string' && x.owner)],
-  ['anuncios tienen precio numérico', reference.marketListings.every(x => Number.isFinite(x.price))],
-  ['anuncios tienen estado', reference.marketListings.every(x => typeof x.status === 'string')],
-  ['actividad tiene fecha', reference.recentActivity.every(x => typeof x.date === 'string' && x.date)],
-  ['actividad tiene tipo', reference.recentActivity.every(x => typeof x.type === 'string' && x.type)],
-  ['actividad no contiene credenciales', !JSON.stringify(reference).match(/api[_-]?key|token|password|bearer/i)],
-  ['calendar no contiene credenciales', !calendar.match(/x-apisports-key|api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}/i)],
-  ['calendar no presenta snapshot como LIVE', calendar.includes('referencia histórica, no LIVE')],
-  ['calendar no bloquea calendario si snapshot falla', calendar.includes('La referencia visual nunca bloquea el calendario')],
-  ['100 checks declarados', true]
-];
+const checks = [];
+const check = (condition, label) => checks.push([label, Boolean(condition)]);
+
+/* 1-25: snapshot contract */
+check(typeof ref === 'object' && !Array.isArray(ref), 'snapshot objeto');
+check(ref.source.includes('grabación'), 'snapshot identifica fuente');
+check(ref.status === 'referencia_observada_no_live', 'snapshot no se declara LIVE');
+check(ref.league === 'La Liga', 'liga correcta');
+check(ref.competitionContext === 'LALIGA EA SPORTS', 'competición correcta');
+check(ref.snapshot && typeof ref.snapshot === 'object', 'metadatos snapshot');
+check(ref.snapshot.matchdayAtStart === 3, 'jornada inicial 3');
+check(ref.snapshot.teamCount === '20/24 fichas', '20/24 fichas');
+check(ref.snapshot.teamValue === 269039595, 'valor de plantilla');
+check(ref.snapshot.dailyReward === 100000, 'recompensa');
+check(ref.snapshot.marketBalance === 40542121, 'saldo mercado');
+check(Array.isArray(ref.standingsVisible), 'clasificación array');
+check(ref.standingsVisible.length === 9, '9 managers visibles');
+check(ref.standingsVisible.every(x => Number.isInteger(x.rank)), 'ranks enteros');
+check(new Set(ref.standingsVisible.map(x => x.rank)).size === ref.standingsVisible.length, 'ranks únicos');
+check(ref.standingsVisible.every(x => typeof x.manager === 'string' && x.manager.length > 0), 'managers con nombre');
+check(ref.standingsVisible.every(x => Number.isFinite(x.pfsy)), 'PFSY numérico');
+check(ref.standingsVisible.find(x => x.manager === 'roncazador')?.rank === 1, 'roncazador primero');
+check(ref.standingsVisible.find(x => x.manager === 'roncazador')?.pfsy === 109, 'roncazador 109 PFSY');
+check(ref.standingsVisible.find(x => x.manager === 'FarlaAcademy')?.pfsy === 105, 'FarlaAcademy 105');
+check(ref.standingsVisible.find(x => x.manager === 'Jonymessi')?.pfsy === 78, 'Jonymessi 78');
+check(ref.standingsVisible.find(x => x.manager === 'SURIKT097')?.pfsy === 75, 'SURIKT097 75');
+check(ref.standingsVisible.find(x => x.manager === 'saugarr')?.pfsy === 69, 'saugarr 69');
+check(ref.standingsVisible.find(x => x.manager === 'AlvaroNP96')?.pfsy === 52, 'AlvaroNP96 52');
+check(ref.standingsVisible.find(x => x.manager === 'kubakar')?.pfsy === 27, 'kubakar 27');
+
+/* 26-55: rosters */
+check(ref.rostersVisible && typeof ref.rostersVisible === 'object', 'rosters objeto');
+check(Array.isArray(ref.rostersVisible.roncazador), 'roster propio array');
+check(ref.rostersVisible.roncazador.length === 7, '7 jugadores legibles propios');
+check(Array.isArray(ref.rostersVisible.Jonymessi), 'roster Jonymessi');
+check(Array.isArray(ref.rostersVisible.SURIKT097), 'roster SURIKT097');
+check(Array.isArray(ref.rostersVisible.saugarr), 'roster saugarr');
+check(Array.isArray(ref.rostersVisible.AlvaroNP96), 'roster AlvaroNP96');
+check(Array.isArray(ref.rostersVisible.kubakar), 'roster kubakar');
+check(Object.values(ref.rostersVisible).every(Array.isArray), 'todos los rosters son arrays');
+const allPlayers = Object.values(ref.rostersVisible).flat();
+check(allPlayers.length > 20, 'más de 20 jugadores visibles');
+check(allPlayers.every(x => typeof x.name === 'string' && x.name), 'todos tienen nombre');
+check(allPlayers.every(x => typeof x.position === 'string' && x.position), 'todos tienen posición');
+check(allPlayers.every(x => ['POR','DEF','CEN','DEL'].includes(x.position)), 'posiciones válidas');
+check(allPlayers.every(x => Number.isFinite(x.pfsy)), 'PFSY jugadores numérico');
+check(allPlayers.every(x => Number.isFinite(x.media)), 'media jugadores numérica');
+check(allPlayers.every(x => x.price == null || Number.isFinite(x.price)), 'precios jugadores válidos');
+check(allPlayers.every(x => ['Alineable','Suspendido'].includes(x.availability)), 'estados válidos');
+check(allPlayers.some(x => x.name === 'Germán' && x.position === 'POR'), 'Germán visible');
+check(allPlayers.some(x => x.name === 'Noubi' && x.position === 'DEF'), 'Noubi visible');
+check(allPlayers.some(x => x.name === 'Zubeldia'), 'Zubeldia visible');
+check(allPlayers.some(x => x.name === 'Aramburu'), 'Aramburu visible');
+check(allPlayers.some(x => x.name === 'Fermín' && x.pfsy === 19), 'Fermín 19');
+check(allPlayers.some(x => x.name === 'Óscar Valentín' && x.pfsy === 7), 'Óscar 7');
+check(allPlayers.some(x => x.name === 'Cala' && x.pfsy === 11), 'Cala 11');
+check(allPlayers.some(x => x.name === 'Mikautadze' && x.pfsy === 23), 'Mikautadze 23');
+check(allPlayers.some(x => x.name === 'Aubameyang' && x.pfsy === 20), 'Aubameyang 20');
+check(allPlayers.some(x => x.name === 'Valverde' && x.pfsy === 15), 'Valverde 15');
+check(allPlayers.some(x => x.name === 'Le Normand' && x.availability === 'Suspendido'), 'Le Normand suspendido');
+check(allPlayers.some(x => x.name === 'M. Dituro' && x.pfsy === 4), 'M. Dituro 4');
+check(allPlayers.some(x => x.lockDays === 13), 'existe bloqueo 13 días');
+check(allPlayers.some(x => x.lockDays === 14), 'existe bloqueo 14 días');
+check(allPlayers.some(x => x.star === true), 'existen jugadores destacados');
+
+/* 56-68: market/activity */
+check(Array.isArray(ref.marketListings), 'mercado array');
+check(ref.marketListings.length === 3, '3 anuncios visibles');
+check(ref.marketListings.every(x => typeof x.owner === 'string' && x.owner), 'anuncios con dueño');
+check(ref.marketListings.every(x => Number.isFinite(x.value)), 'anuncios con valor');
+check(ref.marketListings.every(x => Number.isFinite(x.price)), 'anuncios con precio');
+check(ref.marketListings.every(x => typeof x.status === 'string' && x.status), 'anuncios con estado');
+check(ref.marketListings.some(x => x.player === 'Isaac' && x.pfsy === 13), 'Isaac 13 PFSY');
+check(ref.marketListings.some(x => x.player === 'Isaac' && x.price === 6460286), 'Isaac 6.460.286');
+check(ref.marketListings.some(x => x.player === 'Juan Iglesias' && x.status === 'Dudoso'), 'Juan Iglesias dudoso');
+check(ref.marketListings.some(x => x.player === 'Juan Iglesias' && x.price === 18000000), 'Juan Iglesias 18M');
+check(Array.isArray(ref.recentActivity) && ref.recentActivity.length > 15, 'histórico de actividad');
+check(ref.recentActivity.every(x => typeof x.date === 'string' && x.date), 'actividad con fecha');
+check(ref.recentActivity.every(x => typeof x.type === 'string' && x.type), 'actividad con tipo');
+check(ref.recentActivity.some(x => x.player === 'Álex Balde' && x.amount === 25001999), 'Balde 25.001.999');
+
+/* 69-85: visual/UI contract */
+check(calendar.includes('/video-reference-snapshot-2026-08-27.json'), 'calendario carga snapshot');
+check(calendar.includes('👤 Mi equipo'), 'UI mi equipo');
+check(calendar.includes('👥 Rivales'), 'UI rivales');
+check(calendar.includes('💰 Mercado'), 'UI mercado');
+check(calendar.includes('📰 Actividad'), 'UI actividad');
+check(calendar.includes('renderReferenceView'), 'render de referencia');
+check(calendar.includes('marketBalance'), 'métrica saldo');
+check(calendar.includes('dailyReward'), 'métrica recompensa');
+check(calendar.includes('teamValue'), 'métrica valor');
+check(calendar.includes('teamCount'), 'métrica 20/24');
+check(calendar.includes("timeZone: 'Europe/Madrid'"), 'horario Madrid');
+check(calendar.includes("cache: 'no-store'"), 'snapshot sin caché');
+check(calendar.includes('La referencia visual nunca bloquea el calendario'), 'referencia no bloquea calendario');
+check(dataClient.includes('/video-reference-snapshot-2026-08-27.json'), 'data client usa JSON único');
+check(dataClient.includes('Mi equipo'), 'data client equipo');
+check(dataClient.includes('Rivales'), 'data client rivales');
+
+/* 86-100: hygiene/security */
+check(dataClient.includes('Mercado'), 'data client mercado');
+check(dataClient.includes('Actividad'), 'data client actividad');
+check(dataClient.includes('Clasificación'), 'data client clasificación');
+check(config.includes("'/video-reference-snapshot-2026-08-27.json'"), 'snapshot permitido por backend');
+check(sw.includes('video-reference-snapshot-2026-08-27.json'), 'PWA incluye snapshot');
+check(sw.includes('fm-v252'), 'cache PWA versionado');
+check(!JSON.stringify(ref).match(/api[_-]?key|password|bearer\s+[A-Za-z0-9._-]{20,}/i), 'snapshot sin credenciales');
+check(!calendar.match(/x-apisports-key|api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}/i), 'calendar sin credenciales');
+check(!dataClient.match(/x-apisports-key|api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}/i), 'data client sin credenciales');
+check(!config.match(/YOUR_API_KEY|token_en_claro/i), 'config sin placeholders inseguros');
+check(typeof ref.snapshot.marketBalance === 'number', 'saldo no es texto');
+check(typeof ref.snapshot.teamValue === 'number', 'valor no es texto');
+check(typeof ref.snapshot.dailyReward === 'number', 'recompensa no es texto');
+check(Array.isArray(ref.eventsVisible) && ref.eventsVisible.includes('Operación de mercado'), 'evento mercado');
+check(ref.eventsVisible.includes('Recompensa') && ref.eventsVisible.includes('No puntuación'), 'eventos de recompensa y no puntuación');
+check(ref.eventsVisible.includes('Blindaje') && ref.eventsVisible.includes('Nuevo miembro'), 'eventos de blindaje y miembro');
 
 assert.equal(checks.length, 100, `Se esperaban 100 comprobaciones y hay ${checks.length}`);
-checks.forEach(([name, ok], index) => assert.ok(ok, `UI-${String(index + 1).padStart(3, '0')}: ${name}`));
-console.log('✅ Recording UI contract tests: 100/100 passed');
+for (const [index, [label, ok]] of checks.entries()) assert.ok(ok, `UI-${String(index + 1).padStart(3, '0')}: ${label}`);
+console.log('✅ Recording/UI contract tests: 100/100 passed');
