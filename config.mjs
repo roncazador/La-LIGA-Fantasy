@@ -1,4 +1,4 @@
-export const VERSION = '2.8.0';
+export const VERSION = '3.0.0';
 
 export const DEFAULTS = {
   laligaApiBaseUrl: 'https://fantasy-api.llt-services.com',
@@ -6,23 +6,18 @@ export const DEFAULTS = {
   sessionCookieName: 'fm_session',
   allowOrigin: '',
   iosSuccessRedirect: 'laligafantasy://auth-complete',
-
   footballDataBase: 'https://api.football-data.org/v4',
   footballDataCompetition: 'PD',
   footballDataDays: 30,
-
   sportmonksBase: 'https://api.sportmonks.com/v3/football',
   sportmonksLeagueId: '',
   sportmonksSeasonId: '',
-
   apiFootballBase: 'https://v3.football.api-sports.io',
   apiFootballLeagueId: '140',
   apiFootballSeason: '2026',
-
   optaBaseUrl: '',
   optaFixturesPath: '',
   optaCompetitionId: '',
-
   laligaSigninPolicy: 'B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN',
   laligaTokenUrl: 'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/token'
 };
@@ -37,9 +32,7 @@ const aliases = {
 function envWithAliases(source){
   const out = { ...source };
   for (const [canonical, legacy] of Object.entries(aliases)) {
-    if (!String(out[canonical] ?? '').trim() && String(out[legacy] ?? '').trim()) {
-      out[canonical] = out[legacy];
-    }
+    if (!String(out[canonical] ?? '').trim() && String(out[legacy] ?? '').trim()) out[canonical] = out[legacy];
   }
   return out;
 }
@@ -56,11 +49,7 @@ function nonEmpty(value, fallback){
 export function readConfig(source = process.env){
   const env = envWithAliases(source);
   const rawDays = Number(env.FOOTBALL_DATA_DAYS ?? DEFAULTS.footballDataDays);
-  const footballDataDays = Math.min(
-    Math.max(Number.isFinite(rawDays) ? rawDays : DEFAULTS.footballDataDays, 1),
-    90
-  );
-
+  const footballDataDays = Math.min(Math.max(Number.isFinite(rawDays) ? rawDays : DEFAULTS.footballDataDays, 1), 90);
   return {
     port: Number(env.PORT || 3005),
     host: nonEmpty(env.HOST, '0.0.0.0'),
@@ -101,12 +90,7 @@ export function oidcConfigured(config){
 
 export function publicStaticPath(pathname){
   return new Set([
-    '/',
-    '/index.html',
-    '/manifest.json',
-    '/sw.js',
-    '/dashboard-client.js',
-    '/calendar-client.js',
-    '/official-fixtures-seed-2026-27.json'
+    '/', '/index.html', '/manifest.json', '/sw.js', '/dashboard-client.js',
+    '/calendar-client.js', '/official-fixtures-seed-2026-27.json', '/data-client.js'
   ]).has(pathname);
 }
