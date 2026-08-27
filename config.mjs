@@ -64,7 +64,6 @@ export function publicStaticPath(pathname){
     '/', '/index.html', '/manifest.json', '/sw.js',
     '/dashboard-client.js', '/calendar-client.js', '/data-client.js',
     '/recording-client.js', '/official-fixtures-seed-2026-27.json',
-    '/video-reference-snapshot-2026-08-27.json', '/recording-data-2026-08-27.json',
-    '/PROJECT_STATE.md'
+    '/video-reference-snapshot-2026-08-27.json', '/recording-data-2026-08-27.json'
   ]).has(pathname);
 }
