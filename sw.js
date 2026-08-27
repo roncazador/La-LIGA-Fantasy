@@ -1,8 +1,11 @@
-const CACHE_NAME = 'fm-v251';
+const CACHE_NAME = 'fm-v290';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
-  './sw.js'
+  './sw.js',
+  './dashboard-client.js',
+  './calendar-client.js',
+  './official-fixtures-seed-2026-27.json'
 ];
 
 self.addEventListener('install', event => {
@@ -28,28 +31,31 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
 
-  if (request.method !== 'GET') {
-    return;
-  }
+  if (request.method !== 'GET') return;
 
-  // Navegación/HTML: red primero para evitar que el iPhone se quede
-  // mostrando una versión antigua después de un nuevo despliegue.
-  if (request.mode === 'navigate' || request.url.endsWith('/index.html')) {
+  if (
+    request.mode === 'navigate' ||
+    request.url.endsWith('/index.html') ||
+    request.url.endsWith('/dashboard-client.js') ||
+    request.url.endsWith('/calendar-client.js') ||
+    request.url.endsWith('/official-fixtures-seed-2026-27.json')
+  ) {
     event.respondWith(
       fetch(request, { cache: 'no-store' })
         .then(response => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+          const cacheKey = new URL(request.url).pathname.endsWith('/index.html')
+            ? './index.html'
+            : new URL(request.url).pathname;
+          caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, copy));
           return response;
         })
-        .catch(() => caches.match('./index.html'))
+        .catch(() => caches.match(request).then(cached => cached || caches.match('./index.html')))
     );
     return;
   }
 
-  // Para recursos estáticos pequeños, cache con fallback a red.
   event.respondWith(
-    caches.match(request)
-      .then(cached => cached || fetch(request))
+    caches.match(request).then(cached => cached || fetch(request))
   );
 });
