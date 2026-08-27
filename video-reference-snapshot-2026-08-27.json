@@ -1,0 +1,44 @@
+{
+  "capturedAt": "2026-08-27T11:32:00+02:00",
+  "source": "grabación de pantalla aportada por el usuario de la app oficial LALIGA Fantasy",
+  "status": "referencia_observada_no_live",
+  "league": "La Liga",
+  "competitionContext": "LALIGA EA SPORTS",
+  "snapshot": {
+    "teamCount": "20/24 fichas",
+    "matchdayAtStart": 3,
+    "teamValue": 269039595,
+    "dailyReward": 100000
+  },
+  "standingsVisible": [
+    {"rank":1,"manager":"roncazador","pfsy":109,"teamValue":269039595},
+    {"rank":2,"manager":"FarlaAcademy","pfsy":105,"teamValue":131991112},
+    {"rank":3,"manager":"Jonymessi","pfsy":78,"teamValue":258996039},
+    {"rank":4,"manager":"SURIKT097","pfsy":75,"teamValue":224106603},
+    {"rank":5,"manager":"saugarr","pfsy":69,"teamValue":205802339},
+    {"rank":6,"manager":"AlvaroNP96","pfsy":52,"teamValue":139315086}
+  ],
+  "playersVisible": [
+    {"name":"Germán","position":"POR","pfsy":0,"media":0,"price":518885,"lockedValue":1000000,"availability":"Alineable"},
+    {"name":"Noubi","position":"DEF","pfsy":5,"media":2.5,"price":12937595,"lockedValue":13930586,"availability":"Alineable"},
+    {"name":"Julio Díaz","position":"DEF","pfsy":2,"media":1,"price":434607,"lockedValue":4000000,"availability":"Alineable"},
+    {"name":"Xavi Espart","position":"DEF","pfsy":14,"media":14,"price":1050819,"lockedValue":null,"availability":"Alineable","lockDays":14},
+    {"name":"Yeray","position":"DEF","pfsy":10,"media":10,"price":6020466,"lockedValue":null,"availability":"Alineable","lockDays":9},
+    {"name":"Paredes","position":"DEF","pfsy":10,"media":10,"price":6807560,"lockedValue":null,"availability":"Alineable"},
+    {"name":"Aubameyang","position":"DEL","pfsy":20,"media":10,"price":50181171,"lockedValue":null,"availability":"Alineable","star":true},
+    {"name":"Ferran Jutglà","position":"DEL","pfsy":4,"media":4,"price":9061209,"lockedValue":16325936,"availability":"Alineable"},
+    {"name":"Lucas Boyé","position":"DEL","pfsy":5,"media":5,"price":11293904,"lockedValue":25726200,"availability":"Alineable"},
+    {"name":"Mikautadzе","position":"DEL","pfsy":23,"media":null,"price":null,"lockedValue":null,"availability":"Alineable","star":true},
+    {"name":"Álvaro García","position":"CEN","pfsy":10,"media":5,"price":20929654,"lockedValue":24997633,"availability":"Alineable","star":true},
+    {"name":"Mariano","position":"DEL","pfsy":25,"media":12.5,"price":4997538,"lockedValue":null,"availability":"Alineable","lockDays":6},
+    {"name":"Dolan","position":"DEL","pfsy":14,"media":7,"price":9980989,"lockedValue":null,"availability":"Alineable"},
+    {"name":"Satriano","position":"DEL","pfsy":7,"media":3.5,"price":25336189,"lockedValue":null,"availability":"Alineable","lockDays":11}
+  ],
+  "eventsVisible": [
+    "Operación de mercado",
+    "Recompensa",
+    "No puntuación",
+    "Blindaje",
+    "Nuevo miembro"
+  ]
+}
