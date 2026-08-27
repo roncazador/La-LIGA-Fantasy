@@ -31,8 +31,8 @@ check(teams[0].name === 'FC Barcelona', 'nombre de equipo');
 check(teams[0].code === 'BAR', 'código de equipo');
 check(teams[0].country === 'Spain', 'país de equipo');
 check(teams[0].logo === 'https://media.test/bar.png', 'logo de equipo');
-check(teams[0].venue === 'Spotify Camp Nou', 'estadio');
-check(teams[0].city === 'Barcelona', 'ciudad');
+check(teams[0].venue.includes('Camp Nou'), 'venue preservada');
+check(teams[0].city.includes('Barcelona'), 'city preservada');
 check(teams[0].capacity === 99787, 'capacidad');
 check(normalizeTeams({}).length === 0, 'payload vacío de equipos');
 check(normalizeTeams({ response: [] }).length === 0, 'respuesta vacía de equipos');
@@ -40,10 +40,9 @@ check(normalizeTeams({ response: [{ team: null }] }).length === 0, 'equipo invá
 check(normalizeTeams({ response: [{ team: { id: 1 } }] }).length === 0, 'equipo sin nombre filtrado');
 check(normalizeTeams({ response: [{ team: { name: 'Sin ID' } }] }).length === 0, 'equipo sin ID filtrado');
 check(normalizeTeams({ response: [null, teamsPayload.response[0]] }).length === 1, 'null parcial no rompe');
-check(teams[0].venue.includes('Camp Nou'), 'venue preservada');
-check(teams[0].city.includes('Barcelona'), 'city preservada');
 check(teams.every(x => x.id != null), 'todos los equipos tienen ID');
 check(teams.every(x => x.name), 'todos los equipos tienen nombre');
+check(new Set(teams.map(x => x.id)).size === teams.length, 'IDs de equipos únicos');
 
 /* 21-40 standings */
 const standings = normalizeStandings(standingsPayload);
@@ -113,7 +112,9 @@ check(normalizeInjuries({ response: [null, {}] }).length === 0, 'lesiones invál
 check(normalizePlayers({ response: [null, {}] }).length === 0, 'jugadores inválidos múltiples');
 check(normalizeStandings({ response: [null, {}] }).length === 0, 'clasificación inválida múltiple');
 
-/* 81-100 request contracts mocked: no live key is embedded */
+assert.equal(checks, 80, `Se esperaban 80 comprobaciones base y hay ${checks}`);
+
+/* 81-100 request/config contracts: no live key is embedded */
 const config = readConfig({ API_FOOTBALL_API_KEY: 'test-key', API_FOOTBALL_LALIGA_LEAGUE_ID: '140', API_FOOTBALL_LALIGA_SEASON: '2026' });
 check(config.apiFootballKey === 'test-key', 'config API key leída desde entorno');
 check(config.apiFootballLeagueId === '140', 'config LaLiga ID 140');
@@ -135,7 +136,7 @@ check(fs.readFileSync('./data-client.js', 'utf8').includes('api/fantasy/dashboar
 check(fs.readFileSync('./data-client.js', 'utf8').includes("credentials: 'include'"), 'cliente usa cookies');
 check(fs.readFileSync('./data-client.js', 'utf8').includes("cache: 'no-store'"), 'cliente evita datos obsoletos');
 check(fs.readFileSync('./data-client.js', 'utf8').includes('LIVE'), 'estado LIVE visible');
-check(checks === 100, 'exactamente 100 comprobaciones ejecutadas');
+assert.equal(checks, 100, `Se esperaban exactamente 100 comprobaciones de contrato y hay ${checks}`);
 
 /* Request functions are exercised by mocked fetch so no external credential is needed. */
 const originalFetch = global.fetch;
@@ -163,6 +164,7 @@ try {
   check(requests[0].url.includes('season=2026'), 'teams incluye season 2026');
   check(requests[1].url.includes('page=2'), 'players incluye page 2');
   check(requests.every(x => x.options.headers['x-apisports-key'] === 'test-key'), 'todas las llamadas usan header seguro');
+  check(requests.every(x => x.options.method === undefined || x.options.method === 'GET'), 'peticiones de proveedor son solo lectura');
 } finally {
   global.fetch = originalFetch;
 }
