@@ -62,6 +62,8 @@ export function normalizeFootballData(data){
     away: match?.awayTeam?.name || null,
     status: match?.status || null,
     matchday: Number.isFinite(Number(match?.matchday)) ? Number(match.matchday) : null,
+    homeTeamId: match?.homeTeam?.id ?? null,
+    awayTeamId: match?.awayTeam?.id ?? null,
     raw: match
   }));
 }
@@ -265,13 +267,23 @@ export async function fetchMultiProviderFixtures(config){
     for (const match of result.matches) {
       const key = fixtureKey(match);
       if (!mergedMap.has(key)) {
+        const homeTeam = match.home
+          ? { id: match.homeTeamId ?? null, name: match.home }
+          : null;
+        const awayTeam = match.away
+          ? { id: match.awayTeamId ?? null, name: match.away }
+          : null;
+
         mergedMap.set(key, {
           id: match.id,
           utcDate: match.utcDate,
           home: match.home,
           away: match.away,
+          homeTeam,
+          awayTeam,
           status: match.status,
           matchday: match.matchday,
+          officialMatchday: match.matchday,
           round: match.round || null,
           homeTeamId: match.homeTeamId ?? null,
           awayTeamId: match.awayTeamId ?? null,
@@ -281,10 +293,19 @@ export async function fetchMultiProviderFixtures(config){
       } else {
         const existing = mergedMap.get(key);
         if (!existing.sources.includes(name)) existing.sources.push(name);
-        if (existing.matchday == null && match.matchday != null) existing.matchday = match.matchday;
+        if (existing.matchday == null && match.matchday != null) {
+          existing.matchday = match.matchday;
+          existing.officialMatchday = match.matchday;
+        }
         if (!existing.round && match.round) existing.round = match.round;
-        if (!existing.homeTeamId && match.homeTeamId) existing.homeTeamId = match.homeTeamId;
-        if (!existing.awayTeamId && match.awayTeamId) existing.awayTeamId = match.awayTeamId;
+        if (!existing.homeTeamId && match.homeTeamId) {
+          existing.homeTeamId = match.homeTeamId;
+          existing.homeTeam = { id: match.homeTeamId, name: existing.home };
+        }
+        if (!existing.awayTeamId && match.awayTeamId) {
+          existing.awayTeamId = match.awayTeamId;
+          existing.awayTeam = { id: match.awayTeamId, name: existing.away };
+        }
       }
     }
   }
