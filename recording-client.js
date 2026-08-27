@@ -15,6 +15,7 @@
       installUi();
     } catch (error) {
       console.warn('Recording data unavailable', error);
+      installBrain25();
     }
   }
 
@@ -168,23 +169,85 @@
       render(button.dataset.recordView);
     }));
     render('team');
+    installBrain25();
+  }
+
+  /* =========================
+     BRAIN v2.5 — confidence-aware overlay
+  ========================= */
+  const BRAIN_KEY = 'fantasy_brain_v25_mode';
+  const clamp = (v,a=0,b=100) => Math.max(a, Math.min(b, Number(v) || 0));
+  const n = (v,d=0) => Number.isFinite(Number(v)) ? Number(v) : d;
+  const normPos = p => {
+    const x = String(p || '').toUpperCase();
+    if (['GK','POR','PORTERO'].includes(x)) return 'POR';
+    if (['DF','DEF','DEFENSA'].includes(x)) return 'DEF';
+    if (['MF','MED','MEDIO','MEDIOCENTRO','CEN'].includes(x)) return 'MED';
+    if (['FW','DEL','DELANTERO'].includes(x)) return 'DEL';
+    return x;
+  };
+  const normalizePlayer = p => ({...p,name:String(p?.name||p?.player||p?.playerName||'').trim(),position:normPos(p?.position||p?.pos),points:n(p?.points??p?.pfsy??p?.fantasyPoints??p?.score),starts:n(p?.starts),minutes:n(p?.minutes),trend1d:n(p?.trend1d??p?.change1d),trend3d:n(p?.trend3d??p?.change3d),trend7d:n(p?.trend7d??p?.change7d),price:n(p?.price??p?.marketPrice??p?.currentPrice),value:n(p?.value??p?.marketValue??p?.estimatedValue),rotationRisk:clamp(n(p?.rotationRisk,0),0,1),injuryRisk:clamp(n(p?.injuryRisk,0),0,1),fixture:Array.isArray(p?.fixture)?p.fixture.slice(0,4).map(x=>clamp(n(x,50))):[50,50,50,50]});
+  const getMode = () => localStorage.getItem(BRAIN_KEY) || 'balanced';
+  const getWeights = () => getMode()==='aggressive'?{performance:.34,availability:.21,context:.20,market:.15,risk:.10}:getMode()==='conservative'?{performance:.27,availability:.26,context:.18,market:.11,risk:.18}:{performance:.30,availability:.25,context:.20,market:.15,risk:.10};
+  function freshness(){
+    const raw=localStorage.getItem('fm25_lastSync')||localStorage.getItem('fm24_lastSync');
+    if(!raw)return 25;
+    const age=(Date.now()-new Date(raw).getTime())/3600000;
+    if(!Number.isFinite(age)||age<0)return 25;
+    if(age<=6)return 100;if(age<=24)return 85;if(age<=48)return 65;if(age<=168)return 40;return 15;
+  }
+  function brainScore(p){
+    const performance=clamp(p.points*4)*.60+clamp((p.minutes/90)*20)*.25+clamp(p.starts*5)*.15;
+    const availability=clamp(.58*clamp(p.minutes/9)+.42*clamp(p.starts*10));
+    const context=clamp(p.fixture?.[0]??50);
+    const market=p.value>0&&p.price>0?clamp(50+((p.value-p.price)/p.value)*100):clamp(50+p.trend1d+p.trend3d*.5);
+    const risk=clamp((1-p.rotationRisk)*65+(1-p.injuryRisk)*35);
+    const w=getWeights();
+    const raw=performance*w.performance+availability*w.availability+context*w.context+market*w.market+risk*w.risk;
+    const fields=[p.points,p.starts,p.minutes,p.trend1d,p.trend3d,p.trend7d,p.price,p.value,p.fixture?.[0]];
+    const completeness=fields.filter(v=>Number.isFinite(Number(v))).length/fields.length*100;
+    const confidence=clamp(completeness*.62+freshness()*.38);
+    const score=clamp(raw*(.82+confidence/100*.18));
+    return {score,confidence,performance,availability,context,market,risk};
+  }
+  const brainProjection=(p,i=0)=>{const d=brainScore(p);const f=clamp(p.fixture?.[i]??50);const trend=clamp(50+p.trend3d*2+p.trend7d);const risk=(1-(p.rotationRisk*.7+p.injuryRisk*.3))*100;return Math.round(clamp(d.score*.42+f*.26+trend*.16+risk*.11+d.confidence*.05-i*2.5));};
+  function installBrain25(){
+    if(document.getElementById('brain25Panel')){renderBrain25(getBrainPlayers());return;}
+    const styleId='brain25InlineStyle';
+    if(!document.getElementById(styleId)){
+      const s=document.createElement('style');s.id=styleId;s.textContent=`#brain25Panel{margin:12px 0}.b25grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.b25m{background:#0e131d;border:1px solid #2a3141;border-radius:10px;padding:9px}.b25m .v{font-size:18px;font-weight:900;margin-top:3px}.b25tbl{width:100%;border-collapse:collapse}.b25tbl th,.b25tbl td{padding:7px 5px;border-bottom:1px solid #232a38;font-size:10px;text-align:left}.b25tbl th{font-size:8px;color:#9aa3b7;text-transform:uppercase}@media(max-width:750px){.b25grid{grid-template-columns:repeat(2,1fr)}.b25tbl th:nth-child(n+6),.b25tbl td:nth-child(n+6){display:none}}`;document.head.appendChild(s);
+    }
+    const panel=document.createElement('section');panel.id='brain25Panel';panel.className='card';
+    panel.innerHTML=`<div class="flex" style="justify-content:space-between"><div><h2 style="margin:0 0 4px">🧠 Cerebro v2.5</h2><div class="tiny">Calidad de datos + frescura + decisión adaptativa</div></div><select id="brain25Mode" style="max-width:160px"><option value="balanced">Equilibrado</option><option value="conservative">Conservador</option><option value="aggressive">Agresivo</option></select></div><div id="brain25Metrics" class="b25grid" style="margin:10px 0"></div><div id="brain25Body"></div>`;
+    const brainTab=document.getElementById('brain');
+    const anchor=brainTab||document.querySelector('.hero');
+    if(anchor?.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling);else document.querySelector('.app')?.appendChild(panel);
+    const select=panel.querySelector('#brain25Mode');select.value=getMode();select.addEventListener('change',()=>{localStorage.setItem(BRAIN_KEY,select.value);renderBrain25(getBrainPlayers());});
+    renderBrain25(getBrainPlayers());
+    if(!getBrainPlayers().length) loadBrain25Live();
+  }
+  function getBrainPlayers(){
+    const local=(()=>{try{const a=JSON.parse(localStorage.getItem('fm25_state_v1')||localStorage.getItem('fm24_state_v1')||'{}');return Array.isArray(a.players)?a.players:[]}catch{return []}})();
+    if(local.length)return local;
+    const live=window.__fantasyLivePlayers;
+    return Array.isArray(live)?live:[];
+  }
+  async function loadBrain25Live(){
+    try{
+      const r=await fetch('/api/data/players?page=1',{credentials:'include',cache:'no-store'});if(!r.ok)throw new Error(`HTTP_${r.status}`);
+      const d=await r.json();const players=Array.isArray(d.players)?d.players:Array.isArray(d.data)?d.data:[];
+      if(players.length){window.__fantasyLivePlayers=players;renderBrain25(players);}
+    }catch{}
+  }
+  function renderBrain25(raw){
+    const panel=document.getElementById('brain25Panel');if(!panel)return;
+    const rows=(raw||[]).map(normalizePlayer).filter(p=>p.name).map(p=>({...p,...brainScore(p)})).sort((a,b)=>b.score-a.score);
+    const avg=rows.length?Math.round(rows.reduce((s,p)=>s+p.confidence,0)/rows.length):null;const fresh=freshness();
+    panel.querySelector('#brain25Metrics').innerHTML=`<div class="b25m"><div class="label">Confianza datos</div><div class="v">${avg==null?'N/D':avg+'/100'}</div></div><div class="b25m"><div class="label">Actualidad</div><div class="v">${fresh>=85?'ALTA':fresh>=65?'MEDIA':fresh>=40?'BAJA':'MUY BAJA'}</div></div><div class="b25m"><div class="label">Modo</div><div class="v">${getMode()==='balanced'?'EQUILIBRADO':getMode()==='conservative'?'CONSERVADOR':'AGRESIVO'}</div></div><div class="b25m"><div class="label">Líder</div><div class="v">${rows[0]?esc(rows[0].name):'N/D'}</div></div>`;
+    if(!rows.length){panel.querySelector('#brain25Body').innerHTML='<div class="empty">Sin jugadores evaluables. Conecta LALIGA o importa datos locales.</div>';return;}
+    panel.querySelector('#brain25Body').innerHTML=`<div style="overflow:auto"><table class="b25tbl"><thead><tr><th>Jugador</th><th>Pos</th><th>Score</th><th>Conf.</th><th>J+1</th><th>J+2</th><th>Decisión</th></tr></thead><tbody>${rows.slice(0,40).map(p=>{const decision=p.score>=78&&p.confidence>=65?'TITULAR / PRIORIDAD':p.score>=70?'TITULAR':p.score>=62?'SEGUIR':p.score<=44?'SALIDA':'NEUTRA';return `<tr><td><b>${esc(p.name)}</b><br><span class="tiny">${esc(p.team||'')}</span></td><td>${esc(p.position||'N/D')}</td><td><b>${Math.round(p.score)}</b></td><td>${Math.round(p.confidence)}</td><td>${brainProjection(p,0)}</td><td>${brainProjection(p,1)}</td><td>${decision}</td></tr>`}).join('')}</tbody></table></div>`;
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });
-  else load();
-})();
-
-/* Brain v2.5 overlay: keeps the v2.8 application intact and adds the upgraded scoring layer. */
-(() => {
-  const src = '/brain-engine-v25.js';
-  const load = () => {
-    if (document.querySelector(`script[data-brain-v25="1"]`)) return;
-    const s = document.createElement('script');
-    s.src = src;
-    s.defer = true;
-    s.dataset.brainV25 = '1';
-    document.head.appendChild(s);
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once:true });
   else load();
 })();
