@@ -1,72 +1,122 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const ref = JSON.parse(fs.readFileSync('./video-reference-snapshot-2026-08-27.json', 'utf8'));
-const calendar = fs.readFileSync('./calendar-client.js', 'utf8');
-const dataClient = fs.readFileSync('./data-client.js', 'utf8');
-const recordingClient = fs.readFileSync('./recording-client.js', 'utf8');
-const config = fs.readFileSync('./config.mjs', 'utf8');
+const ref = JSON.parse(fs.readFileSync('./recording-data-2026-08-27.json','utf8'));
+const calendar = fs.readFileSync('./calendar-client.js','utf8');
+const recordingClient = fs.readFileSync('./recording-client.js','utf8');
+const dataClient = fs.readFileSync('./data-client.js','utf8');
+const config = fs.readFileSync('./config.mjs','utf8');
+const index = fs.readFileSync('./index.html','utf8');
+
 const checks = [];
-const check = (condition, label) => checks.push([label, Boolean(condition)]);
+const check = (name, ok) => checks.push([name, Boolean(ok)]);
 
-/* 1-10: snapshot base */
-check(ref && typeof ref === 'object' && !Array.isArray(ref), 'snapshot objeto');
-check(typeof ref.capturedAt === 'string' && ref.capturedAt.length > 0, 'fecha de captura');
-check(ref.status === 'referencia_observada_no_live', 'snapshot marcado como histórico');
-check(ref.league === 'La Liga', 'liga');
-check(Number.isInteger(ref.snapshot?.matchdayAtStart), 'jornada válida');
-check(ref.snapshot?.teamCount === '20/24 fichas', 'plantilla 20/24');
-check(Number.isFinite(ref.snapshot?.teamValue), 'valor de plantilla numérico');
-check(Number.isFinite(ref.snapshot?.dailyReward), 'recompensa numérica');
-check(Number.isFinite(ref.snapshot?.marketBalance), 'saldo de mercado numérico');
-check(ref.source?.includes('grabación'), 'fuente identificada');
+/* 1-20: snapshot/metadata */
+check('capturedAt presente', ref.capturedAt === '2026-08-27T11:32:00+02:00');
+check('snapshot no LIVE', ref.status === 'referencia_observada_no_live');
+check('competición presente', ref.competition === 'La Liga');
+check('jornada presente', ref.matchday === 3);
+check('recompensa correcta', ref.reward === 100000);
+check('saldo mercado correcto', ref.marketBalance === 40542121);
+check('valor equipo correcto', ref.teamValue === 269039595);
+check('plantilla 20/24', ref.teamCount === '20/24 fichas');
+check('ranking array', Array.isArray(ref.standings));
+check('ranking no vacío', ref.standings.length > 0);
+check('roncazador existe', ref.standings.some(x => x.manager === 'roncazador'));
+check('roncazador #1', ref.standings.find(x => x.manager === 'roncazador')?.rank === 1);
+check('roncazador 109 PFSY', ref.standings.find(x => x.manager === 'roncazador')?.pfsy === 109);
+check('FarlaAcademy 105', ref.standings.find(x => x.manager === 'FarlaAcademy')?.pfsy === 105);
+check('Jonymessi 78', ref.standings.find(x => x.manager === 'Jonymessi')?.pfsy === 78);
+check('SURIKT097 75', ref.standings.find(x => x.manager === 'SURIKT097')?.pfsy === 75);
+check('saugarr 69', ref.standings.find(x => x.manager === 'saugarr')?.pfsy === 69);
+check('AlvaroNP96 52', ref.standings.find(x => x.manager === 'AlvaroNP96')?.pfsy === 52);
+check('kubakar 27', ref.standings.find(x => x.manager === 'kubakar')?.pfsy === 27);
+check('Akm90 27', ref.standings.find(x => x.manager === 'Akm90')?.pfsy === 27);
 
-/* 11-29: standings: 2 checks per visible manager + array/length */
-const standings = Array.isArray(ref.standingsVisible) ? ref.standingsVisible : [];
-check(standings.length === 9, '9 managers visibles');
-for (const row of standings) {
-  check(Number.isInteger(row.rank) && row.rank > 0, `rank válido ${row.manager}`);
-  check(typeof row.manager === 'string' && row.manager.length > 0 && Number.isFinite(row.pfsy), `manager/PFSY válidos ${row.manager}`);
-}
+/* 21-35: mi equipo */
+const me = ref.rostersVisible?.roncazador || [];
+check('mi roster es array', Array.isArray(me));
+check('mi roster tiene 7 visibles', me.length === 7);
+for (const name of ['Germán','Noubi','Zubeldia','Aramburu','Fermín','Óscar Valentín','Cala']) check(`roncazador ${name}`, me.some(x => x.name === name));
+check('Fermín 19', me.find(x => x.name === 'Fermín')?.pfsy === 19);
+check('Óscar 7', me.find(x => x.name === 'Óscar Valentín')?.pfsy === 7);
+check('Cala 11', me.find(x => x.name === 'Cala')?.pfsy === 11);
+check('Germán POR', me.find(x => x.name === 'Germán')?.position === 'POR');
+check('Fermín MED', me.find(x => x.name === 'Fermín')?.position === 'CEN');
+check('todos tienen disponibilidad', me.every(x => typeof x.availability === 'string' && x.availability));
+check('todos tienen precio válido', me.every(x => Number.isFinite(x.price)));
 
-/* 30-35: roster containers */
-const rosterManagers = ['roncazador','Jonymessi','SURIKT097','saugarr','AlvaroNP96','kubakar'];
-for (const manager of rosterManagers) check(Array.isArray(ref.rostersVisible?.[manager]), `roster ${manager}`);
+/* 36-55: rivales */
+const rivalGroups = ['Jonymessi','SURIKT097','saugarr','AlvaroNP96','kubakar'];
+for (const manager of rivalGroups) check(`roster ${manager} array`, Array.isArray(ref.rostersVisible?.[manager]));
+check('Aubameyang 20', ref.rostersVisible.Jonymessi?.find(x => x.name === 'Aubameyang')?.pfsy === 20);
+check('Mikautadze 23', ref.rostersVisible.Jonymessi?.find(x => x.name === 'Mikautadze')?.pfsy === 23);
+check('Valverde 15', ref.rostersVisible.SURIKT097?.find(x => x.name === 'Valverde')?.pfsy === 15);
+check('Álvaro García 10', ref.rostersVisible.SURIKT097?.find(x => x.name === 'Álvaro García')?.pfsy === 10);
+check('Dela 9', ref.rostersVisible.saugarr?.find(x => x.name === 'Dela')?.pfsy === 9);
+check('C. Puga 8', ref.rostersVisible.saugarr?.find(x => x.name === 'C. Puga')?.pfsy === 8);
+check('Le Normand suspendido', ref.rostersVisible.kubakar?.find(x => x.name === 'Le Normand')?.availability === 'Suspendido');
+check('Dituro 4', ref.rostersVisible.kubakar?.find(x => x.name === 'M. Dituro')?.pfsy === 4);
+check('jugadores rivales con posición', Object.values(ref.rostersVisible).flat().every(x => typeof x.position === 'string' && x.position));
+check('jugadores rivales con PFSY numérico', Object.values(ref.rostersVisible).flat().every(x => Number.isFinite(x.pfsy)));
+check('sin roster fantasma vacío no-array', Object.values(ref.rostersVisible).every(Array.isArray));
 
-/* 36-83: every visible player has name + PFSY */
-const players = Object.values(ref.rostersVisible || {}).flat();
-for (const player of players) {
-  check(typeof player.name === 'string' && player.name.length > 0, `nombre jugador ${player.name ?? 'N/D'}`);
-  check(Number.isFinite(player.pfsy), `PFSY jugador ${player.name ?? 'N/D'}`);
-}
+/* 56-65: mercado */
+check('mercado array', Array.isArray(ref.marketListings));
+check('3 anuncios observados', ref.marketListings.length === 3);
+check('anuncio 1 sin nombre inventado', ref.marketListings[0]?.player == null);
+check('Isaac precio', ref.marketListings.find(x => x.player === 'Isaac')?.price === 6460286);
+check('Isaac valor', ref.marketListings.find(x => x.player === 'Isaac')?.value === 6665244);
+check('Isaac 13 PFSY', ref.marketListings.find(x => x.player === 'Isaac')?.pfsy === 13);
+check('Juan Iglesias precio', ref.marketListings.find(x => x.player === 'Juan Iglesias')?.price === 18000000);
+check('Juan Iglesias dudoso', ref.marketListings.find(x => x.player === 'Juan Iglesias')?.status === 'Dudoso');
+check('anuncios con dueño', ref.marketListings.every(x => typeof x.owner === 'string' && x.owner));
+check('anuncios con precio', ref.marketListings.every(x => Number.isFinite(x.price)));
 
-/* 84-93: market */
-const market = Array.isArray(ref.marketListings) ? ref.marketListings : [];
-check(market.length === 3, '3 anuncios de mercado visibles');
-check(market.every(x => typeof x.owner === 'string' && x.owner), 'mercado con propietarios');
-check(market.every(x => Number.isFinite(x.value)), 'mercado con valores');
-check(market.every(x => Number.isFinite(x.price)), 'mercado con precios');
-check(market.every(x => typeof x.status === 'string' && x.status), 'mercado con estados');
-check(market.some(x => x.player === 'Isaac' && x.pfsy === 13), 'Isaac 13 PFSY');
-check(market.some(x => x.player === 'Isaac' && x.price === 6460286), 'precio Isaac');
-check(market.some(x => x.player === 'Juan Iglesias' && x.status === 'Dudoso'), 'Juan Iglesias dudoso');
-check(market.some(x => x.player === 'Juan Iglesias' && x.price === 18000000), 'precio Juan Iglesias');
-check(Number.isFinite(ref.snapshot.marketBalance) && Number.isFinite(ref.snapshot.dailyReward), 'métricas de mercado numéricas');
+/* 66-72: actividad */
+check('actividad array', Array.isArray(ref.recentActivity));
+check('actividad 21 entradas', ref.recentActivity.length === 21);
+check('actividad con fechas', ref.recentActivity.every(x => typeof x.date === 'string' && x.date));
+check('actividad con tipo', ref.recentActivity.every(x => typeof x.type === 'string' && x.type));
+check('Balde 25.001.999', ref.recentActivity.some(x => x.player === 'Álex Balde' && x.amount === 25001999));
+check('Balliu 999.309', ref.recentActivity.some(x => x.player === 'Balliu' && x.amount === 999309));
+check('Bartra 28.111.111', ref.recentActivity.some(x => x.player === 'Bartra' && x.amount === 28111111));
 
-/* 94-97: activity */
-const activity = Array.isArray(ref.recentActivity) ? ref.recentActivity : [];
-check(activity.length === 21, '21 operaciones/eventos observados');
-check(activity.every(x => typeof x.date === 'string' && x.date), 'actividad con fecha');
-check(activity.every(x => typeof x.type === 'string' && x.type), 'actividad con tipo');
-check(activity.some(x => x.player === 'Álex Balde' && x.amount === 25001999), 'operación Álex Balde');
+/* 73-84: frontend */
+check('recording client carga JSON', recordingClient.includes("/recording-data-2026-08-27.json"));
+check('recording client normaliza snapshot', recordingClient.includes('normalizeSnapshot'));
+check('recording client dibuja mi equipo', recordingClient.includes('teamView'));
+check('recording client dibuja rivales', recordingClient.includes('rivalsView'));
+check('recording client dibuja mercado', recordingClient.includes('marketView'));
+check('recording client dibuja actividad', recordingClient.includes('activityView'));
+check('recording client hidrata KPIs', recordingClient.includes('topStats'));
+check('recording client intenta LIVE', recordingClient.includes('/api/fantasy/dashboard'));
+check('recording client etiqueta referencia', recordingClient.includes('REFERENCIA'));
+check('calendar usa endpoint unificado', calendar.includes('/api/fixtures/next'));
+check('calendar no-cache', calendar.includes("cache: 'no-store'"));
+check('data client mantiene dashboard LIVE', dataClient.includes('api/fantasy/dashboard'));
 
-/* 98-100: frontend hygiene */
-check(calendar.includes('/video-reference-snapshot-2026-08-27.json'), 'calendar usa snapshot externo');
-check(recordingClient.includes('/recording-data-2026-08-27.json'), 'recording client usa datos de grabación');
-const secretLiteral = /(?:YOUR_API_KEY|token_en_claro|apiFootballKey\s*[:=]\s*['"][A-Za-z0-9._-]{20,}['"]|(?:Bearer|Authorization)\s*[:=]\s*['"][A-Za-z0-9._-]{20,}['"])/i;
-check(!secretLiteral.test(calendar) && !secretLiteral.test(dataClient) && !secretLiteral.test(recordingClient) && !secretLiteral.test(config), 'frontend/config sin secretos literales');
-check(ref.snapshot?.teamCount === '20/24 fichas' && ref.rostersVisible?.roncazador?.length === 7, 'mi equipo mantiene 20/24 y 7 jugadores legibles');
+/* 85-92: seguridad/compatibilidad */
+const secret = /(?:x-apisports-key|YOUR_API_KEY|token_en_claro|Bearer\s+[A-Za-z0-9._-]{20,}|apiFootballKey\s*[:=]\s*['"][A-Za-z0-9._-]{20,}['"])/i;
+check('recording client sin secretos', !secret.test(recordingClient));
+check('calendar sin secretos', !secret.test(calendar));
+check('data client sin secretos', !secret.test(dataClient));
+check('config sin .env público', !config.includes("'/.env'"));
+check('config permite recording client', config.includes("'/recording-client.js'"));
+check('config permite recording JSON', config.includes("'/recording-data-2026-08-27.json'"));
+check('index móvil', index.includes('@media(max-width:560px)'));
+check('index navegación táctil', index.includes('overflow:auto'));
+
+/* 93-100: invariantes finales */
+check('todos los managers tienen rank', ref.standings.every(x => Number.isInteger(x.rank)));
+check('todos los managers tienen nombre', ref.standings.every(x => typeof x.manager === 'string' && x.manager));
+check('todos PFSY ranking numéricos', ref.standings.every(x => Number.isFinite(x.pfsy)));
+check('snapshot tiene eventos visibles', Array.isArray(ref.eventsVisible) && ref.eventsVisible.includes('Operación de mercado'));
+check('snapshot tiene recompensa visible', ref.eventsVisible.includes('Recompensa'));
+check('snapshot tiene no puntuación', ref.eventsVisible.includes('No puntuación'));
+check('snapshot tiene blindaje', ref.eventsVisible.includes('Blindaje'));
+check('snapshot tiene nuevos miembros', ref.eventsVisible.includes('Nuevo miembro'));
 
 assert.equal(checks.length, 100, `Se esperaban 100 comprobaciones y hay ${checks.length}`);
-for (const [index, [label, ok]] of checks.entries()) assert.ok(ok, `UI-${String(index + 1).padStart(3, '0')}: ${label}`);
+for (const [index, [label, ok]] of checks.entries()) assert.ok(ok, `UI-${String(index + 1).padStart(3,'0')}: ${label}`);
 console.log('✅ Recording/UI contract tests: 100/100 passed');
