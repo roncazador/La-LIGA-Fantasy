@@ -152,17 +152,11 @@
 
   function bootFixtures() {
     if (window.__laligaFixturesBooted) return;
-    const button = document.getElementById('loadFixtures');
-    if (!button) return;
     window.__laligaFixturesBooted = true;
 
     const status = document.getElementById('fixturesStatus');
     if (status) status.textContent = '⏳ Cargando partidos con el sistema multi-proveedor…';
     ensureFixtureProviderInfo();
-
-    // Se conserva la compatibilidad con el renderer antiguo; el cliente de calendario
-    // se carga a continuación y captura el click antes del handler histórico.
-    window.setTimeout(() => button.click(), 250);
 
     if (status && !window.__laligaFixtureObserver) {
       window.__laligaFixtureObserver = new MutationObserver(() => {
@@ -174,7 +168,7 @@
       window.__laligaFixtureObserver.observe(status, { childList: true, characterData: true, subtree: true });
     }
 
-    refreshFixtureProviderInfo();
+    void refreshFixtureProviderInfo();
   }
 
   async function loadProviderState() {
@@ -299,11 +293,24 @@
     if (document.visibilityState === 'visible') loadDashboard();
   });
 
-  // Carga el cliente especializado después de instalar los handlers legacy del HTML.
-  const calendarScript = document.createElement('script');
-  calendarScript.src = '/calendar-client.js';
-  calendarScript.defer = true;
-  document.head.appendChild(calendarScript);
+  /*
+     Carga el cliente especializado del calendario como texto y lo ejecuta
+     desde un archivo JS ya servido por el backend. Esto evita depender del
+     MIME del recurso del calendario y nos permite interceptar el handler
+     histórico de index.html de forma determinista.
+  */
+  fetch('/calendar-client.js', { cache: 'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error(`CALENDAR_CLIENT_HTTP_${response.status}`);
+      return response.text();
+    })
+    .then(source => {
+      (0, eval)(source);
+    })
+    .catch(error => {
+      const status = document.getElementById('fixturesStatus');
+      if (status) status.textContent = `⚠️ No se pudo cargar el motor de calendario unificado: ${error.message}`;
+    });
 
   loadDashboard();
 })();
