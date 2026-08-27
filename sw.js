@@ -11,8 +11,7 @@ const STATIC_ASSETS = [
   './recording-client.js',
   './official-fixtures-seed-2026-27.json',
   './video-reference-snapshot-2026-08-27.json',
-  './recording-data-2026-08-27.json',
-  './PROJECT_STATE.md'
+  './recording-data-2026-08-27.json'
 ];
 
 self.addEventListener('install', event => {
@@ -46,8 +45,7 @@ self.addEventListener('fetch', event => {
     '/recording-client.js',
     '/official-fixtures-seed-2026-27.json',
     '/video-reference-snapshot-2026-08-27.json',
-    '/recording-data-2026-08-27.json',
-    '/PROJECT_STATE.md'
+    '/recording-data-2026-08-27.json'
   ]);
 
   if (request.mode === 'navigate' || freshResources.has(pathname)) {
