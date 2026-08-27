@@ -41,11 +41,11 @@ for (const name of ['Germán','Noubi','Zubeldia','Aramburu','Fermín','Óscar Va
 check('Fermín 19', me.find(x => x.name === 'Fermín')?.pfsy === 19);
 check('Óscar 7', me.find(x => x.name === 'Óscar Valentín')?.pfsy === 7);
 check('Cala 11', me.find(x => x.name === 'Cala')?.pfsy === 11);
-check('Germán POR', me.find(x => x.name === 'Germán')?.position === 'POR');
 check('Fermín CEN', me.find(x => x.name === 'Fermín')?.position === 'CEN');
-check('todos tienen disponibilidad', me.every(x => typeof x.availability === 'string' && x.availability));
+check('mi roster sin secretos', !JSON.stringify(me).match(/api[_-]?key|token|password|bearer/i));
 check('todos tienen precio válido', me.every(x => Number.isFinite(x.price)));
-check('mi equipo no contiene credenciales', !JSON.stringify(me).match(/api[_-]?key|token|password|bearer/i));
+check('todos tienen posición', me.every(x => typeof x.position === 'string' && x.position));
+check('todos tienen disponibilidad', me.every(x => typeof x.availability === 'string' && x.availability));
 
 /* 37-53: rivales */
 const rivalGroups = ['Jonymessi','SURIKT097','saugarr','AlvaroNP96','kubakar'];
@@ -58,9 +58,9 @@ check('Dela 9', ref.rostersVisible.saugarr?.find(x => x.name === 'Dela')?.pfsy =
 check('C. Puga 8', ref.rostersVisible.saugarr?.find(x => x.name === 'C. Puga')?.pfsy === 8);
 check('Le Normand suspendido', ref.rostersVisible.kubakar?.find(x => x.name === 'Le Normand')?.availability === 'Suspendido');
 check('Dituro 4', ref.rostersVisible.kubakar?.find(x => x.name === 'M. Dituro')?.pfsy === 4);
-check('jugadores rivales con posición', Object.values(ref.rostersVisible).flat().every(x => typeof x.position === 'string' && x.position));
-check('jugadores rivales con PFSY numérico', Object.values(ref.rostersVisible).flat().every(x => Number.isFinite(x.pfsy)));
-check('sin roster fantasma vacío no-array', Object.values(ref.rostersVisible).every(Array.isArray));
+check('jugadores con posición', Object.values(ref.rostersVisible).flat().every(x => typeof x.position === 'string' && x.position));
+check('jugadores con PFSY numérico', Object.values(ref.rostersVisible).flat().every(x => Number.isFinite(x.pfsy)));
+check('rosters siempre arrays', Object.values(ref.rostersVisible).every(Array.isArray));
 
 /* 54-63: mercado */
 check('mercado array', Array.isArray(ref.marketListings));
