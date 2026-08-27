@@ -20,6 +20,7 @@ export const DEFAULTS = {
   apiFootballSeason: '2026',
 
   optaBaseUrl: '',
+  optaFixturesPath: '',
   optaCompetitionId: '',
 
   laligaSigninPolicy: 'B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN',
@@ -77,6 +78,7 @@ export function readConfig(env = process.env){
 
     optaToken: String(env.OPTA_API_TOKEN ?? ''),
     optaBaseUrl: String(env.OPTA_API_BASE_URL ?? DEFAULTS.optaBaseUrl).trim().replace(/\/+$/, ''),
+    optaFixturesPath: String(env.OPTA_FIXTURES_PATH ?? DEFAULTS.optaFixturesPath).trim(),
     optaCompetitionId: String(env.OPTA_LALIGA_COMPETITION_ID ?? DEFAULTS.optaCompetitionId).trim(),
 
     laligaAuthorizeUrl: String(env.LALIGA_AUTHORIZE_URL ?? '').trim(),
