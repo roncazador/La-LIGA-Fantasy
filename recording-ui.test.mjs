@@ -11,7 +11,6 @@ const index = fs.readFileSync('./index.html','utf8');
 const checks = [];
 const check = (name, ok) => checks.push([name, Boolean(ok)]);
 
-/* 1-20: snapshot/metadata */
 check('capturedAt presente', ref.capturedAt === '2026-08-27T11:32:00+02:00');
 check('snapshot no LIVE', ref.status === 'referencia_observada_no_live');
 check('competición presente', ref.competition === 'La Liga');
@@ -33,7 +32,6 @@ check('AlvaroNP96 52', ref.standings.find(x => x.manager === 'AlvaroNP96')?.pfsy
 check('kubakar 27', ref.standings.find(x => x.manager === 'kubakar')?.pfsy === 27);
 check('Akm90 27', ref.standings.find(x => x.manager === 'Akm90')?.pfsy === 27);
 
-/* 21-36: mi equipo */
 const me = ref.rostersVisible?.roncazador || [];
 check('mi roster es array', Array.isArray(me));
 check('mi roster tiene 7 visibles', me.length === 7);
@@ -47,7 +45,6 @@ check('todos tienen precio válido', me.every(x => Number.isFinite(x.price)));
 check('todos tienen posición', me.every(x => typeof x.position === 'string' && x.position));
 check('todos tienen disponibilidad', me.every(x => typeof x.availability === 'string' && x.availability));
 
-/* 37-53: rivales */
 const rivalGroups = ['Jonymessi','SURIKT097','saugarr','AlvaroNP96','kubakar'];
 for (const manager of rivalGroups) check(`roster ${manager} array`, Array.isArray(ref.rostersVisible?.[manager]));
 check('Aubameyang 20', ref.rostersVisible.Jonymessi?.find(x => x.name === 'Aubameyang')?.pfsy === 20);
@@ -62,7 +59,6 @@ check('jugadores con posición', Object.values(ref.rostersVisible).flat().every(
 check('jugadores con PFSY numérico', Object.values(ref.rostersVisible).flat().every(x => Number.isFinite(x.pfsy)));
 check('rosters siempre arrays', Object.values(ref.rostersVisible).every(Array.isArray));
 
-/* 54-63: mercado */
 check('mercado array', Array.isArray(ref.marketListings));
 check('3 anuncios observados', ref.marketListings.length === 3);
 check('anuncio 1 sin nombre inventado', ref.marketListings[0]?.player == null);
@@ -74,7 +70,6 @@ check('Juan Iglesias dudoso', ref.marketListings.find(x => x.player === 'Juan Ig
 check('anuncios con dueño', ref.marketListings.every(x => typeof x.owner === 'string' && x.owner));
 check('anuncios con precio', ref.marketListings.every(x => Number.isFinite(x.price)));
 
-/* 64-70: actividad */
 check('actividad array', Array.isArray(ref.recentActivity));
 check('actividad 21 entradas', ref.recentActivity.length === 21);
 check('actividad con fechas', ref.recentActivity.every(x => typeof x.date === 'string' && x.date));
@@ -83,8 +78,7 @@ check('Balde 25.001.999', ref.recentActivity.some(x => x.player === 'Álex Balde
 check('Balliu 999.309', ref.recentActivity.some(x => x.player === 'Balliu' && x.amount === 999309));
 check('Bartra 28.111.111', ref.recentActivity.some(x => x.player === 'Bartra' && x.amount === 28111111));
 
-/* 71-82: frontend */
-check('recording client carga JSON', recordingClient.includes("/recording-data-2026-08-27.json"));
+check('recording client carga JSON', recordingClient.includes('/recording-data-2026-08-27.json'));
 check('recording client normaliza snapshot', recordingClient.includes('normalizeSnapshot'));
 check('recording client dibuja mi equipo', recordingClient.includes('teamView'));
 check('recording client dibuja rivales', recordingClient.includes('rivalsView'));
@@ -97,7 +91,6 @@ check('calendar usa endpoint unificado', calendar.includes('/api/fixtures/next')
 check('calendar no-cache', calendar.includes("cache: 'no-store'"));
 check('data client mantiene dashboard LIVE', dataClient.includes('api/fantasy/dashboard'));
 
-/* 83-92: seguridad/compatibilidad */
 const secret = /(?:x-apisports-key|YOUR_API_KEY|token_en_claro|Bearer\s+[A-Za-z0-9._-]{20,}|apiFootballKey\s*[:=]\s*['"][A-Za-z0-9._-]{20,}['"])/i;
 check('recording client sin secretos', !secret.test(recordingClient));
 check('calendar sin secretos', !secret.test(calendar));
@@ -110,7 +103,6 @@ check('index navegación táctil', index.includes('overflow:auto'));
 check('recording client no contiene fetch de escritura', !recordingClient.match(/POST|PUT|PATCH|DELETE/i));
 check('modo solo lectura visible', index.includes('SOLO LECTURA'));
 
-/* 93-100: invariantes finales */
 check('todos los managers tienen rank', ref.standings.every(x => Number.isInteger(x.rank)));
 check('todos los managers tienen nombre', ref.standings.every(x => typeof x.manager === 'string' && x.manager));
 check('todos PFSY ranking numéricos', ref.standings.every(x => Number.isFinite(x.pfsy)));
@@ -120,6 +112,6 @@ check('snapshot tiene no puntuación', ref.eventsVisible.includes('No puntuació
 check('snapshot tiene blindaje', ref.eventsVisible.includes('Blindaje'));
 check('snapshot tiene nuevos miembros', ref.eventsVisible.includes('Nuevo miembro'));
 
-assert.equal(checks.length, 100, `Se esperaban 100 comprobaciones y hay ${checks.length}`);
+assert.equal(checks.length, 104, `Se esperaban 104 comprobaciones y hay ${checks.length}`);
 for (const [index, [label, ok]] of checks.entries()) assert.ok(ok, `UI-${String(index + 1).padStart(3,'0')}: ${label}`);
-console.log('✅ Recording/UI contract tests: 100/100 passed');
+console.log('✅ Recording/UI contract tests: 104/104 passed');
