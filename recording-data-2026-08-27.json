@@ -58,7 +58,7 @@
     ]
   },
   "marketListings": [
-    {"player":"Jonymessi","owner":"Jonymessi","pfsy":0,"value":3496065,"price":5000000,"status":"Alineable","remainingDays":2},
+    {"player":null,"owner":"Jonymessi","pfsy":null,"value":3496065,"price":5000000,"status":"Alineable","remainingDays":2,"note":"Nombre no legible en el fotograma."},
     {"player":"Isaac","owner":"saugarr","pfsy":13,"value":6665244,"price":6460286,"status":"Alineable","remainingDays":2},
     {"player":"Juan Iglesias","owner":"Jonymessi","pfsy":7,"value":12942787,"price":18000000,"status":"Dudoso","remainingDays":3}
   ],
@@ -85,5 +85,6 @@
     {"date":"17/08/2026","type":"Operación de mercado","manager":"kubakar","action":"compró","player":"Youssef","amount":595701},
     {"date":"17/08/2026","type":"Operación de mercado","manager":"Jonymessi","action":"compró","player":"C. Soler","amount":32202800}
   ],
-  "events": ["Operación de mercado","Recompensa","No puntuación","Blindaje","Nuevo miembro"]
+  "events": ["Operación de mercado","Recompensa","No puntuación","Blindaje","Nuevo miembro"],
+  "eventsVisible": ["Operación de mercado","Recompensa","No puntuación","Blindaje","Nuevo miembro"]
 }
