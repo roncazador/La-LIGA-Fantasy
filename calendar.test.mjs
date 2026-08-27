@@ -13,7 +13,6 @@ const check = (condition, message) => {
   assert.ok(condition, `${checks}. ${message}`);
 };
 
-/* BASE DE CALENDARIO OFICIAL DE RESPALDO */
 check(seed.season === '2026/27', 'semilla temporada 2026/27');
 check(seed.competition === 'LaLiga EA SPORTS', 'semilla identifica la competición');
 check(seed.source === 'LALIGA oficial', 'semilla identifica la fuente oficial');
@@ -35,7 +34,6 @@ check(seed.fixtures[10].home === 'CA Osasuna', 'lunes: Osasuna');
 check(seed.fixtures[11].away === 'Rayo Vallecano', 'lunes: Rayo');
 check(new Set(seed.fixtures.map(x => x.id)).size === seed.fixtures.length, 'IDs únicos');
 
-/* EXACTAMENTE 100 COMPROBACIONES DE LA CADENA DE INTERFAZ/DATOS */
 for (let i = 0; i < 20; i += 1) {
   const payload = { response: [{
     fixture: { id: 10000 + i, date: `2026-08-${28 + (i % 3)}T1${i % 10}:00:00+00:00`, status: { short: i % 2 ? 'NS' : 'FT' } },
@@ -53,7 +51,6 @@ for (let i = 0; i < 20; i += 1) {
 const interfaceChecksEnd = checks;
 assert.equal(interfaceChecksEnd - 20, 100, 'La cadena principal de calendario ejecuta exactamente 100 comprobaciones');
 
-/* REGRESIÓN VISUAL/INTERACTIVA */
 check(!dashboard.includes('source:\n          "football-data.org"'), 'dashboard no fuerza football-data.org');
 check(dashboard.includes('API-Football'), 'dashboard conoce API-Football');
 check(dashboard.includes('/api/fixtures/next'), 'dashboard llama al endpoint unificado');
@@ -62,9 +59,9 @@ check(dashboard.includes("cache: 'no-store'"), 'dashboard evita cache obsoleta')
 check(calendar.includes('/api/fixtures/next'), 'cliente calendario usa endpoint unificado');
 check(calendar.includes('official-fixtures-seed-2026-27.json'), 'cliente calendario usa semilla oficial');
 check(calendar.includes('LALIGA oficial (semilla verificada)'), 'semilla no se presenta como dato live');
-check(calendar.includes('calendarBusy') || calendar.includes('let busy'), 'peticiones concurrentes bloqueadas');
+check(calendar.includes('let busy = false'), 'peticiones concurrentes bloqueadas');
 check(calendar.includes('stopImmediatePropagation'), 'handler legacy interceptado');
-check(calendar.includes('Cargar desde proveedor'), 'control legacy localizado');
+check(calendar.includes('cargar desde proveedor'), 'selector del control legacy configurado');
 check(calendar.includes('Actualizar calendario'), 'refresco explícito disponible');
 check(calendar.includes('Europe/Madrid'), 'hora española');
 check(calendar.includes('sources'), 'fuentes coincidentes preservadas');
@@ -75,7 +72,6 @@ check(calendar.includes('unknownCount'), 'contador N/D actualizado');
 check(!calendar.includes('0 partidos cargados desde football-data.org'), 'texto erróneo eliminado');
 check(!dashboard.includes('El proveedor externo no está disponible'), 'mensaje genérico antiguo eliminado');
 
-/* CONTRATO DE INTERFAZ */
 const ids = ['fixtures', 'fixturesStatus', 'officialCount', 'probableCount', 'unknownCount', 'loadFixtures'];
 for (const id of ids) check(index.includes(`id="${id}"`), `interfaz conserva #${id}`);
 check(index.includes('Próximos partidos'), 'título de calendario presente');
@@ -97,7 +93,6 @@ check(dashboard.includes('PRINCIPAL · LISTO'), 'API-Football marcada como princ
 check(dashboard.includes('RESPALDO · LISTO'), 'proveedores secundarios como respaldo');
 check(dashboard.includes("fetch('/calendar-client.js'"), 'cliente de calendario cargado de forma robusta');
 
-/* SEGURIDAD Y DATOS LIMPIOS */
 check(normalizeApiFootball({ response: [] }).length === 0, 'payload vacío no rompe');
 check(normalizeApiFootball({}).length === 0, 'payload sin response no rompe');
 check(normalizeApiFootball({ response: [null, {}] }).length === 2, 'payload parcial mantiene contrato');
@@ -116,5 +111,11 @@ check(index.includes('overflow:auto'), 'navegación móvil scrollable');
 check(calendar.includes("new Intl.DateTimeFormat('es-ES'"), 'formato español');
 check(calendar.includes('response.ok'), 'respuesta HTTP validada');
 check(calendar.includes('finally'), 'estado ocupado liberado');
+check(calendar.includes('videoReference'), 'snapshot del vídeo integrado');
+check(calendar.includes('/video-reference-snapshot-2026-08-27.json'), 'fuente del vídeo declarada');
+check(calendar.includes('No se presenta como dato en tiempo real'), 'snapshot etiquetado como no live');
+check(seed.fixtures.some(x => x.home === 'FC Barcelona' && x.away === 'Rayo Vallecano'), 'calendario contiene Barça-Rayo');
+check(seed.fixtures.some(x => x.home === 'Real Madrid' && x.away === 'Málaga CF'), 'calendario contiene Madrid-Málaga');
+check(seed.fixtures.some(x => x.home === 'Sevilla FC' && x.away === 'Atlético de Madrid'), 'calendario contiene Sevilla-Atlético');
 
-console.log(`✅ Calendar/interface tests: 100/100 checks principales + ${checks - 120} regresiones adicionales = ${checks} comprobaciones totales`);
+console.log(`✅ Calendar/interface tests: ${interfaceChecksEnd - 20}/100 checks principales + ${checks - interfaceChecksEnd} regresiones = ${checks} comprobaciones totales`);
