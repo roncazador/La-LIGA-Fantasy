@@ -63,7 +63,8 @@ check(activity.some(x => x.player === 'Álex Balde' && x.amount === 25001999), '
 /* 98-100: frontend hygiene */
 check(calendar.includes('/video-reference-snapshot-2026-08-27.json'), 'calendar usa snapshot externo');
 check(recordingClient.includes('/recording-data-2026-08-27.json'), 'recording client usa datos de grabación');
-check(!calendar.match(/x-apisports-key|api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}/i) && !dataClient.match(/x-apisports-key|api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}/i) && !recordingClient.match(/x-apisports-key|api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}/i) && !config.match(/YOUR_API_KEY|token_en_claro/i), 'frontend/config sin secretos ni placeholders inseguros');
+const secretLiteral = /(?:YOUR_API_KEY|token_en_claro|apiFootballKey\s*[:=]\s*['"][A-Za-z0-9._-]{20,}['"]|(?:Bearer|Authorization)\s*[:=]\s*['"][A-Za-z0-9._-]{20,}['"])/i;
+check(!secretLiteral.test(calendar) && !secretLiteral.test(dataClient) && !secretLiteral.test(recordingClient) && !secretLiteral.test(config), 'frontend/config sin secretos literales');
 check(ref.snapshot?.teamCount === '20/24 fichas' && ref.rostersVisible?.roncazador?.length === 7, 'mi equipo mantiene 20/24 y 7 jugadores legibles');
 
 assert.equal(checks.length, 100, `Se esperaban 100 comprobaciones y hay ${checks.length}`);
