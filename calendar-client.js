@@ -126,6 +126,36 @@
     return normalizeSeed(await response.json());
   }
 
+  async function renderVideoReference() {
+    if (document.getElementById('videoReference')) return;
+    try {
+      const response = await fetch('/video-reference-snapshot-2026-08-27.json', { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json();
+      const anchor = document.getElementById('fixtures') || document.getElementById('fixturesStatus');
+      if (!anchor?.parentElement) return;
+
+      const card = document.createElement('div');
+      card.id = 'videoReference';
+      card.style.cssText = 'margin:12px 0;padding:12px;border:1px solid #3a4050;border-radius:12px;background:#10151f;';
+
+      const rows = (data.standingsVisible || []).map(item => `
+        <div style="display:grid;grid-template-columns:24px 1fr auto auto;gap:8px;padding:6px 0;border-bottom:1px solid #242b39;font-size:10px;">
+          <b>${esc(item.rank)}</b><span>${esc(item.manager)}</span><span>${esc(item.pfsy)} PFSY</span><span>${new Intl.NumberFormat('es-ES').format(item.teamValue)} €</span>
+        </div>`).join('');
+
+      card.innerHTML = `
+        <div style="font-weight:800;font-size:12px;">📱 Referencia real de la app oficial</div>
+        <div style="margin-top:4px;font-size:10px;opacity:.72;">Snapshot observado en la grabación del 27/08/2026. No se presenta como dato en tiempo real.</div>
+        <div style="margin-top:10px;font-size:10px;"><b>Plantilla visible:</b> ${esc(data.snapshot?.teamCount || 'N/D')} · <b>Jornada:</b> ${esc(data.snapshot?.matchdayAtStart || 'N/D')} · <b>Valor de equipo:</b> ${data.snapshot?.teamValue ? new Intl.NumberFormat('es-ES').format(data.snapshot.teamValue) + ' €' : 'N/D'} · <b>Recompensa:</b> ${data.snapshot?.dailyReward ? new Intl.NumberFormat('es-ES').format(data.snapshot.dailyReward) + ' €' : 'N/D'}</div>
+        <div style="margin-top:9px;"><b style="font-size:10px;">Clasificación observada</b>${rows}</div>
+      `;
+      anchor.parentElement.insertBefore(card, anchor);
+    } catch {
+      // Los datos de referencia nunca deben impedir el calendario.
+    }
+  }
+
   async function loadFixtures() {
     if (busy) return;
     busy = true;
@@ -176,7 +206,7 @@
       if (state) state.lastSync = new Date().toISOString();
       if (typeof window.saveState === 'function') window.saveState();
       render(futureSeed, { sourceLabel: 'LALIGA oficial (semilla verificada)' });
-      setStatus(`🟡 API-Football no devolvió partidos; se muestra una semilla oficial verificada para evitar un calendario vacío.`);
+      setStatus('🟡 API-Football no devolvió partidos; se muestra una semilla oficial verificada para evitar un calendario vacío.');
     } catch (error) {
       try {
         const seed = await loadSeed();
@@ -222,6 +252,7 @@
     interceptFixtureButtons();
     ensureRefreshButton();
     void loadFixtures();
+    void renderVideoReference();
   }
 
   if (document.readyState === 'loading') {
