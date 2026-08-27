@@ -7,8 +7,7 @@
   let loading = false;
 
   // Snapshot de lectura obtenido de la grabación de pantalla aportada el 27/08/2026.
-  // Solo se incluyen datos claramente visibles; cuando un importe/nombre no es legible,
-  // se conserva como null y se marca la observación para no inventar información.
+  // Solo se incluyen datos claramente visibles; campos no legibles se mantienen como null.
   const RECORDING_SNAPSHOT = {
     source: {
       file: 'ScreenRecording_08-27-2026 11-32-03_1.mp4',
@@ -106,29 +105,55 @@
       { date: '2026-08-17', type: 'market', actor: 'FarlaAcademy', action: 'comprado', player: 'Koke', destination: 'LALIGA', amount: 18083013 },
       { date: '2026-08-17', type: 'market', actor: 'kubakar', action: 'comprado', player: 'Youssef', destination: 'LALIGA', amount: 595701 },
       { date: '2026-08-17', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'C. Soler', destination: 'LALIGA', amount: 32202800 },
-      { date: '2026-08-10', type: 'market', actor: 'Jonymessi', action: 'vendido', player: 'J. Musso', destination: 'LALIGA', amount: 5372450 },
-      { date: '2026-08-10', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Cardona', destination: 'LALIGA', amount: 5210690 },
-      { date: '2026-08-10', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Óscar Valentín', destination: 'LALIGA', amount: 3179963 },
-      { date: '2026-08-10', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Niño', destination: 'LALIGA', amount: 2823497 },
-      { date: '2026-08-10', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Foulquier', destination: 'LALIGA', amount: 2607682 },
-      { date: '2026-08-10', type: 'market', actor: '⚽saugarrr 😈', action: 'comprado', player: 'Adama', destination: 'LALIGA', amount: 536412 },
+      { date: '2026-08-16', type: 'market', actor: 'kubakar', action: 'comprado', player: 'Roberto', destination: 'FarlaAcademy', amount: 15658090 },
+      { date: '2026-08-16', type: 'market', actor: 'FarlaAcademy', action: 'comprado', player: 'M. Casadó', destination: 'kubakar', amount: 2199177 },
+      { date: '2026-08-16', type: 'market', actor: 'AlvaroNP96', action: 'comprado', player: 'Junior', destination: 'LALIGA', amount: 6888888 },
+      { date: '2026-08-16', type: 'market', actor: 'SURIKTO97', action: 'comprado', player: 'Turrientes', destination: 'LALIGA', amount: 7963789 },
+      { date: '2026-08-16', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Fidalgo', destination: 'LALIGA', amount: 2884878 },
+      { date: '2026-08-16', type: 'market', actor: 'roncazador', action: 'comprado', player: 'B. Sangaré', destination: 'LALIGA', amount: 3783066 },
+      { date: '2026-08-16', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Protesoni', destination: 'LALIGA', amount: 2815445 },
+      { date: '2026-08-13', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Martim Neto', destination: 'LALIGA', amount: 2222229 },
+      { date: '2026-08-13', type: 'market', actor: '⚽saugarrr 😈', action: 'comprado', player: 'Carmona', destination: 'LALIGA', amount: 4378551 },
+      { date: '2026-08-13', type: 'market', actor: 'roncazador', action: 'vendido', player: 'Ruggeri', destination: 'LALIGA', amount: 6159940 },
+      { date: '2026-08-13', type: 'market', actor: 'roncazador', action: 'vendido', player: 'Ionut Radu', destination: 'LALIGA', amount: 43547081 },
+      { date: '2026-08-12', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Paredes', destination: 'LALIGA', amount: 4709638 },
+      { date: '2026-08-12', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Óscar Valentín', destination: 'LALIGA', amount: 3520031 },
+      { date: '2026-08-12', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Konaté', destination: 'LALIGA', amount: 47904332 },
+      { date: '2026-08-10', type: 'market', actor: '⚽saugarrr 😈', action: 'comprado', player: 'Hector Fort', destination: 'LALIGA', amount: 3882037 },
+      { date: '2026-08-10', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'M. Román', destination: 'LALIGA', amount: 5143108 },
+      { date: '2026-08-10', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Hjlmand', destination: 'LALIGA', amount: 33433073 },
+      { date: '2026-08-10', type: 'market', actor: 'Jonymessi', action: 'vendido', player: 'Laporte', destination: 'LALIGA', amount: 61187627 },
+      { date: '2026-08-09', type: 'market', actor: 'SURIKTO97', action: 'comprado', player: 'A. Abqar', destination: 'LALIGA', amount: 6552253 },
+      { date: '2026-08-09', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Eriksson', destination: 'LALIGA', amount: 2879700 },
+      { date: '2026-08-09', type: 'market', actor: 'FarlaAcademy', action: 'comprado', player: 'Barrios', destination: 'LALIGA', amount: 45062060 },
+      { date: '2026-08-07', type: 'market', actor: 'AlvaroNP96', action: 'vendido', player: 'Almada', destination: 'LALIGA', amount: 5692640 },
+      { date: '2026-08-06', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Sivera', destination: 'LALIGA', amount: 27201132 },
+      { date: '2026-08-06', type: 'market', actor: 'roncazador', action: 'comprado', player: 'M. Aguado', destination: 'LALIGA', amount: 3585026 },
+      { date: '2026-08-06', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Yeray', destination: 'LALIGA', amount: 4024417 },
+      { date: '2026-08-05', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Marc Bernal', destination: 'LALIGA', amount: 4163309 },
+      { date: '2026-08-05', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Cala', destination: 'LALIGA', amount: 3350156 },
+      { date: '2026-08-05', type: 'market', actor: 'FarlaAcademy', action: 'comprado', player: 'Hanko', destination: 'LALIGA', amount: 36589519 },
+      { date: '2026-08-03', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Eriksson', destination: 'LALIGA', amount: 2623180 },
+      { date: '2026-08-03', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Pablo', destination: 'LALIGA', amount: 478345 },
       { date: '2026-08-03', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Manu Sánchez', destination: 'LALIGA', amount: 5284994 },
       { date: '2026-08-03', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Balliu', destination: 'LALIGA', amount: 825642 },
       { date: '2026-08-03', type: 'market', actor: 'FarlaAcademy', action: 'comprado', player: 'Leo Román', destination: 'LALIGA', amount: 30000556 },
-      { date: '2026-08-02', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Germán V.', destination: 'FarlaAcademy', amount: 24902715 },
-      { date: '2026-08-02', type: 'market', actor: 'roncazador', action: 'vendido', player: 'Hugo Duro', destination: 'LALIGA', amount: 9444898 },
-      { date: '2026-08-02', type: 'market', actor: 'roncazador', action: 'vendido', player: 'Guruzeta', destination: 'LALIGA', amount: 12327616 },
-      { date: '2026-08-16', type: 'market', actor: 'kubakar', action: 'comprado', player: 'Roberto', destination: 'FarlaAcademy', amount: 15658009 },
-      { date: '2026-08-16', type: 'market', actor: 'kubakar', action: 'comprado', player: 'M. Casadó', destination: 'LALIGA', amount: 2199177 },
-      { date: '2026-08-16', type: 'market', actor: 'SURIKTO97', action: 'comprado', player: 'Torrientes', destination: 'LALIGA', amount: 7963780 },
-      { date: '2026-08-16', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Fidalgo', destination: 'LALIGA', amount: 2884878 },
-      { date: '2026-08-13', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Martim Neto', destination: 'LALIGA', amount: 2222299 },
-      { date: '2026-08-13', type: 'market', actor: '⚽saugarrr 😈', action: 'comprado', player: 'Carmona', destination: 'LALIGA', amount: 4378551 },
-      { date: '2026-08-13', type: 'market', actor: 'roncazador', action: 'vendido', player: 'Ionut Radu', destination: 'LALIGA', amount: 4547081 },
-      { date: '2026-08-12', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Paredes', destination: 'LALIGA', amount: 4709638 },
-      { date: '2026-08-12', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Óscar Valentín', destination: 'LALIGA', amount: 2530046 },
-      { date: '2026-08-12', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Konaté', destination: 'LALIGA', amount: 4790432 },
-      { date: '2026-08-30', type: 'market', actor: 'roncazador', action: 'vendido', player: 'Ionut Radu', destination: 'LALIGA', amount: 31898939, note: 'Fecha que aparece en una pantalla intermedia; conservar como observación de grabación.' },
+      { date: '2026-08-02', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Laporte', destination: 'LALIGA', amount: 54293093 },
+      { date: '2026-08-02', type: 'market', actor: 'Jonymessi', action: 'comprado', player: 'Abel Bretones', destination: 'LALIGA', amount: 2250615 },
+      { date: '2026-08-02', type: 'market', actor: 'FarlaAcademy', action: 'comprado', player: 'Roberto', destination: 'LALIGA', amount: 8800000 },
+      { date: '2026-08-02', type: 'market', actor: 'roncazador', action: 'vendido', player: 'M. Dituro', destination: 'LALIGA', amount: 6132145 },
+      { date: '2026-08-01', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'M. Aguado', destination: 'LALIGA', amount: 3809841 },
+      { date: '2026-08-01', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Olasagasti', destination: 'LALIGA', amount: 3701158 },
+      { date: '2026-08-01', type: 'market', actor: 'FarlaAcademy', action: 'comprado', player: 'Gueye', destination: 'LALIGA', amount: 43077297 },
+      { date: '2026-07-30', type: 'market', actor: 'FarlaAcademy', action: 'vendido', player: 'Andrés Martín', destination: 'LALIGA', amount: 25341637 },
+      { date: '2026-07-30', type: 'market', actor: 'SURIKTO97', action: 'vendido', player: 'V. Rosier', destination: 'LALIGA', amount: 8453817 },
+      { date: '2026-07-30', type: 'market', actor: 'SURIKTO97', action: 'vendido', player: 'Sadiq', destination: 'LALIGA', amount: 9497550 },
+      { date: '2026-07-30', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Ionut Radu', destination: 'LALIGA', amount: 31898939 },
+      { date: '2026-07-30', type: 'market', actor: 'SURIKTO97', action: 'comprado', player: 'Valverde', destination: 'LALIGA', amount: 78291362 },
+      { date: '2026-07-30', type: 'market', actor: 'roncazador', action: 'comprado', player: 'Mikautadze', destination: 'LALIGA', amount: 60000002 },
+      { date: '2026-07-30', type: 'market', actor: 'FarlaAcademy', action: 'comprado', player: 'Julio Díaz', destination: 'SURIKTO97', amount: 3000000 },
+      { date: '2026-07-29', type: 'member', actor: 'Piotrekatletico', action: 'se ha unido a la liga' },
+      { date: '2026-07-29', type: 'member', actor: 'FarlaAcademy', action: 'se ha unido a la liga' },
       { date: '2026-07-29', type: 'member', actor: 'Akm90', action: 'se ha unido a la liga' },
       { date: '2026-07-29', type: 'member', actor: '⚽saugarrr 😈', action: 'se ha unido a la liga' },
       { date: '2026-07-29', type: 'member', actor: 'Jonymessi', action: 'se ha unido a la liga' },
@@ -140,9 +165,9 @@
       'La grabación muestra el filtro Total y una recompensa diaria de 100.000 € disponible.',
       'El equipo de roncazador aparece con 20/24 fichas y valor de equipo 269.039.595 €.',
       'La clasificación visible sitúa a roncazador 1.º con 109 PFSY.',
-      'La pantalla de mercado muestra un saldo/importe de 40.542.121 €.',
-      'La actividad visible incluye operaciones de mercado desde el 29/07/2026 y altas de miembros en la liga.',
-      'Algunos registros están parcialmente cubiertos por overlays/anuncios o contienen texto no completamente legible; esos campos no se inventan.'
+      'La pantalla de mercado muestra un importe de 40.542.121 €.',
+      'La actividad visible abarca altas de miembros y operaciones desde el 29/07/2026 hasta el 24/08/2026.',
+      'Algunos registros originales quedaron parcialmente cubiertos; esos campos no se inventan.'
     ]
   };
 
@@ -155,7 +180,6 @@
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
-
   const num = value => Number.isFinite(Number(value)) ? Number(value) : null;
   const cell = value => value === null || value === undefined || value === '' ? '—' : esc(value);
   const eur = value => value === null || value === undefined ? '—' : new Intl.NumberFormat('es-ES').format(value) + ' €';
@@ -163,16 +187,12 @@
   function ensurePanel() {
     let panel = document.getElementById('realDataPanel');
     if (panel) return panel;
-
     panel = document.createElement('section');
     panel.id = 'realDataPanel';
     panel.className = 'card';
     panel.innerHTML = `
       <div class="flex" style="justify-content:space-between">
-        <div>
-          <h2 style="margin-bottom:4px">📊 Datos reales de LaLiga</h2>
-          <div id="realDataMeta" class="tiny">API-Football · temporada 2026 · + snapshot de grabación</div>
-        </div>
+        <div><h2 style="margin-bottom:4px">📊 Datos reales de LaLiga</h2><div id="realDataMeta" class="tiny">API-Football · temporada 2026 · + snapshot de grabación</div></div>
         <button id="realDataRefresh" class="primary" type="button">↻ Actualizar</button>
       </div>
       <div class="nav" id="realDataTabs" style="position:static;margin:8px 0 0">
@@ -185,30 +205,18 @@
       <div id="realDataStatus" class="note" style="margin:8px 0">Preparando datos…</div>
       <div id="realDataBody"></div>
     `;
-
     const anchor = document.querySelector('.app')?.firstElementChild || document.body.firstElementChild;
-    if (anchor?.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling);
-    else document.body.prepend(panel);
-
+    if (anchor?.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling); else document.body.prepend(panel);
     panel.querySelectorAll('[data-view]').forEach(button => {
       button.addEventListener('click', () => {
         panel.querySelectorAll('[data-view]').forEach(x => x.classList.toggle('active', x === button));
-        if (button.dataset.view === 'recording') {
-          status(`${RECORDING_SNAPSHOT.ranking.length} managers · ${RECORDING_SNAPSHOT.activity.length} registros de actividad · snapshot de la grabación`, true);
-          renderView('recording');
-        } else {
-          renderView(button.dataset.view);
-          loadCurrentView(true);
-        }
+        if (button.dataset.view === 'recording') { status(`${RECORDING_SNAPSHOT.ranking.length} managers · ${RECORDING_SNAPSHOT.activity.length} registros del snapshot`, true); renderView('recording'); }
+        else { renderView(button.dataset.view); loadCurrentView(true); }
       });
     });
     panel.querySelector('#realDataRefresh').addEventListener('click', () => {
       const active = document.querySelector('#realDataTabs [data-view].active')?.dataset.view || 'teams';
-      if (active === 'recording') {
-        status('Snapshot de grabación ya incorporado; no requiere consulta externa.', true);
-        renderView('recording');
-        return;
-      }
+      if (active === 'recording') { status('Snapshot de grabación ya incorporado; no requiere consulta externa.', true); renderView('recording'); return; }
       loadCurrentView(true);
     });
     return panel;
@@ -223,72 +231,40 @@
     const rows = state.teams;
     if (!rows.length) return '<div class="empty">No hay equipos reales disponibles.</div>';
     return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">${rows.map(team => `
-      <div class="player" style="padding:10px;background:#0f131c;border:1px solid #2a3141;border-radius:10px">
-        <div class="flex">
-          ${team.logo ? `<img src="${esc(team.logo)}" alt="" width="28" height="28" style="object-fit:contain" loading="lazy">` : ''}
-          <div><div class="name">${esc(team.name)}</div><div class="tiny">${cell(team.city)} · ${cell(team.venue)}</div></div>
-        </div>
-      </div>`).join('')}</div>`;
+      <div class="player" style="padding:10px;background:#0f131c;border:1px solid #2a3141;border-radius:10px"><div class="flex">${team.logo ? `<img src="${esc(team.logo)}" alt="" width="28" height="28" style="object-fit:contain" loading="lazy">` : ''}<div><div class="name">${esc(team.name)}</div><div class="tiny">${cell(team.city)} · ${cell(team.venue)}</div></div></div></div>`).join('')}</div>`;
   }
 
   function renderPlayers() {
     const rows = state.players;
     if (!rows.length) return '<div class="empty">No hay jugadores cargados.</div>';
-    const html = `<div style="overflow:auto"><table><thead><tr><th>Jugador</th><th>Equipo</th><th>Pos.</th><th>Min.</th><th>G/A</th><th>Rating</th></tr></thead><tbody>${rows.map(p => `
-      <tr><td><b>${esc(p.name)}</b></td><td>${cell(p.team)}</td><td>${cell(p.position)}</td><td>${cell(p.minutes)}</td><td>${cell(p.goals)}/${cell(p.assists)}</td><td>${p.rating === null ? '—' : p.rating.toFixed(2)}</td></tr>`).join('')}</tbody></table></div>
-      <div class="flex" style="margin-top:8px"><button id="prevPlayers" type="button" ${playerPage <= 1 ? 'disabled' : ''}>← Anterior</button><span class="tiny">Página ${playerPage}/${playerTotalPages}</span><button id="nextPlayers" type="button" ${playerPage >= playerTotalPages ? 'disabled' : ''}>Siguiente →</button></div>`;
-    return html;
+    return `<div style="overflow:auto"><table><thead><tr><th>Jugador</th><th>Equipo</th><th>Pos.</th><th>Min.</th><th>G/A</th><th>Rating</th></tr></thead><tbody>${rows.map(p => `<tr><td><b>${esc(p.name)}</b></td><td>${cell(p.team)}</td><td>${cell(p.position)}</td><td>${cell(p.minutes)}</td><td>${cell(p.goals)}/${cell(p.assists)}</td><td>${p.rating === null ? '—' : p.rating.toFixed(2)}</td></tr>`).join('')}</tbody></table></div><div class="flex" style="margin-top:8px"><button id="prevPlayers" type="button" ${playerPage <= 1 ? 'disabled' : ''}>← Anterior</button><span class="tiny">Página ${playerPage}/${playerTotalPages}</span><button id="nextPlayers" type="button" ${playerPage >= playerTotalPages ? 'disabled' : ''}>Siguiente →</button></div>`;
   }
 
   function renderStandings() {
     const rows = state.standings.slice().sort((a,b) => (num(a.rank) ?? 999) - (num(b.rank) ?? 999));
     if (!rows.length) return '<div class="empty">La clasificación todavía no está disponible.</div>';
-    return `<div style="overflow:auto"><table><thead><tr><th>#</th><th>Equipo</th><th>PTS</th><th>PJ</th><th>DG</th><th>Forma</th></tr></thead><tbody>${rows.map(r => `
-      <tr><td>${cell(r.rank)}</td><td><b>${esc(r.team)}</b></td><td>${cell(r.points)}</td><td>${cell(r.played)}</td><td>${cell(r.goalDiff)}</td><td>${cell(r.form)}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<div style="overflow:auto"><table><thead><tr><th>#</th><th>Equipo</th><th>PTS</th><th>PJ</th><th>DG</th><th>Forma</th></tr></thead><tbody>${rows.map(r => `<tr><td>${cell(r.rank)}</td><td><b>${esc(r.team)}</b></td><td>${cell(r.points)}</td><td>${cell(r.played)}</td><td>${cell(r.goalDiff)}</td><td>${cell(r.form)}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function renderInjuries() {
     const rows = state.injuries;
     if (!rows.length) return '<div class="empty">No hay lesiones comunicadas por el proveedor para esta consulta.</div>';
-    return `<div>${rows.slice(0, 100).map(r => `
-      <div class="player"><div><div class="name">${esc(r.player)}</div><div class="tiny">${cell(r.team)} · ${cell(r.type)} · ${cell(r.reason)}</div></div><span class="pill red">RIESGO</span></div>`).join('')}</div>`;
+    return `<div>${rows.slice(0, 100).map(r => `<div class="player"><div><div class="name">${esc(r.player)}</div><div class="tiny">${cell(r.team)} · ${cell(r.type)} · ${cell(r.reason)}</div></div><span class="pill red">RIESGO</span></div>`).join('')}</div>`;
   }
 
   function renderRecording() {
     const snap = RECORDING_SNAPSHOT;
-    const manager = snap.manager;
     const rankingRows = snap.ranking.map(r => `<tr><td>${r.rank}</td><td><b>${esc(r.manager)}</b></td><td>${r.pfsY}</td><td>${eur(r.teamValue)}</td></tr>`).join('');
-    const squadBlocks = Object.entries(snap.squads).map(([owner, players]) => `
-      <div class="card" style="margin:0">
-        <div class="flex" style="justify-content:space-between"><h3 style="margin:0">${esc(owner)}</h3><span class="pill">${players.length} visibles</span></div>
-        <div style="overflow:auto;margin-top:8px"><table><thead><tr><th>Jugador</th><th>Pos.</th><th>PFSY</th><th>Media</th><th>Valor</th><th>Estado</th></tr></thead><tbody>
-          ${players.map(p => `<tr><td><b>${esc(p.name)}</b></td><td>${cell(p.pos)}</td><td>${cell(p.pfsY)}</td><td>${cell(p.average)}</td><td>${eur(p.value)}</td><td>${cell(p.status)}${p.lock != null ? ` · ${eur(p.lock)}` : p.lockText ? ` · ${esc(p.lockText)}` : ''}</td></tr>`).join('')}
-        </tbody></table></div>
-      </div>`).join('');
+    const squadBlocks = Object.entries(snap.squads).map(([owner, players]) => `<div class="card" style="margin:0"><div class="flex" style="justify-content:space-between"><h3 style="margin:0">${esc(owner)}</h3><span class="pill">${players.length} visibles</span></div><div style="overflow:auto;margin-top:8px"><table><thead><tr><th>Jugador</th><th>Pos.</th><th>PFSY</th><th>Media</th><th>Valor</th><th>Estado</th></tr></thead><tbody>${players.map(p => `<tr><td><b>${esc(p.name)}</b></td><td>${cell(p.pos)}</td><td>${cell(p.pfsY)}</td><td>${cell(p.average)}</td><td>${eur(p.value)}</td><td>${cell(p.status)}${p.lock != null ? ` · ${eur(p.lock)}` : p.lockText ? ` · ${esc(p.lockText)}` : ''}</td></tr>`).join('')}</tbody></table></div></div>`).join('');
     const marketRows = snap.market.visible.map(m => `<tr><td><b>${cell(m.name)}</b></td><td>${cell(m.pos)}</td><td>${cell(m.owner)}</td><td>${cell(m.pfsY)}</td><td>${eur(m.value)}</td><td>${eur(m.price)}</td><td>${cell(m.status)}</td><td>${cell(m.expires)}</td></tr>`).join('');
     const activityRows = snap.activity.map(a => `<tr><td>${esc(a.date)}</td><td>${esc(a.type)}</td><td><b>${esc(a.actor)}</b></td><td>${esc(a.action)}</td><td>${cell(a.player)}</td><td>${cell(a.destination)}</td><td>${a.amount == null ? '—' : eur(a.amount)}</td></tr>`).join('');
-    return `
-      <div class="grid3">
-        <div class="card"><div class="label">Manager</div><div class="value">${esc(manager.username)}</div><div class="tiny">#1 · ${manager.pfsY} PFSY</div></div>
-        <div class="card"><div class="label">Valor equipo</div><div class="value blue">${eur(manager.teamValue)}</div><div class="tiny">${esc(manager.squadSize)}</div></div>
-        <div class="card"><div class="label">Recompensa</div><div class="value yellow">${eur(snap.league.reward)}</div><div class="tiny">Disponible · inicio jornada 3: ${esc(snap.league.currentWeekStart)}</div></div>
-      </div>
-      <div class="card"><h3>🏆 Clasificación observada</h3><div style="overflow:auto"><table><thead><tr><th>#</th><th>Manager</th><th>PFSY</th><th>Valor</th></tr></thead><tbody>${rankingRows}</tbody></table></div></div>
-      <div class="card"><h3>👥 Plantillas observadas</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px">${squadBlocks}</div></div>
-      <div class="card"><h3>💰 Mercado observado</h3><div class="source">Importe visible en pantalla: <b>${eur(snap.market.marketBalance)}</b></div><div style="overflow:auto;margin-top:8px"><table><thead><tr><th>Jugador</th><th>Pos.</th><th>Propietario</th><th>PFSY</th><th>Valor</th><th>Precio</th><th>Estado</th><th>Caduca</th></tr></thead><tbody>${marketRows}</tbody></table></div></div>
-      <div class="card"><h3>🧾 Actividad observada</h3><div style="overflow:auto"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Manager</th><th>Acción</th><th>Jugador</th><th>Destino</th><th>Importe</th></tr></thead><tbody>${activityRows}</tbody></table></div></div>
-      <div class="alert"><b>Fuente:</b> ${esc(snap.source.file)} · ${snap.source.duration_seconds}s. ${esc(snap.league.displayFilter)} · datos derivados solo de lo visible en la grabación. Los campos no legibles se mantienen como “—”.</div>
-    `;
+    return `<div class="grid3"><div class="card"><div class="label">Manager</div><div class="value">${esc(snap.manager.username)}</div><div class="tiny">#1 · ${snap.manager.pfsY} PFSY</div></div><div class="card"><div class="label">Valor equipo</div><div class="value blue">${eur(snap.manager.teamValue)}</div><div class="tiny">${esc(snap.manager.squadSize)}</div></div><div class="card"><div class="label">Recompensa</div><div class="value yellow">${eur(snap.league.reward)}</div><div class="tiny">Disponible · inicio jornada 3: ${esc(snap.league.currentWeekStart)}</div></div></div><div class="card"><h3>🏆 Clasificación observada</h3><div style="overflow:auto"><table><thead><tr><th>#</th><th>Manager</th><th>PFSY</th><th>Valor</th></tr></thead><tbody>${rankingRows}</tbody></table></div></div><div class="card"><h3>👥 Plantillas observadas</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px">${squadBlocks}</div></div><div class="card"><h3>💰 Mercado observado</h3><div class="source">Importe visible en pantalla: <b>${eur(snap.market.marketBalance)}</b></div><div style="overflow:auto;margin-top:8px"><table><thead><tr><th>Jugador</th><th>Pos.</th><th>Propietario</th><th>PFSY</th><th>Valor</th><th>Precio</th><th>Estado</th><th>Caduca</th></tr></thead><tbody>${marketRows}</tbody></table></div></div><div class="card"><h3>🧾 Actividad observada</h3><div style="overflow:auto"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Manager</th><th>Acción</th><th>Jugador</th><th>Destino</th><th>Importe</th></tr></thead><tbody>${activityRows}</tbody></table></div></div><div class="alert"><b>Fuente:</b> ${esc(snap.source.file)} · ${snap.source.duration_seconds}s. Datos derivados solo de lo visible en la grabación. Los campos no legibles se mantienen como “—”.</div>`;
   }
 
   function renderView(view) {
     const body = document.getElementById('realDataBody');
     if (!body) return;
-    body.innerHTML = view === 'players' ? renderPlayers()
-      : view === 'standings' ? renderStandings()
-      : view === 'injuries' ? renderInjuries()
-      : view === 'recording' ? renderRecording()
-      : renderTeams();
+    body.innerHTML = view === 'players' ? renderPlayers() : view === 'standings' ? renderStandings() : view === 'injuries' ? renderInjuries() : view === 'recording' ? renderRecording() : renderTeams();
     body.querySelector('#prevPlayers')?.addEventListener('click', () => { playerPage -= 1; loadCurrentView(true); });
     body.querySelector('#nextPlayers')?.addEventListener('click', () => { playerPage += 1; loadCurrentView(true); });
   }
@@ -296,11 +272,7 @@
   async function loadCurrentView(force = false) {
     if (loading && !force) return;
     const active = document.querySelector('#realDataTabs [data-view].active')?.dataset.view || 'teams';
-    if (active === 'recording') {
-      status(`${RECORDING_SNAPSHOT.ranking.length} managers · snapshot local de la grabación`, true);
-      renderView('recording');
-      return;
-    }
+    if (active === 'recording') { status(`${RECORDING_SNAPSHOT.ranking.length} managers · ${RECORDING_SNAPSHOT.activity.length} registros del snapshot`, true); renderView('recording'); return; }
     loading = true;
     const suffix = active === 'players' ? `?page=${playerPage}` : '';
     status(`Consultando ${active === 'teams' ? 'equipos' : active === 'players' ? 'jugadores' : active === 'standings' ? 'clasificación' : 'lesiones'}…`);
@@ -313,22 +285,14 @@
       if (active === 'standings') state.standings = data.standings || [];
       if (active === 'injuries') state.injuries = data.injuries || [];
       const count = active === 'teams' ? state.teams.length : active === 'players' ? state.players.length : active === 'standings' ? state.standings.length : state.injuries.length;
-      const source = data.provider || 'API-Football';
-      status(`${count} registros recibidos · fuente: ${source}`);
+      status(`${count} registros recibidos · fuente: ${data.provider || 'API-Football'}`);
       renderView(active);
     } catch (error) {
       status(`Datos no disponibles: ${error.message}`, false);
       renderView(active);
-    } finally {
-      loading = false;
-    }
+    } finally { loading = false; }
   }
 
-  function boot() {
-    ensurePanel();
-    loadCurrentView();
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
-  else boot();
+  function boot() { ensurePanel(); loadCurrentView(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
 })();
