@@ -67,13 +67,16 @@ assert.equal(config.secureCookie, true);
    3) COMPATIBILIDAD CON LAS VARIABLES ANTIGUAS
 ========================================= */
 
-const configSource = fs.readFileSync('./config.mjs', 'utf8');
-for (const alias of [
-  'LALIGA_CONCOMPETENCIA_ID', 'SESIÓN_NOMBRE_DE LA COOKIE',
-  'COMPETENCIA_DE_DATOS_DE_FÚTBOL', 'DÍAS_DE_DATOS_DE_FÚTBOL'
-]) {
-  assert.equal(configSource.includes(alias), true, `Falta compatibilidad con variable antigua: ${alias}`);
-}
+const legacyConfig = readConfig({
+  LALIGA_CONCOMPETENCIA_ID: '77',
+  'SESIÓN_NOMBRE_DE LA_COOKIE': 'legacy_session',
+  'COMPETENCIA_DE_DATOS_DE_FÚTBOL': 'XX',
+  'DÍAS_DE_DATOS_DE_FÚTBOL': '14'
+});
+assert.equal(legacyConfig.laligaCompetitionId, '77');
+assert.equal(legacyConfig.sessionCookieName, 'legacy_session');
+assert.equal(legacyConfig.footballDataCompetition, 'XX');
+assert.equal(legacyConfig.footballDataDays, 14);
 
 /* =========================================
    4) OIDC: NO INVENTAR CREDENCIALES
