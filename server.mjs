@@ -221,11 +221,6 @@ async function footballData(endpoint){
   catch { return { raw: text.slice(0, 2000) }; }
 }
 
-function cookieHeader(id, maxAge){
-  const secure = config.secureCookie ? 'Secure; ' : '';
-  return `${config.sessionCookieName}=${encodeURIComponent(id)}; HttpOnly; SameSite=Lax; ${secure}Path=/; Max-Age=${maxAge}`;
-}
-
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
@@ -268,43 +263,47 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, providerStatus(config));
     }
 
+    /* --------------------------------
+       UNIFIED NEXT FIXTURES
+       API-Football is primary. Other
+       configured providers are used as
+       fallback and cross-check sources.
+    -------------------------------- */
     if (url.pathname === '/api/fixtures/next') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'GET_ONLY' });
       try {
-        const today = new Date();
-        const from = today.toISOString().slice(0, 10);
-        const future = new Date(today.getTime() + config.footballDataDays * 86400000);
-        const to = future.toISOString().slice(0, 10);
-        const data = await footballData(`/competitions/${encodeURIComponent(config.footballDataCompetition)}/matches?dateFrom=${from}&dateTo=${to}`);
-        const matches = (Array.isArray(data?.matches) ? data.matches : [])
-          .map(match => ({
-            ...match,
-            calendarDate: match?.utcDate ? match.utcDate.slice(0, 10) : null,
-            calendarTime: match?.utcDate ? match.utcDate.slice(11, 16) : null,
-            officialMatchday: Number.isFinite(Number(match?.matchday)) ? Number(match.matchday) : null
-          }))
-          .sort((a, b) => new Date(a.utcDate || 0) - new Date(b.utcDate || 0));
-        return sendJson(res, 200, { source: 'football-data.org', competition: config.footballDataCompetition, from, to, matches });
+        const data = await fetchMultiProviderFixtures(config);
+        const hasMatches = data.merged.length > 0;
+        const hasProvider = Boolean(data.primaryProvider);
+        return sendJson(res, hasMatches || hasProvider ? 200 : 503, {
+          ok: hasMatches || hasProvider,
+          readOnly: true,
+          source: data.primaryProvider || 'none',
+          competition: data.primaryProvider === 'api-football' ? config.apiFootballLeagueId : config.footballDataCompetition,
+          from: data.from,
+          to: data.to,
+          primaryProvider: data.primaryProvider,
+          providers: Object.fromEntries(
+            Object.entries(data.providers).map(([name, result]) => [name, {
+              ok: result.ok,
+              count: result.ok ? result.matches.length : 0,
+              error: result.ok ? null : result.error
+            }])
+          ),
+          matches: data.merged
+        });
       } catch (error) {
         return sendJson(res, error.status || 502, {
-          error: error.message || 'FOOTBALL_DATA_FAILED',
-          message: error.status === 503 ? 'Configura FOOTBALL_DATA_TOKEN en el entorno del servicio.' : undefined
+          error: error.message || 'FIXTURES_PROVIDER_FAILED',
+          provider: error.provider || null
         });
       }
     }
 
-    /* =========================================
-       MULTI-PROVIDER FOOTBALL DATA
-    ========================================= */
-
     if (url.pathname === '/api/providers/fixtures/next' && req.method === 'GET') {
       try {
         const data = await fetchMultiProviderFixtures(config);
-        return sendJson(res, 200, {
-          ok: true,
-          readOnly: true,
-          ...data
-        });
+        return sendJson(res, 200, { ok: true, readOnly: true, ...data });
       } catch (error) {
         return sendJson(res, error.status || 502, {
           error: error.message || 'MULTI_PROVIDER_FAILED',
@@ -339,10 +338,7 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/providers/opta/status' && req.method === 'GET') {
       const status = providerStatus(config).opta;
-      return sendJson(res, 200, {
-        provider: 'opta',
-        ...status
-      });
+      return sendJson(res, 200, { provider: 'opta', ...status });
     }
 
     /* -------------------------
@@ -525,6 +521,11 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 500, { error: 'INTERNAL_SERVER_ERROR' });
   }
 });
+
+function cookieHeader(id, maxAge){
+  const secure = config.secureCookie ? 'Secure; ' : '';
+  return `${config.sessionCookieName}=${encodeURIComponent(id)}; HttpOnly; SameSite=Lax; ${secure}Path=/; Max-Age=${maxAge}`;
+}
 
 server.listen(config.port, config.host, () => {
   console.log(`Fantasy Manager backend on ${config.host}:${config.port}`);
