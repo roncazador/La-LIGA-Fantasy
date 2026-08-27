@@ -173,3 +173,18 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });
   else load();
 })();
+
+/* Brain v2.5 overlay: keeps the v2.8 application intact and adds the upgraded scoring layer. */
+(() => {
+  const src = '/brain-engine-v25.js';
+  const load = () => {
+    if (document.querySelector(`script[data-brain-v25="1"]`)) return;
+    const s = document.createElement('script');
+    s.src = src;
+    s.defer = true;
+    s.dataset.brainV25 = '1';
+    document.head.appendChild(s);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once:true });
+  else load();
+})();
