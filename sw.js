@@ -1,11 +1,13 @@
-const CACHE_NAME = 'fm-v251';
+const CACHE_NAME = 'fm-v252';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
   './sw.js',
   './dashboard-client.js',
   './calendar-client.js',
-  './official-fixtures-seed-2026-27.json'
+  './data-client.js',
+  './official-fixtures-seed-2026-27.json',
+  './video-reference-snapshot-2026-08-27.json'
 ];
 
 self.addEventListener('install', event => {
@@ -20,9 +22,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
@@ -30,7 +30,6 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const request = event.request;
-
   if (request.method !== 'GET') return;
 
   const pathname = new URL(request.url).pathname;
@@ -38,7 +37,9 @@ self.addEventListener('fetch', event => {
     '/index.html',
     '/dashboard-client.js',
     '/calendar-client.js',
-    '/official-fixtures-seed-2026-27.json'
+    '/data-client.js',
+    '/official-fixtures-seed-2026-27.json',
+    '/video-reference-snapshot-2026-08-27.json'
   ]);
 
   if (request.mode === 'navigate' || freshResources.has(pathname)) {
@@ -46,9 +47,7 @@ self.addEventListener('fetch', event => {
       fetch(request, { cache: 'no-store' })
         .then(response => {
           const copy = response.clone();
-          const key = pathname.endsWith('/index.html') || request.mode === 'navigate'
-            ? './index.html'
-            : pathname;
+          const key = pathname.endsWith('/index.html') || request.mode === 'navigate' ? './index.html' : pathname;
           caches.open(CACHE_NAME).then(cache => cache.put(key, copy));
           return response;
         })
@@ -57,7 +56,5 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request))
-  );
+  event.respondWith(caches.match(request).then(cached => cached || fetch(request)));
 });
