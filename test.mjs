@@ -1,8 +1,21 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
-import { DEFAULTS, VERSION, oidcConfigured, publicStaticPath, readConfig } from './config.mjs';
-import { providerStatus } from './providers.mjs';
+import {
+  DEFAULTS,
+  VERSION,
+  oidcConfigured,
+  publicStaticPath,
+  readConfig
+} from './config.mjs';
+import {
+  daysWindow,
+  fixtureKey,
+  normalizeApiFootball,
+  providerStatus,
+  fetchApiFootballFixtures,
+  fetchMultiProviderFixtures
+} from './providers.mjs';
 
 /* =========================================
    1) POLÍTICA SOLO LECTURA
@@ -27,7 +40,7 @@ assert.equal(DEFAULTS.footballDataCompetition, 'PD');
 assert.equal(DEFAULTS.footballDataDays, 30);
 assert.equal(DEFAULTS.apiFootballLeagueId, '140');
 assert.equal(DEFAULTS.apiFootballSeason, '2026');
-assert.equal(VERSION, '2.7.0');
+assert.equal(VERSION, '2.8.0');
 
 const config = readConfig({
   LALIGA_API_BASE_URL: 'https://example.test///',
@@ -64,7 +77,7 @@ assert.equal(config.allowOrigin, '');
 assert.equal(config.secureCookie, true);
 
 /* =========================================
-   3) COMPATIBILIDAD CON LAS VARIABLES ANTIGUAS
+   3) COMPATIBILIDAD CON VARIABLES ANTIGUAS
 ========================================= */
 
 const legacyConfig = readConfig({
@@ -123,12 +136,12 @@ assert.equal(manifest.lang, 'es');
 ========================================= */
 
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-assert.equal(packageJson.version, '2.7.0');
+assert.equal(packageJson.version, '2.8.0');
 assert.equal(packageJson.scripts.start, 'node --import ./config.mjs server.mjs');
 assert.equal(packageJson.scripts.test, 'node test.mjs');
 
 const indexSource = fs.readFileSync('./index.html', 'utf8');
-assert.equal(indexSource.includes('v2.6.0') || indexSource.includes('v2.7.0'), true, 'El HTML debe mostrar una versión actual');
+assert.equal(indexSource.includes('v2.6.0') || indexSource.includes('v2.7.0') || indexSource.includes('v2.8.0'), true, 'El HTML debe mostrar una versión actual');
 assert.equal(indexSource.includes('/dashboard-client.js'), false, 'La integración del cliente debe hacerla el servidor para no duplicar capas');
 assert.equal(indexSource.includes('v2.4'), false, 'No debe quedar una referencia antigua v2.4');
 
@@ -183,7 +196,132 @@ assert.match(fullStatus.sportmonks.note, /LaLiga/i);
 assert.match(fullStatus.opta.note, /credenciales/i);
 
 /* =========================================
-   11) INTEGRACIÓN REAL DEL SERVIDOR
+   11) API-FOOTBALL: NORMALIZACIÓN REALISTA
+========================================= */
+
+const apiPayload = {
+  response: [{
+    fixture: {
+      id: 12345,
+      date: '2026-08-28T18:00:00+00:00',
+      status: { short: 'NS' }
+    },
+    league: {
+      id: 140,
+      round: 'Regular Season - 2'
+    },
+    teams: {
+      home: { id: 1, name: 'FC Barcelona' },
+      away: { id: 2, name: 'Real Madrid' }
+    }
+  }]
+};
+
+const normalized = normalizeApiFootball(apiPayload);
+assert.equal(normalized.length, 1);
+assert.equal(normalized[0].provider, 'api-football');
+assert.equal(normalized[0].id, '12345');
+assert.equal(normalized[0].competitionId, '140');
+assert.equal(normalized[0].home, 'FC Barcelona');
+assert.equal(normalized[0].away, 'Real Madrid');
+assert.equal(normalized[0].homeTeamId, 1);
+assert.equal(normalized[0].awayTeamId, 2);
+assert.equal(normalized[0].status, 'NS');
+assert.equal(fixtureKey(normalized[0]), '2026-08-28T18:00|barcelona|madrid');
+
+const window = daysWindow(120);
+assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(window.from));
+assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(window.to));
+
+/* =========================================
+   12) API-FOOTBALL: PETICIÓN + CABECERA
+========================================= */
+
+const originalFetch = global.fetch;
+let capturedRequest = null;
+global.fetch = async (url, options = {}) => {
+  capturedRequest = { url: String(url), options };
+  return new Response(JSON.stringify(apiPayload), {
+    status: 200,
+    headers: { 'content-type': 'application/json' }
+  });
+};
+
+try {
+  const liveLikeConfig = readConfig({
+    API_FOOTBALL_API_KEY: 'test-api-key',
+    API_FOOTBALL_LALIGA_LEAGUE_ID: '140',
+    API_FOOTBALL_LALIGA_SEASON: '2026'
+  });
+  const liveLikeMatches = await fetchApiFootballFixtures(
+    liveLikeConfig,
+    '2026-08-28',
+    '2026-08-30'
+  );
+
+  assert.equal(liveLikeMatches.length, 1);
+  assert.match(capturedRequest.url, /\/fixtures\?/);
+  assert.match(capturedRequest.url, /league=140/);
+  assert.match(capturedRequest.url, /season=2026/);
+  assert.match(capturedRequest.url, /from=2026-08-28/);
+  assert.match(capturedRequest.url, /to=2026-08-30/);
+  assert.equal(capturedRequest.options.headers['x-apisports-key'], 'test-api-key');
+  assert.equal(capturedRequest.options.headers['User-Agent'], 'LALIGA-Fantasy-Manager/2.8.0');
+} finally {
+  global.fetch = originalFetch;
+}
+
+/* =========================================
+   13) MULTI-PROVIDER: API-FOOTBALL PRIORIDAD + DEDUP
+========================================= */
+
+const multiOriginalFetch = global.fetch;
+global.fetch = async (url, options = {}) => {
+  const address = String(url);
+  if (address.includes('v3.football.api-sports.io')) {
+    return new Response(JSON.stringify(apiPayload), { status: 200 });
+  }
+  if (address.includes('api.football-data.org')) {
+    return new Response(JSON.stringify({ matches: [{
+      id: 999,
+      utcDate: '2026-08-28T18:00:00Z',
+      status: 'TIMED',
+      matchday: 2,
+      competition: { code: 'PD' },
+      homeTeam: { id: 1, name: 'FC Barcelona' },
+      awayTeam: { id: 2, name: 'Real Madrid' }
+    }] }), { status: 200 });
+  }
+  return new Response(JSON.stringify({}), { status: 404 });
+};
+
+try {
+  const multiConfig = readConfig({
+    API_FOOTBALL_API_KEY: 'test-api-key',
+    API_FOOTBALL_LALIGA_LEAGUE_ID: '140',
+    API_FOOTBALL_LALIGA_SEASON: '2026',
+    FOOTBALL_DATA_TOKEN: 'test-football-data-token',
+    FOOTBALL_DATA_COMPETITION: 'PD',
+    FOOTBALL_DATA_DAYS: '30'
+  });
+
+  const multi = await fetchMultiProviderFixtures(multiConfig);
+  assert.equal(multi.primaryProvider, 'api-football');
+  assert.equal(multi.providers['api-football'].ok, true);
+  assert.equal(multi.providers['football-data.org'].ok, true);
+  assert.equal(multi.counts['api-football'], 1);
+  assert.equal(multi.counts['football-data.org'], 1);
+  assert.equal(multi.merged.length, 1, 'El mismo partido no debe duplicarse');
+  assert.deepEqual(multi.merged[0].sources.sort(), ['api-football', 'football-data.org'].sort());
+  assert.equal(multi.merged[0].source, 'api-football');
+  assert.equal(multi.merged[0].homeTeam.name, 'FC Barcelona');
+  assert.equal(multi.merged[0].awayTeam.name, 'Real Madrid');
+} finally {
+  global.fetch = multiOriginalFetch;
+}
+
+/* =========================================
+   14) INTEGRACIÓN REAL DEL SERVIDOR
 ========================================= */
 
 async function waitForServer(url, timeout = 7000){
@@ -224,7 +362,7 @@ try {
   const healthJson = await health.json();
   assert.equal(healthJson.ok, true);
   assert.equal(healthJson.readOnly, true);
-  assert.equal(healthJson.version, '2.7.0');
+  assert.equal(healthJson.version, '2.8.0');
   assert.equal(healthJson.competition, '1');
   assert.equal(healthJson.providers.apiFootball.configured, false);
   assert.equal(healthJson.providers.sportmonks.configured, false);
@@ -261,15 +399,21 @@ try {
   assert.equal(multiJson.providers.opta.ok, false);
   assert.deepEqual(multiJson.merged, []);
 
+  const unifiedFixtures = await fetch(`${base}/api/fixtures/next`, { cache: 'no-store' });
+  assert.equal(unifiedFixtures.status, 503);
+  const unifiedJson = await unifiedFixtures.json();
+  assert.equal(unifiedJson.ok, false);
+  assert.equal(unifiedJson.matches.length, 0);
+
   const privateServer = await fetch(`${base}/server.mjs`, { cache: 'no-store' });
   assert.equal(privateServer.status, 404, 'server.mjs no debe exponerse públicamente');
   const privatePackage = await fetch(`${base}/package.json`, { cache: 'no-store' });
   assert.equal(privatePackage.status, 404, 'package.json no debe exponerse públicamente');
 
   const fixtures = await fetch(`${base}/api/fixtures/next`, { cache: 'no-store' });
-  assert.equal(fixtures.status, 503, 'Sin token, football-data debe responder 503 controlado');
+  assert.equal(fixtures.status, 503, 'Sin proveedores configurados, el endpoint unificado debe responder 503 controlado');
   const fixturesJson = await fixtures.json();
-  assert.equal(fixturesJson.error, 'FOOTBALL_DATA_NOT_CONFIGURED');
+  assert.equal(fixturesJson.ok, false);
 
   const auth = await fetch(`${base}/api/auth/status`, { cache: 'no-store' });
   assert.equal(auth.status, 200);
@@ -287,7 +431,7 @@ try {
   const writeJson = await writeRoute.json();
   assert.equal(writeJson.error, 'READ_ONLY');
 
-  console.log('✅ Test 11: integración HTTP real + multi-provider OK');
+  console.log('✅ Test 14: integración HTTP real + endpoints multi-provider OK');
 } finally {
   child.kill('SIGTERM');
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -304,4 +448,7 @@ console.log('✅ Test 7: arranque y versionado OK');
 console.log('✅ Test 8: no se detectan tokens hardcodeados OK');
 console.log('✅ Test 9: cliente del dashboard + matriz de proveedores OK');
 console.log('✅ Test 10: adaptadores y estado multi-provider OK');
-console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/INTEGRACIÓN OK');
+console.log('✅ Test 11: normalización API-Football OK');
+console.log('✅ Test 12: petición API-Football + cabecera segura OK');
+console.log('✅ Test 13: prioridad API-Football + deduplicación multi-provider OK');
+console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/PROVEEDORES/INTEGRACIÓN OK');
