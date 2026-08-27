@@ -15,7 +15,7 @@ const check = (condition, message) => {
   assert.ok(condition, `${checks}. ${message}`);
 };
 
-// 20 comprobaciones de producto/seguridad/UI antes de los casos de proveedor.
+// 20 comprobaciones de producto/seguridad/UI.
 check(seed.season === '2026/27', 'semilla temporada 2026/27');
 check(seed.competition === 'LaLiga EA SPORTS', 'semilla identifica LaLiga');
 check(seed.source === 'LALIGA oficial', 'semilla identifica fuente oficial');
@@ -23,9 +23,9 @@ check(seed.fixtures.length === 12, 'semilla contiene 12 partidos inmediatos');
 check(seed.fixtures.every(x => x.utcDate && x.home && x.away), 'partidos con fecha y equipos');
 check(new Set(seed.fixtures.map(x => x.id)).size === seed.fixtures.length, 'IDs de partidos únicos');
 check(recording.status === 'referencia_observada_no_live', 'grabación marcada como histórica');
-check(recording.snapshot.teamCount === '20/24 fichas', 'plantilla observada 20/24');
-check(recording.snapshot.teamValue === 269039595, 'valor de equipo observado correcto');
-check(recording.snapshot.marketBalance === 40542121, 'saldo de mercado observado correcto');
+check(recording.teamCount === '20/24 fichas', 'plantilla observada 20/24');
+check(recording.teamValue === 269039595, 'valor de equipo observado correcto');
+check(recording.marketBalance === 40542121, 'saldo de mercado observado correcto');
 check(calendar.includes('/api/fixtures/next'), 'calendario usa endpoint unificado');
 check(calendar.includes('official-fixtures-seed-2026-27.json'), 'calendario mantiene semilla oficial');
 check(calendar.includes('referencia histórica, no LIVE') || calendar.includes('No se presenta como dato en tiempo real'), 'snapshot etiquetado como no LIVE');
