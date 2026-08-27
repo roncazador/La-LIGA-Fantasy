@@ -63,6 +63,7 @@ check(activity.some(x => x.player === 'Álex Balde' && x.amount === 25001999), '
 check(calendar.includes('/video-reference-snapshot-2026-08-27.json'), 'calendar usa snapshot externo');
 check(dataClient.includes('/video-reference-snapshot-2026-08-27.json'), 'data client usa snapshot externo');
 check(!calendar.match(/x-apisports-key|api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}/i) && !dataClient.match(/x-apisports-key|api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}/i) && !config.match(/YOUR_API_KEY|token_en_claro/i), 'frontend/config sin secretos ni placeholders inseguros');
+check(ref.snapshot?.teamCount === '20/24 fichas' && ref.rostersVisible?.roncazador?.length === 7, 'mi equipo mantiene 20/24 y 7 jugadores legibles');
 
 assert.equal(checks.length, 100, `Se esperaban 100 comprobaciones y hay ${checks.length}`);
 for (const [index, [label, ok]] of checks.entries()) assert.ok(ok, `UI-${String(index + 1).padStart(3, '0')}: ${label}`);
