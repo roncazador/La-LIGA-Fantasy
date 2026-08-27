@@ -15,7 +15,7 @@ const checks = [];
 const check = (name, ok) => checks.push([name, Boolean(ok)]);
 const all = (xs, fn) => Array.isArray(xs) && xs.every(fn);
 
-// 1-20: canonical snapshot
+// Canonical snapshot
 check('fecha de captura correcta', data.capturedAt === '2026-08-27T11:32:00+02:00');
 check('snapshot marcado como no LIVE', data.status === 'referencia_observada_no_live');
 check('competición La Liga', data.competition === 'La Liga');
@@ -37,6 +37,7 @@ check('kubakar 27', data.standings.find(x => x.manager === 'kubakar')?.pfsy === 
 check('Akm90 27', data.standings.find(x => x.manager === 'Akm90')?.pfsy === 27);
 check('Piotrekatletico 0', data.standings.find(x => x.manager === 'Piotrekatletico')?.pfsy === 0);
 
+// Mi equipo
 const me = data.rostersVisible?.roncazador || [];
 check('mi equipo array', Array.isArray(me));
 check('7 jugadores legibles', me.length === 7);
@@ -56,6 +57,7 @@ check('bloqueo Óscar 9d', me.find(x => x.name === 'Óscar Valentín')?.lockDays
 check('bloqueo Cala 8d', me.find(x => x.name === 'Cala')?.lockDays === 8);
 check('PFSY visibles numéricos', all(me, x => Number.isFinite(x.pfsy)));
 
+// Rivales
 const rivals = ['Jonymessi','SURIKT097','saugarr','AlvaroNP96','kubakar'];
 for (const manager of rivals) check(`rival ${manager} array`, Array.isArray(data.rostersVisible?.[manager]));
 check('Aubameyang 20', data.rostersVisible.Jonymessi?.find(x => x.name === 'Aubameyang')?.pfsy === 20);
@@ -74,6 +76,7 @@ check('ranks enteros', data.standings.every(x => Number.isInteger(x.rank)));
 check('PFSY ranking numérico', data.standings.every(x => Number.isFinite(x.pfsy)));
 check('sin secretos en snapshot', !JSON.stringify(data).match(/api[_-]?key|token|password|bearer/i));
 
+// Mercado
 check('mercado array', Array.isArray(data.marketListings));
 check('3 anuncios visibles', data.marketListings.length === 3);
 check('primer nombre no inventado', data.marketListings[0].player === null);
@@ -90,6 +93,7 @@ check('saldo mercado positivo', data.marketBalance > 0);
 check('eventos presentes', Array.isArray(data.eventsVisible) && data.eventsVisible.includes('Operación de mercado'));
 check('referencia alternativa consistente', snapshot.snapshot?.marketBalance === data.marketBalance);
 
+// Actividad + UI
 check('actividad array', Array.isArray(data.recentActivity));
 check('21 operaciones/eventos', data.recentActivity.length === 21);
 check('fechas de actividad', all(data.recentActivity, x => typeof x.date === 'string' && x.date));
@@ -109,6 +113,7 @@ check('data client consulta dashboard', dataClient.includes('/api/fantasy/dashbo
 check('calendar consulta fixtures', calendar.includes('/api/fixtures/next'));
 check('calendar usa no-store', calendar.includes("cache: 'no-store'"));
 
+// Seguridad, responsive y caché
 const secret = /(?:x-apisports-key|YOUR_API_KEY|Bearer\s+[A-Za-z0-9._-]{20,}|apiFootballKey\s*[:=]\s*['"][A-Za-z0-9._-]{20,}['"])/i;
 check('recording sin secretos', !secret.test(recording));
 check('data client sin secretos', !secret.test(dataClient));
@@ -121,6 +126,6 @@ check('index usa overflow táctil', index.includes('overflow:auto'));
 check('service worker cachea recording-data', sw.includes("'./recording-data-2026-08-27.json'"));
 check('service worker cache versión actualizada', sw.includes('fm-v253'));
 
-assert.equal(checks.length, 105, `Se esperaban 105 comprobaciones y hay ${checks.length}`);
+assert.equal(checks.length, 106, `Se esperaban 106 comprobaciones y hay ${checks.length}`);
 for (const [i, [name, ok]] of checks.entries()) assert.ok(ok, `V30-${String(i + 1).padStart(3, '0')}: ${name}`);
-console.log('✅ V30: 105/105 comprobaciones superadas');
+console.log('✅ V30: 106/106 comprobaciones superadas');
