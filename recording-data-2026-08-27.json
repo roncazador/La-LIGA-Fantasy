@@ -1,0 +1,89 @@
+{
+  "capturedAt": "2026-08-27T11:32:00+02:00",
+  "source": "grabación de pantalla aportada por el usuario de la app oficial LALIGA Fantasy",
+  "status": "referencia_observada_no_live",
+  "competition": "La Liga",
+  "matchday": 3,
+  "reward": 100000,
+  "marketBalance": 40542121,
+  "teamCount": "20/24 fichas",
+  "teamValue": 269039595,
+  "standings": [
+    {"rank":1,"manager":"roncazador","pfsy":109,"teamValue":269039595},
+    {"rank":2,"manager":"FarlaAcademy","pfsy":105,"teamValue":131991112},
+    {"rank":3,"manager":"Jonymessi","pfsy":78,"teamValue":258996039},
+    {"rank":4,"manager":"SURIKT097","pfsy":75,"teamValue":224106603},
+    {"rank":5,"manager":"saugarr","pfsy":69,"teamValue":205802339},
+    {"rank":6,"manager":"AlvaroNP96","pfsy":52,"teamValue":139315086},
+    {"rank":7,"manager":"kubakar","pfsy":27,"teamValue":183508912},
+    {"rank":8,"manager":"Akm90","pfsy":27,"teamValue":94930580},
+    {"rank":9,"manager":"Piotrekatletico","pfsy":0,"teamValue":null}
+  ],
+  "rostersVisible": {
+    "roncazador": [
+      {"name":"Germán","position":"POR","pfsy":0,"media":0,"price":518885,"lockedValue":1000000,"availability":"Alineable"},
+      {"name":"Noubi","position":"DEF","pfsy":5,"media":2.5,"price":12937595,"lockedValue":13930586,"availability":"Alineable"},
+      {"name":"Zubeldia","position":"DEF","pfsy":0,"media":0,"price":9748341,"lockedValue":17616671,"availability":"Alineable"},
+      {"name":"Aramburu","position":"DEF","pfsy":2,"media":1,"price":17653067,"lockedValue":20249095,"availability":"Alineable"},
+      {"name":"Fermín","position":"CEN","pfsy":19,"media":19,"price":79606127,"lockedValue":null,"availability":"Alineable","lockDays":13},
+      {"name":"Óscar Valentín","position":"CEN","pfsy":7,"media":3.5,"price":4301017,"lockedValue":null,"availability":"Alineable","star":true,"lockDays":9},
+      {"name":"Cala","position":"DEL","pfsy":11,"media":5.5,"price":4899778,"lockedValue":null,"availability":"Alineable","lockDays":8}
+    ],
+    "Jonymessi": [
+      {"name":"Aubameyang","position":"DEL","pfsy":20,"media":10,"price":50181171,"lockedValue":null,"availability":"Alineable","star":true,"lockDays":8},
+      {"name":"Ferran Jutglà","position":"DEL","pfsy":4,"media":4,"price":9061209,"lockedValue":16325936,"availability":"Alineable"},
+      {"name":"Lucas Boyé","position":"DEL","pfsy":5,"media":5,"price":11293904,"lockedValue":25726200,"availability":"Alineable"},
+      {"name":"Mikautadze","position":"DEL","pfsy":23,"media":11.5,"price":71083800,"lockedValue":null,"availability":"Alineable","star":true,"lockDays":14}
+    ],
+    "SURIKT097": [
+      {"name":"Urko","position":"CEN","pfsy":8,"media":4,"price":5409077,"lockedValue":7800000,"availability":"Alineable"},
+      {"name":"Brahim","position":"CEN","pfsy":2,"media":1,"price":13364635,"lockedValue":24435550,"availability":"Alineable"},
+      {"name":"Valverde","position":"CEN","pfsy":15,"media":7.5,"price":27079642,"lockedValue":78772597,"availability":"Alineable"},
+      {"name":"Álvaro García","position":"CEN","pfsy":10,"media":5,"price":20929654,"lockedValue":24997633,"availability":"Alineable","star":true}
+    ],
+    "saugarr": [
+      {"name":"Adama","position":"DEF","pfsy":0,"media":0,"price":452679,"lockedValue":1000000,"availability":"Alineable"},
+      {"name":"C. Puga","position":"DEF","pfsy":8,"media":4,"price":4934935,"lockedValue":10982248,"availability":"Alineable"},
+      {"name":"Dela","position":"DEF","pfsy":9,"media":4.5,"price":11282179,"lockedValue":null,"availability":"Alineable","lockDays":13},
+      {"name":"Carmona","position":"DEF","pfsy":1,"media":0.5,"price":3428773,"lockedValue":null,"availability":"Alineable"}
+    ],
+    "AlvaroNP96": [
+      {"name":"Ximo Navarro","position":"DEF","pfsy":5,"media":2.5,"price":9825496,"lockedValue":null,"availability":"Alineable"},
+      {"name":"A. Hartmann","position":"DEF","pfsy":0,"media":0,"price":4315787,"lockedValue":null,"availability":"Alineable"}
+    ],
+    "kubakar": [
+      {"name":"M. Dituro","position":"POR","pfsy":4,"media":2,"price":9005409,"lockedValue":null,"availability":"Alineable","star":true,"lockDays":9},
+      {"name":"Le Normand","position":"DEF","pfsy":8,"media":4,"price":12652812,"lockedValue":33065081,"availability":"Suspendido"},
+      {"name":"R.P. Bigas","position":"DEF","pfsy":2,"media":1,"price":3736592,"lockedValue":12838681,"availability":"Alineable"}
+    ]
+  },
+  "marketListings": [
+    {"player":"Jonymessi","owner":"Jonymessi","pfsy":0,"value":3496065,"price":5000000,"status":"Alineable","remainingDays":2},
+    {"player":"Isaac","owner":"saugarr","pfsy":13,"value":6665244,"price":6460286,"status":"Alineable","remainingDays":2},
+    {"player":"Juan Iglesias","owner":"Jonymessi","pfsy":7,"value":12942787,"price":18000000,"status":"Dudoso","remainingDays":3}
+  ],
+  "recentActivity": [
+    {"date":"24/08/2026","type":"Operación de mercado","manager":"Jonymessi","action":"compró","player":"Sergio","amount":1222999},
+    {"date":"24/08/2026","type":"Operación de mercado","manager":"saugarr","action":"vendió","player":"Egiluz","amount":417286},
+    {"date":"24/08/2026","type":"Operación de mercado","manager":"saugarr","action":"vendió","player":"Isi","amount":18063492},
+    {"date":"23/08/2026","type":"Operación de mercado","manager":"SURIKT097","action":"vendió","player":"Pere Milla","amount":7639350},
+    {"date":"23/08/2026","type":"Operación de mercado","manager":"SURIKT097","action":"vendió","player":"Johnny","amount":4785427},
+    {"date":"23/08/2026","type":"Operación de mercado","manager":"Jonymessi","action":"compró","player":"Bartra","amount":28111111},
+    {"date":"23/08/2026","type":"Operación de mercado","manager":"Jonymessi","action":"compró","player":"Guridi","amount":7222222},
+    {"date":"20/08/2026","type":"Operación de mercado","manager":"roncazador","action":"compró","player":"Álex Balde","amount":25001999},
+    {"date":"20/08/2026","type":"Operación de mercado","manager":"Jonymessi","action":"compró","player":"Juan Iglesias","amount":12195508},
+    {"date":"20/08/2026","type":"Operación de mercado","manager":"Jonymessi","action":"compró","player":"Ryan","amount":14000001},
+    {"date":"20/08/2026","type":"Operación de mercado","manager":"FarlaAcademy","action":"compró","player":"Bil Nsongo","amount":8000517},
+    {"date":"20/08/2026","type":"Operación de mercado","manager":"SURIKT097","action":"compró","player":"Vlachodimos","amount":25947108},
+    {"date":"20/08/2026","type":"Operación de mercado","manager":"SURIKT097","action":"compró a roncazador","player":"Fran González","amount":1100000},
+    {"date":"20/08/2026","type":"No puntuación","manager":"Piotrekatletico","action":"no puntuó en jornada 1"},
+    {"date":"17/08/2026","type":"Operación de mercado","manager":"FarlaAcademy","action":"compró","player":"Lunin","amount":4548366},
+    {"date":"17/08/2026","type":"Operación de mercado","manager":"FarlaAcademy","action":"vendió","player":"Luismi Cruz","amount":5441863},
+    {"date":"17/08/2026","type":"Operación de mercado","manager":"roncazador","action":"vendió","player":"Balliu","amount":999309},
+    {"date":"17/08/2026","type":"Operación de mercado","manager":"FarlaAcademy","action":"vendió","player":"Facu","amount":2741169},
+    {"date":"17/08/2026","type":"Operación de mercado","manager":"FarlaAcademy","action":"compró","player":"Koke","amount":18083013},
+    {"date":"17/08/2026","type":"Operación de mercado","manager":"kubakar","action":"compró","player":"Youssef","amount":595701},
+    {"date":"17/08/2026","type":"Operación de mercado","manager":"Jonymessi","action":"compró","player":"C. Soler","amount":32202800}
+  ],
+  "events": ["Operación de mercado","Recompensa","No puntuación","Blindaje","Nuevo miembro"]
+}
