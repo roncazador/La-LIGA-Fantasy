@@ -1,253 +1,223 @@
 (() => {
   'use strict';
 
-  const money = value => value == null ? '—' : new Intl.NumberFormat('es-ES').format(Number(value)) + ' €';
-  const text = value => String(value ?? '').trim();
-  const esc = value => text(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-
+  const SNAPSHOT_URL = '/recording-data-2026-08-27.json';
+  const LIVE_ENDPOINT = '/api/fantasy/dashboard';
+  const BRAIN_KEY = 'fantasy_brain_v29_mode';
   let data = null;
+  let live = null;
 
-  async function load() {
-    try {
-      const response = await fetch('/recording-data-2026-08-27.json', { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP_${response.status}`);
-      data = await response.json();
-      installUi();
-    } catch (error) {
-      console.warn('Recording data unavailable', error);
-      installBrain25();
-    }
+  const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+  const num = v => Number.isFinite(Number(v)) ? Number(v) : null;
+  const money = v => v == null ? 'N/D' : new Intl.NumberFormat('es-ES').format(Number(v)) + ' €';
+  const normPos = p => ({GK:'POR',POR:'POR',PORTERO:'POR',DF:'DEF',DEF:'DEF',DEFENSA:'DEF',MF:'MED',MED:'MED',MEDIO:'MED',MEDIOCENTRO:'MED',CEN:'MED',FW:'DEL',DEL:'DEL',DELANTERO:'DEL'}[String(p||'').toUpperCase()] || String(p||'N/D'));
+
+  function normalizeSnapshot(raw) {
+    const s = raw?.snapshot || {};
+    return {
+      ...raw,
+      teamValue: raw.teamValue ?? s.teamValue ?? null,
+      reward: raw.reward ?? raw.dailyReward ?? s.dailyReward ?? null,
+      marketBalance: raw.marketBalance ?? s.marketBalance ?? null,
+      matchday: raw.matchday ?? s.matchdayAtStart ?? null,
+      standings: Array.isArray(raw.standings) ? raw.standings : (Array.isArray(raw.standingsVisible) ? raw.standingsVisible : []),
+      rostersVisible: raw.rostersVisible || raw.rosters || {},
+      marketListings: Array.isArray(raw.marketListings) ? raw.marketListings : (Array.isArray(raw.market?.visible) ? raw.market.visible : []),
+      recentActivity: Array.isArray(raw.recentActivity) ? raw.recentActivity : (Array.isArray(raw.activity) ? raw.activity : [])
+    };
+  }
+
+  function topStats() {
+    const me = data?.standings?.find(x => x.manager === 'roncazador');
+    const set = (id, value) => { const n = document.getElementById(id); if (n) n.textContent = value; };
+    set('kRank', me?.rank != null ? `#${me.rank}` : 'N/D');
+    set('kPoints', me?.pfsy != null ? me.pfsy : 'N/D');
+    set('kValue', money(data?.teamValue));
+    set('kSquad', data?.teamCount || data?.snapshot?.teamCount || 'N/D');
+    set('kCash', money(data?.marketBalance));
+    const acc = document.getElementById('kAccuracy');
+    if (acc && acc.textContent === 'N/D') acc.textContent = 'Ref.';
   }
 
   function ensureStyles() {
-    if (document.getElementById('recordingStyles')) return;
-    const style = document.createElement('style');
-    style.id = 'recordingStyles';
-    style.textContent = `
-      #recordingPanel .recordTabs{display:flex;gap:6px;overflow:auto;margin:4px 0 12px;padding-bottom:3px}
-      #recordingPanel .recordTabs button{cursor:pointer}
-      #recordingPanel .recordTabs button.active{background:#ff454c}
-      #recordingPanel .recordGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-      #recordingPanel .managerCard,#recordingPanel .marketCard,#recordingPanel .activityCard{background:#0f131c;border:1px solid #2a3141;border-radius:12px;padding:11px}
-      #recordingPanel .managerHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
-      #recordingPanel .managerName{font-weight:900}
-      #recordingPanel .rankBadge{font-weight:900;font-size:11px}
-      #recordingPanel .rosterRow{display:grid;grid-template-columns:1fr auto;gap:8px;padding:7px 0;border-bottom:1px solid #232a38}
-      #recordingPanel .rosterRow:last-child{border-bottom:0}
-      #recordingPanel .playerMeta{font-size:10px;color:#9aa3b7;margin-top:2px}
-      #recordingPanel .pfsy{font-weight:900;font-size:13px}
-      #recordingPanel .statusGood{color:#2bd888;font-weight:800}
-      #recordingPanel .statusBad{color:#ff727b;font-weight:800}
-      #recordingPanel .marketHero{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
-      #recordingPanel .metric{background:#151a24;border:1px solid #2a3141;border-radius:10px;padding:9px}
-      #recordingPanel .metric .v{font-size:18px;font-weight:900;margin-top:3px}
-      #recordingPanel .marketRow{display:grid;grid-template-columns:1.1fr .8fr .8fr .9fr;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #232a38;font-size:10px}
-      #recordingPanel .marketRow:last-child{border-bottom:0}
-      #recordingPanel .activityRow{padding:8px 0;border-bottom:1px solid #232a38;font-size:10px;line-height:1.35}
-      #recordingPanel .activityRow:last-child{border-bottom:0}
-      @media(max-width:900px){#recordingPanel .recordGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-      @media(max-width:560px){#recordingPanel .recordGrid{grid-template-columns:1fr}#recordingPanel .marketHero{grid-template-columns:1fr 1fr}#recordingPanel .marketRow{grid-template-columns:1fr 1fr}.recordSource{font-size:10px}}
+    if (document.getElementById('recordingV29Styles')) return;
+    const s = document.createElement('style');
+    s.id = 'recordingV29Styles';
+    s.textContent = `
+      #recordingPanelV29{margin:12px 0;border:1px solid #30394d;border-radius:16px;background:linear-gradient(135deg,#151b29,#0e121a);padding:12px}
+      #recordingPanelV29 .r29-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+      #recordingPanelV29 .r29-title{font-size:17px;font-weight:950}
+      #recordingPanelV29 .r29-sub{color:#9aa3b7;font-size:10px;margin-top:3px}
+      #recordingPanelV29 .r29-tabs{display:flex;gap:6px;overflow:auto;padding:9px 0 3px;position:sticky;top:54px;z-index:4;background:rgba(14,18,26,.96);backdrop-filter:blur(10px)}
+      #recordingPanelV29 .r29-tabs button{cursor:pointer}
+      #recordingPanelV29 .r29-tabs button.active{background:#ff454c}
+      #recordingPanelV29 .r29-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+      #recordingPanelV29 .r29-metric{background:#0d121b;border:1px solid #293244;border-radius:11px;padding:9px}
+      #recordingPanelV29 .r29-value{font-size:17px;font-weight:950;margin-top:3px}
+      #recordingPanelV29 .r29-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+      #recordingPanelV29 .r29-card{background:#0c1119;border:1px solid #283142;border-radius:12px;padding:10px}
+      #recordingPanelV29 .r29-card.me{border-color:#59647d;box-shadow:0 0 0 1px rgba(255,69,76,.12) inset}
+      #recordingPanelV29 .r29-row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:7px 0;border-bottom:1px solid #222a38}
+      #recordingPanelV29 .r29-row:last-child{border-bottom:0}
+      #recordingPanelV29 .r29-name{font-weight:900}
+      #recordingPanelV29 .r29-meta{font-size:10px;color:#9aa3b7;margin-top:2px;line-height:1.35}
+      #recordingPanelV29 .r29-score{font-weight:950;font-size:14px}
+      #recordingPanelV29 .good{color:#2bd888}.bad{color:#ff727b}.warn{color:#ffd166}.blue2{color:#78aaff}
+      #recordingPanelV29 .r29-market{display:grid;grid-template-columns:1.25fr .55fr .8fr .8fr;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #222a38;font-size:10px}
+      #recordingPanelV29 .r29-market:last-child{border-bottom:0}
+      #recordingPanelV29 .r29-activity{padding:8px 0;border-bottom:1px solid #222a38;font-size:10px;line-height:1.4}
+      #recordingPanelV29 .r29-activity:last-child{border-bottom:0}
+      #recordingPanelV29 .r29-callout{padding:9px 10px;border:1px solid #39445b;background:#111723;border-radius:10px;font-size:10px;line-height:1.45;margin:8px 0}
+      #recordingPanelV29 .r29-live{font-size:9px;padding:4px 7px;border-radius:999px;background:#1b2432;color:#9aa3b7;white-space:nowrap}
+      #recordingPanelV29 .r29-live.ok{color:#2bd888;background:#13291f}
+      #recordingPanelV29 .r29-live.wait{color:#ffd166;background:#2b2414}
+      @media(max-width:900px){#recordingPanelV29 .r29-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:650px){#recordingPanelV29 .r29-metrics{grid-template-columns:repeat(2,1fr)}#recordingPanelV29 .r29-grid{grid-template-columns:1fr}#recordingPanelV29 .r29-market{grid-template-columns:1fr 1fr}#recordingPanelV29 .r29-tabs{top:48px}}
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(s);
   }
 
-  function buildPanel() {
-    let panel = document.getElementById('recordingPanel');
-    if (panel) return panel;
-    panel = document.createElement('section');
-    panel.id = 'recordingPanel';
-    panel.className = 'card';
-    panel.innerHTML = `
-      <div class="flex" style="justify-content:space-between;align-items:flex-start">
-        <div>
-          <h2 style="margin-bottom:4px">📱 LALIGA observada en la grabación</h2>
-          <div class="tiny">Referencia histórica · no sustituye datos LIVE</div>
-        </div>
-        <span class="pill">27/08/2026 · J3</span>
-      </div>
-      <div class="recordSource source" style="margin-top:8px">Datos extraídos únicamente de los fotogramas legibles de la grabación aportada. Los campos no legibles permanecen como N/D.</div>
-      <div class="recordTabs">
-        <button type="button" data-record-view="team" class="active">👤 Mi equipo</button>
-        <button type="button" data-record-view="rivals">👥 Rivales</button>
-        <button type="button" data-record-view="market">💰 Mercado</button>
-        <button type="button" data-record-view="activity">📰 Actividad</button>
-      </div>
-      <div id="recordingBody"></div>
-    `;
-    const app = document.querySelector('.app');
-    const hero = app?.querySelector('.hero');
-    const real = document.getElementById('realDataPanel');
-    const anchor = real || hero;
-    if (anchor?.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling);
-    else app?.prepend(panel);
-    return panel;
+  function managers() { return Array.isArray(data?.standings) ? data.standings : []; }
+  function roster(manager) { return Array.isArray(data?.rostersVisible?.[manager]) ? data.rostersVisible[manager] : []; }
+  function managerCard(m) {
+    const row = managers().find(x => x.manager === m) || {};
+    const players = roster(m);
+    return `<div class="r29-card ${m === 'roncazador' ? 'me' : ''}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px"><div><div class="r29-name">${esc(m)}</div><div class="r29-meta">Valor ${money(row.teamValue)}</div></div><b>#${esc(row.rank ?? 'N/D')} · ${esc(row.pfsy ?? 'N/D')} PFSY</b></div>
+      ${players.length ? players.map(playerRow).join('') : '<div class="r29-meta">Sin jugadores legibles.</div>'}
+    </div>`;
+  }
+  function playerRow(p) {
+    const status = String(p.availability || '').toLowerCase().includes('suspend') ? '<span class="bad">Suspendido</span>' : '<span class="good">Alineable</span>';
+    const lock = p.lockDays ? ` · ${esc(p.lockDays)}d` : '';
+    return `<div class="r29-row"><div><div class="r29-name">${esc(p.name || p.player || 'N/D')}${p.star ? ' ⭐' : ''}</div><div class="r29-meta">${esc(normPos(p.position || p.pos))} · ${status}${lock} · ${money(p.price ?? p.value)}</div></div><div class="r29-score">${p.pfsy ?? p.points ?? '—'}</div></div>`;
   }
 
-  function installNavButton(panel) {
-    const nav = document.querySelector('.nav');
-    if (!nav || nav.querySelector('[data-tab="recording"]')) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.tab = 'recording';
-    button.textContent = '📱 Datos grabación';
-    nav.appendChild(button);
-    button.addEventListener('click', () => {
-      nav.querySelectorAll('button').forEach(x => x.classList.remove('active'));
-      button.classList.add('active');
-      document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
-      panel.classList.add('active');
-      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }
-
-  function findManager(name) {
-    return Array.isArray(data?.standings) ? data.standings.find(x => x.manager === name) : null;
-  }
-
-  function roster(manager) {
-    return Array.isArray(data?.rostersVisible?.[manager]) ? data.rostersVisible[manager] : [];
-  }
-
-  function rosterRow(p) {
-    const statusClass = p.availability === 'Suspendido' ? 'statusBad' : 'statusGood';
-    const right = p.pfsy == null ? '—' : p.pfsy;
-    const detail = [p.position, p.availability, p.lockDays ? `${p.lockDays} días` : null].filter(Boolean).join(' · ');
-    return `<div class="rosterRow"><div><div class="managerName">${esc(p.name)}${p.star ? ' ⭐' : ''}</div><div class="playerMeta">${esc(detail)} · ${money(p.price)}</div></div><div class="pfsy ${statusClass}">${esc(right)}</div></div>`;
-  }
-
-  function renderTeam() {
-    const me = findManager('roncazador');
-    const rows = roster('roncazador');
-    const total = rows.reduce((s,p) => s + Number(p.pfsy || 0), 0);
-    return `<div class="marketHero">
-      <div class="metric"><div class="label">Posición</div><div class="v">#${esc(me?.rank ?? 'N/D')}</div></div>
-      <div class="metric"><div class="label">PFSY</div><div class="v">${esc(me?.pfsy ?? 'N/D')}</div></div>
-      <div class="metric"><div class="label">Valor equipo</div><div class="v">${money(data.teamValue)}</div></div>
+  function teamView() {
+    const me = managers().find(x => x.manager === 'roncazador') || {};
+    const players = roster('roncazador');
+    const visiblePoints = players.reduce((s,p) => s + (num(p.pfsy) || 0), 0);
+    return `<div class="r29-metrics">
+      <div class="r29-metric"><div class="label">Posición</div><div class="r29-value">#${esc(me.rank ?? 'N/D')}</div></div>
+      <div class="r29-metric"><div class="label">PFSY</div><div class="r29-value">${esc(me.pfsy ?? 'N/D')}</div></div>
+      <div class="r29-metric"><div class="label">Valor equipo</div><div class="r29-value">${money(data.teamValue)}</div></div>
+      <div class="r29-metric"><div class="label">Plantilla</div><div class="r29-value">${esc(data.teamCount || data.snapshot?.teamCount || 'N/D')}</div></div>
     </div>
-    <div class="source" style="margin-bottom:10px"><b>20/24 fichas</b> · Inicio Jornada 3: <b>vie 28 · 19:00h</b> · recompensa visible: <b>${money(data.reward)}</b> · PFSY de los 7 jugadores visibles: <b>${total}</b>.</div>
-    <div class="managerCard">${rows.map(rosterRow).join('')}</div>`;
+    <div class="r29-callout">📅 <b>Inicio Jornada ${esc(data.matchday ?? '3')}</b> · recompensa visible <b>${money(data.reward)}</b> · ${players.length} jugadores legibles · PFSY visible sumado ${visiblePoints}.</div>
+    <div class="r29-card me">${players.length ? players.map(playerRow).join('') : '<div class="r29-meta">No hay jugadores visibles en el snapshot.</div>'}</div>`;
   }
 
-  function managerCard(manager) {
-    const standing = findManager(manager);
-    const players = roster(manager);
-    return `<div class="managerCard"><div class="managerHead"><div><div class="managerName">${esc(manager)}</div><div class="tiny">Valor ${money(standing?.teamValue)}</div></div><div class="rankBadge">#${esc(standing?.rank ?? 'N/D')} · ${esc(standing?.pfsy ?? 'N/D')} PFSY</div></div>${players.length ? players.map(rosterRow).join('') : '<div class="empty">Sin jugadores legibles en la grabación.</div>'}</div>`;
+  function rivalsView() {
+    const rows = managers().filter(x => x.manager !== 'roncazador');
+    return `<div class="r29-grid">${rows.map(x => managerCard(x.manager)).join('')}</div>`;
   }
 
-  function renderRivals() {
-    const managers = (data.standings || []).filter(x => x.manager !== 'roncazador').map(x => x.manager);
-    return `<div class="recordGrid">${managers.map(managerCard).join('')}</div>`;
-  }
-
-  function renderMarket() {
-    const rows = data.marketListings || [];
-    return `<div class="marketHero">
-      <div class="metric"><div class="label">Saldo mercado mostrado</div><div class="v">${money(data.marketBalance)}</div></div>
-      <div class="metric"><div class="label">Recompensa diaria</div><div class="v">${money(data.reward)}</div></div>
-      <div class="metric"><div class="label">Jugadores visibles</div><div class="v">${rows.length}</div></div>
+  function marketView() {
+    const rows = Array.isArray(data.marketListings) ? data.marketListings : [];
+    const discounted = rows.filter(x => num(x.price) != null && num(x.value) != null && x.price < x.value).length;
+    const doubtful = rows.filter(x => String(x.status||'').toLowerCase().includes('dudos')).length;
+    return `<div class="r29-metrics">
+      <div class="r29-metric"><div class="label">Saldo mercado</div><div class="r29-value">${money(data.marketBalance)}</div></div>
+      <div class="r29-metric"><div class="label">Anuncios observados</div><div class="r29-value">${rows.length}</div></div>
+      <div class="r29-metric"><div class="label">Por debajo de valor</div><div class="r29-value blue2">${discounted}</div></div>
+      <div class="r29-metric"><div class="label">Dudosos</div><div class="r29-value warn">${doubtful}</div></div>
     </div>
-    <div class="managerCard"><div class="marketRow" style="font-weight:800"><span>Jugador</span><span>PFSY</span><span>Valor</span><span>Precio</span></div>${rows.map(p => `<div class="marketRow"><span><b>${esc(p.player)}</b><br><span class="tiny">${esc(p.owner)} · ${esc(p.status)} · ${esc(p.remainingDays)} días</span></span><span>${esc(p.pfsy)}</span><span>${money(p.value)}</span><span><b>${money(p.price)}</b></span></div>`).join('')}</div>`;
+    <div class="r29-callout">💰 <b>Estado observado en la grabación del 27/08/2026</b>. No se presenta como mercado LIVE. La sincronización real se habilita al conectar la cuenta y el backend.</div>
+    <div class="r29-card"><div class="r29-market" style="font-weight:900"><span>Jugador / dueño</span><span>PFSY</span><span>Valor</span><span>Precio</span></div>
+      ${rows.map(x => { const advantage = num(x.value)!=null && num(x.price)!=null ? Math.round((1 - x.price/x.value)*100) : null; const state = String(x.status||'').toLowerCase().includes('dudos') ? '<span class="warn">Dudoso</span>' : '<span class="good">Alineable</span>'; return `<div class="r29-market"><span><b>${esc(x.player ?? x.name ?? 'N/D')}</b><br><span class="r29-meta">${esc(x.owner || 'N/D')} · ${state} · ${esc(x.remainingDays ?? x.expires ?? 'N/D')}d</span></span><span>${esc(x.pfsy ?? 'N/D')}</span><span>${money(x.value)}</span><span><b>${money(x.price)}</b>${advantage != null ? `<br><span class="blue2">−${advantage}%</span>` : ''}</span></div>`; }).join('') || '<div class="r29-meta">Sin anuncios legibles.</div>'}
+    </div>`;
   }
 
-  function renderActivity() {
-    const rows = data.recentActivity || [];
-    return `<div class="activityCard">${rows.map(item => `<div class="activityRow"><b>${esc(item.type)}</b> <span class="tiny">${esc(item.date)}</span><br>${esc(item.manager)} ${esc(item.action || '')}${item.player ? ` · <b>${esc(item.player)}</b>` : ''}${item.amount != null ? ` · <b>${money(item.amount)}</b>` : ''}</div>`).join('')}</div>`;
+  function activityView() {
+    const rows = Array.isArray(data.recentActivity) ? data.recentActivity : [];
+    return `<div class="r29-card">${rows.map(x => `<div class="r29-activity"><b>${esc(x.type)}</b> <span class="r29-meta">${esc(x.date)}</span><br>${esc(x.manager || x.actor || 'N/D')} ${esc(x.action || '')}${x.player ? ` · <b>${esc(x.player)}</b>` : ''}${x.amount != null ? ` · <b>${money(x.amount)}</b>` : ''}</div>`).join('') || '<div class="r29-meta">Sin actividad legible.</div>'}</div>`;
   }
 
   function render(view='team') {
-    const body = document.getElementById('recordingBody');
+    const body = document.getElementById('recordingBodyV29');
     if (!body) return;
-    body.innerHTML = view === 'rivals' ? renderRivals() : view === 'market' ? renderMarket() : view === 'activity' ? renderActivity() : renderTeam();
+    body.innerHTML = view === 'rivals' ? rivalsView() : view === 'market' ? marketView() : view === 'activity' ? activityView() : teamView();
   }
 
-  function installUi() {
-    ensureStyles();
-    const panel = buildPanel();
-    installNavButton(panel);
-    panel.querySelectorAll('[data-record-view]').forEach(button => button.addEventListener('click', () => {
-      panel.querySelectorAll('[data-record-view]').forEach(x => x.classList.toggle('active', x === button));
-      render(button.dataset.recordView);
-    }));
-    render('team');
-    installBrain25();
+  function buildPanel() {
+    if (document.getElementById('recordingPanelV29')) return document.getElementById('recordingPanelV29');
+    const panel = document.createElement('section');
+    panel.id = 'recordingPanelV29';
+    panel.innerHTML = `<div class="r29-head"><div><div class="r29-title">📊 Tu liga · lectura inteligente</div><div class="r29-sub">Mi equipo · rivales · mercado · actividad · referencia visual 27/08/2026</div></div><span id="recordingLiveBadge" class="r29-live wait">REFERENCIA</span></div>
+      <div class="r29-tabs"><button type="button" data-r29="team" class="active">👤 Mi equipo</button><button type="button" data-r29="rivals">👥 Rivales</button><button type="button" data-r29="market">💰 Mercado</button><button type="button" data-r29="activity">📰 Actividad</button></div>
+      <div id="recordingBodyV29"></div>`;
+    const app = document.querySelector('.app');
+    const hero = app?.querySelector('.hero');
+    const anchor = document.getElementById('realDataPanel') || hero;
+    if (anchor?.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling); else app?.prepend(panel);
+    panel.querySelectorAll('[data-r29]').forEach(b => b.addEventListener('click', () => { panel.querySelectorAll('[data-r29]').forEach(x => x.classList.toggle('active', x === b)); render(b.dataset.r29); }));
+    return panel;
   }
 
-  /* =========================
-     BRAIN v2.5 — confidence-aware overlay
-  ========================= */
-  const BRAIN_KEY = 'fantasy_brain_v25_mode';
-  const clamp = (v,a=0,b=100) => Math.max(a, Math.min(b, Number(v) || 0));
-  const n = (v,d=0) => Number.isFinite(Number(v)) ? Number(v) : d;
-  const normPos = p => {
-    const x = String(p || '').toUpperCase();
-    if (['GK','POR','PORTERO'].includes(x)) return 'POR';
-    if (['DF','DEF','DEFENSA'].includes(x)) return 'DEF';
-    if (['MF','MED','MEDIO','MEDIOCENTRO','CEN'].includes(x)) return 'MED';
-    if (['FW','DEL','DELANTERO'].includes(x)) return 'DEL';
-    return x;
-  };
-  const normalizePlayer = p => ({...p,name:String(p?.name||p?.player||p?.playerName||'').trim(),position:normPos(p?.position||p?.pos),points:n(p?.points??p?.pfsy??p?.fantasyPoints??p?.score),starts:n(p?.starts),minutes:n(p?.minutes),trend1d:n(p?.trend1d??p?.change1d),trend3d:n(p?.trend3d??p?.change3d),trend7d:n(p?.trend7d??p?.change7d),price:n(p?.price??p?.marketPrice??p?.currentPrice),value:n(p?.value??p?.marketValue??p?.estimatedValue),rotationRisk:clamp(n(p?.rotationRisk,0),0,1),injuryRisk:clamp(n(p?.injuryRisk,0),0,1),fixture:Array.isArray(p?.fixture)?p.fixture.slice(0,4).map(x=>clamp(n(x,50))):[50,50,50,50]});
-  const getMode = () => localStorage.getItem(BRAIN_KEY) || 'balanced';
-  const getWeights = () => getMode()==='aggressive'?{performance:.34,availability:.21,context:.20,market:.15,risk:.10}:getMode()==='conservative'?{performance:.27,availability:.26,context:.18,market:.11,risk:.18}:{performance:.30,availability:.25,context:.20,market:.15,risk:.10};
-  function freshness(){
-    const raw=localStorage.getItem('fm25_lastSync')||localStorage.getItem('fm24_lastSync');
-    if(!raw)return 25;
-    const age=(Date.now()-new Date(raw).getTime())/3600000;
-    if(!Number.isFinite(age)||age<0)return 25;
-    if(age<=6)return 100;if(age<=24)return 85;if(age<=48)return 65;if(age<=168)return 40;return 15;
+  function injectReferenceLabel() {
+    const real = document.getElementById('realDataPanel');
+    if (!real || real.dataset.r29Guard) return;
+    real.dataset.r29Guard = '1';
+    const status = real.querySelector('.source, .alert');
+    const note = document.createElement('div');
+    note.className = 'r29-callout';
+    note.innerHTML = '📌 <b>Referencia de grabación cargada.</b> Los datos de aquí son observados y no LIVE; no sustituyen la conexión oficial.';
+    status?.parentNode?.insertBefore(note, status.nextSibling);
   }
-  function brainScore(p){
-    const performance=clamp(p.points*4)*.60+clamp((p.minutes/90)*20)*.25+clamp(p.starts*5)*.15;
-    const availability=clamp(.58*clamp(p.minutes/9)+.42*clamp(p.starts*10));
-    const context=clamp(p.fixture?.[0]??50);
-    const market=p.value>0&&p.price>0?clamp(50+((p.value-p.price)/p.value)*100):clamp(50+p.trend1d+p.trend3d*.5);
-    const risk=clamp((1-p.rotationRisk)*65+(1-p.injuryRisk)*35);
-    const w=getWeights();
-    const raw=performance*w.performance+availability*w.availability+context*w.context+market*w.market+risk*w.risk;
-    const fields=[p.points,p.starts,p.minutes,p.trend1d,p.trend3d,p.trend7d,p.price,p.value,p.fixture?.[0]];
-    const completeness=fields.filter(v=>Number.isFinite(Number(v))).length/fields.length*100;
-    const confidence=clamp(completeness*.62+freshness()*.38);
-    const score=clamp(raw*(.82+confidence/100*.18));
-    return {score,confidence,performance,availability,context,market,risk};
+
+  async function loadLive() {
+    try {
+      const r = await fetch(LIVE_ENDPOINT, { credentials:'include', cache:'no-store' });
+      if (!r.ok) return;
+      const json = await r.json().catch(() => null);
+      if (json && typeof json === 'object') {
+        live = json;
+        const b = document.getElementById('recordingLiveBadge');
+        if (b) { b.textContent = 'LIVE CONECTADO'; b.classList.remove('wait'); b.classList.add('ok'); }
+        document.getElementById('recordingPanelV29')?.querySelector('.r29-sub')?.insertAdjacentText('beforeend',' · LIVE disponible');
+      }
+    } catch {}
   }
-  const brainProjection=(p,i=0)=>{const d=brainScore(p);const f=clamp(p.fixture?.[i]??50);const trend=clamp(50+p.trend3d*2+p.trend7d);const risk=(1-(p.rotationRisk*.7+p.injuryRisk*.3))*100;return Math.round(clamp(d.score*.42+f*.26+trend*.16+risk*.11+d.confidence*.05-i*2.5));};
-  function installBrain25(){
-    if(document.getElementById('brain25Panel')){renderBrain25(getBrainPlayers());return;}
-    const styleId='brain25InlineStyle';
-    if(!document.getElementById(styleId)){
-      const s=document.createElement('style');s.id=styleId;s.textContent=`#brain25Panel{margin:12px 0}.b25grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.b25m{background:#0e131d;border:1px solid #2a3141;border-radius:10px;padding:9px}.b25m .v{font-size:18px;font-weight:900;margin-top:3px}.b25tbl{width:100%;border-collapse:collapse}.b25tbl th,.b25tbl td{padding:7px 5px;border-bottom:1px solid #232a38;font-size:10px;text-align:left}.b25tbl th{font-size:8px;color:#9aa3b7;text-transform:uppercase}@media(max-width:750px){.b25grid{grid-template-columns:repeat(2,1fr)}.b25tbl th:nth-child(n+6),.b25tbl td:nth-child(n+6){display:none}}`;document.head.appendChild(s);
-    }
-    const panel=document.createElement('section');panel.id='brain25Panel';panel.className='card';
-    panel.innerHTML=`<div class="flex" style="justify-content:space-between"><div><h2 style="margin:0 0 4px">🧠 Cerebro v2.5</h2><div class="tiny">Calidad de datos + frescura + decisión adaptativa</div></div><select id="brain25Mode" style="max-width:160px"><option value="balanced">Equilibrado</option><option value="conservative">Conservador</option><option value="aggressive">Agresivo</option></select></div><div id="brain25Metrics" class="b25grid" style="margin:10px 0"></div><div id="brain25Body"></div>`;
+
+  function brainScore(p) {
+    const points = num(p.pfsy ?? p.points) || 0;
+    const value = num(p.value) || 0;
+    const price = num(p.price) || 0;
+    const availability = String(p.availability||'').toLowerCase().includes('suspend') ? 0 : 100;
+    const market = value > 0 && price > 0 ? Math.max(0, Math.min(100, 50 + (value-price)/value*100)) : 50;
+    const mode = localStorage.getItem(BRAIN_KEY) || 'balanced';
+    const weights = mode === 'aggressive' ? [0.48,0.22,0.20,0.10] : mode === 'conservative' ? [0.32,0.34,0.14,0.20] : [0.40,0.28,0.17,0.15];
+    const score = Math.round(points*4*weights[0] + availability*weights[1] + market*weights[2] + 50*weights[3]);
+    return Math.max(0, Math.min(100, score));
+  }
+
+  function brainPanel() {
+    if (document.getElementById('brainV29Mini')) return;
+    const p = document.createElement('section');
+    p.id='brainV29Mini'; p.className='card';
+    p.innerHTML=`<h3>🧠 Cerebro v2.9 · Señales rápidas</h3><div class="note">Usa los datos observados disponibles sin inventar campos no visibles.</div><div id="brainV29Rows"></div>`;
     const brainTab=document.getElementById('brain');
-    const anchor=brainTab||document.querySelector('.hero');
-    if(anchor?.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling);else document.querySelector('.app')?.appendChild(panel);
-    const select=panel.querySelector('#brain25Mode');select.value=getMode();select.addEventListener('change',()=>{localStorage.setItem(BRAIN_KEY,select.value);renderBrain25(getBrainPlayers());});
-    renderBrain25(getBrainPlayers());
-    if(!getBrainPlayers().length) loadBrain25Live();
-  }
-  function getBrainPlayers(){
-    const local=(()=>{try{const a=JSON.parse(localStorage.getItem('fm25_state_v1')||localStorage.getItem('fm24_state_v1')||'{}');return Array.isArray(a.players)?a.players:[]}catch{return []}})();
-    if(local.length)return local;
-    const live=window.__fantasyLivePlayers;
-    return Array.isArray(live)?live:[];
-  }
-  async function loadBrain25Live(){
-    try{
-      const r=await fetch('/api/data/players?page=1',{credentials:'include',cache:'no-store'});if(!r.ok)throw new Error(`HTTP_${r.status}`);
-      const d=await r.json();const players=Array.isArray(d.players)?d.players:Array.isArray(d.data)?d.data:[];
-      if(players.length){window.__fantasyLivePlayers=players;renderBrain25(players);}
-    }catch{}
-  }
-  function renderBrain25(raw){
-    const panel=document.getElementById('brain25Panel');if(!panel)return;
-    const rows=(raw||[]).map(normalizePlayer).filter(p=>p.name).map(p=>({...p,...brainScore(p)})).sort((a,b)=>b.score-a.score);
-    const avg=rows.length?Math.round(rows.reduce((s,p)=>s+p.confidence,0)/rows.length):null;const fresh=freshness();
-    panel.querySelector('#brain25Metrics').innerHTML=`<div class="b25m"><div class="label">Confianza datos</div><div class="v">${avg==null?'N/D':avg+'/100'}</div></div><div class="b25m"><div class="label">Actualidad</div><div class="v">${fresh>=85?'ALTA':fresh>=65?'MEDIA':fresh>=40?'BAJA':'MUY BAJA'}</div></div><div class="b25m"><div class="label">Modo</div><div class="v">${getMode()==='balanced'?'EQUILIBRADO':getMode()==='conservative'?'CONSERVADOR':'AGRESIVO'}</div></div><div class="b25m"><div class="label">Líder</div><div class="v">${rows[0]?esc(rows[0].name):'N/D'}</div></div>`;
-    if(!rows.length){panel.querySelector('#brain25Body').innerHTML='<div class="empty">Sin jugadores evaluables. Conecta LALIGA o importa datos locales.</div>';return;}
-    panel.querySelector('#brain25Body').innerHTML=`<div style="overflow:auto"><table class="b25tbl"><thead><tr><th>Jugador</th><th>Pos</th><th>Score</th><th>Conf.</th><th>J+1</th><th>J+2</th><th>Decisión</th></tr></thead><tbody>${rows.slice(0,40).map(p=>{const decision=p.score>=78&&p.confidence>=65?'TITULAR / PRIORIDAD':p.score>=70?'TITULAR':p.score>=62?'SEGUIR':p.score<=44?'SALIDA':'NEUTRA';return `<tr><td><b>${esc(p.name)}</b><br><span class="tiny">${esc(p.team||'')}</span></td><td>${esc(p.position||'N/D')}</td><td><b>${Math.round(p.score)}</b></td><td>${Math.round(p.confidence)}</td><td>${brainProjection(p,0)}</td><td>${brainProjection(p,1)}</td><td>${decision}</td></tr>`}).join('')}</tbody></table></div>`;
+    if(brainTab?.parentNode) brainTab.parentNode.insertBefore(p,brainTab.nextSibling); else document.querySelector('.app')?.appendChild(p);
+    const rows=roster('roncazador').map(x=>({...x,score:brainScore(x)})).sort((a,b)=>b.score-a.score).slice(0,7);
+    document.getElementById('brainV29Rows').innerHTML=rows.length?rows.map(x=>`<div class="r29-row"><div><b>${esc(x.name)}</b><div class="r29-meta">${esc(normPos(x.position||x.pos))} · ${x.availability==='Suspendido'?'<span class="bad">Suspendido</span>':'<span class="good">Alineable</span>'}</div></div><b>${x.score}</b></div>`).join(''):'<div class="empty">Sin jugadores observados.</div>';
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });
-  else load();
+  async function load() {
+    try {
+      const r = await fetch(SNAPSHOT_URL, { cache:'no-store' });
+      if (!r.ok) throw new Error(`HTTP_${r.status}`);
+      data = normalizeSnapshot(await r.json());
+      ensureStyles();
+      topStats();
+      buildPanel();
+      render('team');
+      brainPanel();
+      injectReferenceLabel();
+      loadLive();
+    } catch (e) {
+      console.warn('Recording snapshot unavailable', e);
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once:true }); else load();
 })();
