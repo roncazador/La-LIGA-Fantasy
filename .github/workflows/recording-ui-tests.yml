@@ -15,5 +15,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Syntax checks
+        run: |
+          node --check recording-client.js
+          node --check data-client.js
+          node --check dashboard-client.js
+          node --check calendar-client.js
       - name: Run 100 recording/UI checks
         run: node recording-ui.test.mjs
