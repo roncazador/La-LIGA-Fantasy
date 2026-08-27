@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fm-v290';
+const CACHE_NAME = 'fm-v251';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
@@ -33,21 +33,23 @@ self.addEventListener('fetch', event => {
 
   if (request.method !== 'GET') return;
 
-  if (
-    request.mode === 'navigate' ||
-    request.url.endsWith('/index.html') ||
-    request.url.endsWith('/dashboard-client.js') ||
-    request.url.endsWith('/calendar-client.js') ||
-    request.url.endsWith('/official-fixtures-seed-2026-27.json')
-  ) {
+  const pathname = new URL(request.url).pathname;
+  const freshResources = new Set([
+    '/index.html',
+    '/dashboard-client.js',
+    '/calendar-client.js',
+    '/official-fixtures-seed-2026-27.json'
+  ]);
+
+  if (request.mode === 'navigate' || freshResources.has(pathname)) {
     event.respondWith(
       fetch(request, { cache: 'no-store' })
         .then(response => {
           const copy = response.clone();
-          const cacheKey = new URL(request.url).pathname.endsWith('/index.html')
+          const key = pathname.endsWith('/index.html') || request.mode === 'navigate'
             ? './index.html'
-            : new URL(request.url).pathname;
-          caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, copy));
+            : pathname;
+          caches.open(CACHE_NAME).then(cache => cache.put(key, copy));
           return response;
         })
         .catch(() => caches.match(request).then(cached => cached || caches.match('./index.html')))
