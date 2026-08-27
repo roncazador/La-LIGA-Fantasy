@@ -12,14 +12,18 @@ async function getJson(name, url, headers = {}){
       method: 'GET',
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'LALIGA-Fantasy-Manager/2.7.0',
+        'User-Agent': 'LALIGA-Fantasy-Manager/2.8.0',
         ...headers
       },
       cache: 'no-store',
       signal: AbortSignal.timeout(12000)
     });
   } catch (error) {
-    throw providerError(name, 502, error?.name === 'TimeoutError' ? `${name}_TIMEOUT` : `${name}_NETWORK_ERROR`);
+    throw providerError(
+      name,
+      502,
+      error?.name === 'TimeoutError' ? `${name}_TIMEOUT` : `${name}_NETWORK_ERROR`
+    );
   }
 
   const text = await response.text();
@@ -29,12 +33,17 @@ async function getJson(name, url, headers = {}){
 
   if (!response.ok) {
     const upstreamMessage = data?.message || data?.errors?.join?.(', ') || '';
-    throw providerError(name, response.status, `${name}_${response.status}${upstreamMessage ? `: ${upstreamMessage}` : ''}`);
+    throw providerError(
+      name,
+      response.status,
+      `${name}_${response.status}${upstreamMessage ? `: ${upstreamMessage}` : ''}`
+    );
   }
+
   return data;
 }
 
-function daysWindow(days){
+export function daysWindow(days){
   const safeDays = Math.min(Math.max(Number(days) || 30, 1), 90);
   const now = new Date();
   const from = now.toISOString().slice(0, 10);
@@ -42,7 +51,7 @@ function daysWindow(days){
   return { from, to };
 }
 
-function normalizeFootballData(data){
+export function normalizeFootballData(data){
   const matches = Array.isArray(data?.matches) ? data.matches : [];
   return matches.map(match => ({
     provider: 'football-data.org',
@@ -57,7 +66,7 @@ function normalizeFootballData(data){
   }));
 }
 
-function normalizeApiFootball(data){
+export function normalizeApiFootball(data){
   const matches = Array.isArray(data?.response) ? data.response : [];
   return matches.map(match => ({
     provider: 'api-football',
@@ -67,12 +76,15 @@ function normalizeApiFootball(data){
     home: match?.teams?.home?.name || null,
     away: match?.teams?.away?.name || null,
     status: match?.fixture?.status?.short || null,
-    matchday: Number.isFinite(Number(match?.league?.round)) ? Number(match.league.round) : null,
+    matchday: null,
+    round: match?.league?.round || null,
+    homeTeamId: match?.teams?.home?.id ?? null,
+    awayTeamId: match?.teams?.away?.id ?? null,
     raw: match
   }));
 }
 
-function normalizeSportmonks(data){
+export function normalizeSportmonks(data){
   const matches = Array.isArray(data?.data) ? data.data : [];
   return matches.map(match => {
     const participants = Array.isArray(match?.participants) ? match.participants : [];
@@ -87,9 +99,28 @@ function normalizeSportmonks(data){
       away: away?.name || null,
       status: match?.state?.short_name || match?.state?.name || null,
       matchday: null,
+      round: match?.round?.name || null,
+      homeTeamId: home?.id ?? null,
+      awayTeamId: away?.id ?? null,
       raw: match
     };
   });
+}
+
+function cleanTeamName(name){
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(fc|cf|sd|ud|real|club|de|del|la|cd)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+export function fixtureKey(match){
+  const dateKey = match?.utcDate ? new Date(match.utcDate).toISOString().slice(0, 16) : '';
+  return [dateKey, cleanTeamName(match?.home), cleanTeamName(match?.away)].join('|');
 }
 
 export function providerStatus(config){
@@ -103,13 +134,13 @@ export function providerStatus(config){
       configured: Boolean(config.sportmonksToken && config.sportmonksLeagueId),
       leagueConfigured: Boolean(config.sportmonksLeagueId),
       seasonConfigured: Boolean(config.sportmonksSeasonId),
-      note: 'El plan gratuito actual de Sportmonks incluye dos competiciones (Dinamarca y Escocia); LaLiga requiere cobertura compatible con tu plan/trial.'
+      note: 'El plan gratuito actual de Sportmonks incluye dos competiciones; LaLiga requiere cobertura compatible con tu plan o prueba.'
     },
     apiFootball: {
       configured: Boolean(config.apiFootballKey),
       leagueId: config.apiFootballLeagueId,
       season: config.apiFootballSeason,
-      note: 'El plan gratuito actual permite 100 solicitudes/día.'
+      note: 'API-Football está habilitada para el proveedor principal cuando existe API key.'
     },
     opta: {
       configured: Boolean(config.optaToken && config.optaBaseUrl && config.optaFixturesPath),
@@ -121,20 +152,24 @@ export function providerStatus(config){
 
 export async function fetchApiFootballFixtures(config, from, to){
   if (!config.apiFootballKey) throw providerError('API_FOOTBALL', 503, 'API_FOOTBALL_NOT_CONFIGURED');
+
   const params = new URLSearchParams({
     league: config.apiFootballLeagueId,
     season: config.apiFootballSeason,
     from,
     to
   });
+
   const data = await getJson(
     'API_FOOTBALL',
     `${config.apiFootballBase}/fixtures?${params.toString()}`,
     { 'x-apisports-key': config.apiFootballKey }
   );
+
   if (Array.isArray(data?.errors) && data.errors.length) {
     throw providerError('API_FOOTBALL', 502, `API_FOOTBALL_UPSTREAM: ${data.errors.join(', ')}`);
   }
+
   return normalizeApiFootball(data);
 }
 
@@ -148,10 +183,12 @@ export async function fetchSportmonksFixtures(config, from, to){
     filters: `fixtureLeagues:${config.sportmonksLeagueId}`,
     per_page: '50'
   });
+
   const data = await getJson(
     'SPORTMONKS',
     `${config.sportmonksBase}/fixtures/between/${encodeURIComponent(from)}/${encodeURIComponent(to)}?${params.toString()}`
   );
+
   return normalizeSportmonks(data);
 }
 
@@ -165,24 +202,37 @@ export async function fetchOptaFixtures(config){
     url.searchParams.set('competitionId', config.optaCompetitionId);
   }
 
-  const data = await getJson(
-    'OPTA',
-    url.toString(),
-    {
-      Authorization: `Bearer ${config.optaToken}`,
-      'X-API-Key': config.optaToken
-    }
-  );
-  return Array.isArray(data?.response)
+  const data = await getJson('OPTA', url.toString(), {
+    Authorization: `Bearer ${config.optaToken}`,
+    'X-API-Key': config.optaToken
+  });
+
+  const response = Array.isArray(data?.response)
     ? data.response
     : Array.isArray(data?.data)
       ? data.data
       : [];
+
+  return response.map(match => ({
+    provider: 'opta',
+    id: String(match?.id ?? match?.matchId ?? ''),
+    competitionId: String(match?.competitionId ?? config.optaCompetitionId ?? ''),
+    utcDate: match?.utcDate || match?.date || match?.startDate || null,
+    home: match?.home || match?.homeTeam?.name || match?.homeTeam || null,
+    away: match?.away || match?.awayTeam?.name || match?.awayTeam || null,
+    status: match?.status || null,
+    matchday: Number.isFinite(Number(match?.matchday)) ? Number(match.matchday) : null,
+    round: match?.round || null,
+    raw: match
+  }));
 }
 
 export async function fetchMultiProviderFixtures(config){
   const { from, to } = daysWindow(config.footballDataDays);
   const jobs = {
+    'api-football': () => config.apiFootballKey
+      ? fetchApiFootballFixtures(config, from, to)
+      : Promise.reject(providerError('API_FOOTBALL', 503, 'API_FOOTBALL_NOT_CONFIGURED')),
     'football-data.org': () => config.footballDataToken
       ? getJson(
         'FOOTBALL_DATA',
@@ -190,31 +240,52 @@ export async function fetchMultiProviderFixtures(config){
         { 'X-Auth-Token': config.footballDataToken }
       ).then(normalizeFootballData)
       : Promise.reject(providerError('FOOTBALL_DATA', 503, 'FOOTBALL_DATA_NOT_CONFIGURED')),
-    'api-football': () => fetchApiFootballFixtures(config, from, to),
     sportmonks: () => fetchSportmonksFixtures(config, from, to),
     opta: () => fetchOptaFixtures(config)
   };
 
   const entries = await Promise.all(Object.entries(jobs).map(async ([name, job]) => {
     try {
-      return [name, { ok: true, matches: await job() }];
+      const matches = await job();
+      return [name, { ok: true, matches }];
     } catch (error) {
       return [name, { ok: false, error: error.message, status: error.status || 502 }];
     }
   }));
 
   const providers = Object.fromEntries(entries);
+  const priority = ['api-football', 'football-data.org', 'sportmonks', 'opta'];
+  const primaryProvider = priority.find(name => providers[name]?.ok) || null;
   const mergedMap = new Map();
-  for (const [name, result] of entries) {
-    if (!result.ok) continue;
+
+  for (const name of priority) {
+    const result = providers[name];
+    if (!result?.ok) continue;
+
     for (const match of result.matches) {
-      const key = [
-        String(match?.utcDate || '').slice(0, 16),
-        String(match?.home || '').trim().toLowerCase(),
-        String(match?.away || '').trim().toLowerCase()
-      ].join('|');
-      if (!mergedMap.has(key)) mergedMap.set(key, { ...match, sources: [name] });
-      else mergedMap.get(key).sources.push(name);
+      const key = fixtureKey(match);
+      if (!mergedMap.has(key)) {
+        mergedMap.set(key, {
+          id: match.id,
+          utcDate: match.utcDate,
+          home: match.home,
+          away: match.away,
+          status: match.status,
+          matchday: match.matchday,
+          round: match.round || null,
+          homeTeamId: match.homeTeamId ?? null,
+          awayTeamId: match.awayTeamId ?? null,
+          source: name,
+          sources: [name]
+        });
+      } else {
+        const existing = mergedMap.get(key);
+        if (!existing.sources.includes(name)) existing.sources.push(name);
+        if (existing.matchday == null && match.matchday != null) existing.matchday = match.matchday;
+        if (!existing.round && match.round) existing.round = match.round;
+        if (!existing.homeTeamId && match.homeTeamId) existing.homeTeamId = match.homeTeamId;
+        if (!existing.awayTeamId && match.awayTeamId) existing.awayTeamId = match.awayTeamId;
+      }
     }
   }
 
@@ -222,5 +293,14 @@ export async function fetchMultiProviderFixtures(config){
     (a, b) => new Date(a?.utcDate || 0).getTime() - new Date(b?.utcDate || 0).getTime()
   );
 
-  return { from, to, providers, merged };
+  return {
+    from,
+    to,
+    primaryProvider,
+    providers,
+    counts: Object.fromEntries(
+      Object.entries(providers).map(([name, result]) => [name, result.ok ? result.matches.length : 0])
+    ),
+    merged
+  };
 }
