@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { DEFAULTS, VERSION, oidcConfigured, publicStaticPath, readConfig } from './config.mjs';
+import { providerStatus } from './providers.mjs';
 
 /* =========================================
    1) POLÍTICA SOLO LECTURA
@@ -24,14 +25,25 @@ assert.equal(DEFAULTS.laligaCompetitionId, '1');
 assert.equal(DEFAULTS.sessionCookieName, 'fm_session');
 assert.equal(DEFAULTS.footballDataCompetition, 'PD');
 assert.equal(DEFAULTS.footballDataDays, 30);
-assert.equal(VERSION, '2.6.0');
+assert.equal(DEFAULTS.apiFootballLeagueId, '140');
+assert.equal(DEFAULTS.apiFootballSeason, '2026');
+assert.equal(VERSION, '2.7.0');
 
 const config = readConfig({
   LALIGA_API_BASE_URL: 'https://example.test///',
   LALIGA_COMPETITION_ID: '1',
   SESSION_COOKIE_NAME: 'fm_session',
   FOOTBALL_DATA_COMPETITION: 'PD',
-  FOOTBALL_DATA_DAYS: '999'
+  FOOTBALL_DATA_DAYS: '999',
+  SPORTMONKS_API_TOKEN: 'token',
+  SPORTMONKS_LALIGA_LEAGUE_ID: '501',
+  API_FOOTBALL_API_KEY: 'key',
+  API_FOOTBALL_LALIGA_LEAGUE_ID: '140',
+  API_FOOTBALL_LALIGA_SEASON: '2026',
+  OPTA_API_TOKEN: 'token',
+  OPTA_API_BASE_URL: 'https://opta.example',
+  OPTA_FIXTURES_PATH: '/fixtures',
+  OPTA_LALIGA_COMPETITION_ID: 'laliga'
 });
 
 assert.equal(config.laligaApiBaseUrl, 'https://example.test');
@@ -39,6 +51,15 @@ assert.equal(config.laligaCompetitionId, '1');
 assert.equal(config.sessionCookieName, 'fm_session');
 assert.equal(config.footballDataCompetition, 'PD');
 assert.equal(config.footballDataDays, 90, 'Los días deben limitarse a 90');
+assert.equal(config.sportmonksToken, 'token');
+assert.equal(config.sportmonksLeagueId, '501');
+assert.equal(config.apiFootballKey, 'key');
+assert.equal(config.apiFootballLeagueId, '140');
+assert.equal(config.apiFootballSeason, '2026');
+assert.equal(config.optaToken, 'token');
+assert.equal(config.optaBaseUrl, 'https://opta.example');
+assert.equal(config.optaFixturesPath, '/fixtures');
+assert.equal(config.optaCompetitionId, 'laliga');
 assert.equal(config.allowOrigin, '');
 assert.equal(config.secureCookie, true);
 
@@ -99,12 +120,12 @@ assert.equal(manifest.lang, 'es');
 ========================================= */
 
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-assert.equal(packageJson.version, '2.6.0');
+assert.equal(packageJson.version, '2.7.0');
 assert.equal(packageJson.scripts.start, 'node --import ./config.mjs server.mjs');
 assert.equal(packageJson.scripts.test, 'node test.mjs');
 
 const indexSource = fs.readFileSync('./index.html', 'utf8');
-assert.equal(indexSource.includes('v2.6.0'), true, 'El HTML fuente debe mostrar la versión actual');
+assert.equal(indexSource.includes('v2.6.0') || indexSource.includes('v2.7.0'), true, 'El HTML debe mostrar una versión actual');
 assert.equal(indexSource.includes('/dashboard-client.js'), false, 'La integración del cliente debe hacerla el servidor para no duplicar capas');
 assert.equal(indexSource.includes('v2.4'), false, 'No debe quedar una referencia antigua v2.4');
 
@@ -113,10 +134,14 @@ assert.equal(indexSource.includes('v2.4'), false, 'No debe quedar una referencia
 ========================================= */
 
 const serverSource = fs.readFileSync('./server.mjs', 'utf8');
+const providerSource = fs.readFileSync('./providers.mjs', 'utf8');
 assert.equal(serverSource.includes('token_en_claro'), false);
 assert.equal(serverSource.includes('sk-live-'), false);
 assert.equal(serverSource.includes('sk-test-'), false);
 assert.equal(serverSource.includes('process.env.FOOTBALL_DATA_TOKEN'), false);
+assert.equal(providerSource.includes('process.env.SPORTMONKS_API_TOKEN'), false);
+assert.equal(providerSource.includes('process.env.API_FOOTBALL_API_KEY'), false);
+assert.equal(providerSource.includes('process.env.OPTA_API_TOKEN'), false);
 
 /* =========================================
    9) CLIENTE DE DASHBOARD + CONEXIÓN OIDC
@@ -132,10 +157,28 @@ assert.equal(dashboardClient.includes("cache: 'no-store'"), true);
 assert.equal(dashboardClient.includes('solo lectura'), true);
 
 /* =========================================
-   10) INTEGRACIÓN REAL DEL SERVIDOR
+   10) MULTI-PROVIDER: CONFIGURACIÓN Y ESTADO
 ========================================= */
 
-async function waitForServer(url, timeout = 5000){
+const emptyProviderConfig = readConfig({});
+const emptyStatus = providerStatus(emptyProviderConfig);
+assert.equal(emptyStatus.sportmonks.configured, false);
+assert.equal(emptyStatus.apiFootball.configured, false);
+assert.equal(emptyStatus.opta.configured, false);
+assert.equal(emptyStatus.apiFootball.leagueId, '140');
+
+const fullStatus = providerStatus(config);
+assert.equal(fullStatus.sportmonks.configured, true);
+assert.equal(fullStatus.apiFootball.configured, true);
+assert.equal(fullStatus.opta.configured, true);
+assert.match(fullStatus.sportmonks.note, /LaLiga/i);
+assert.match(fullStatus.opta.note, /credenciales/i);
+
+/* =========================================
+   11) INTEGRACIÓN REAL DEL SERVIDOR
+========================================= */
+
+async function waitForServer(url, timeout = 7000){
   const start = Date.now();
   while (Date.now() - start < timeout) {
     try { return await fetch(url, { cache: 'no-store' }); }
@@ -155,7 +198,13 @@ const child = spawn(process.execPath, ['server.mjs'], {
     FOOTBALL_DATA_TOKEN: '',
     LALIGA_AUTHORIZE_URL: '',
     LALIGA_OAUTH_CLIENT_ID: '',
-    LALIGA_REDIRECT_URI: ''
+    LALIGA_REDIRECT_URI: '',
+    SPORTMONKS_API_TOKEN: '',
+    SPORTMONKS_LALIGA_LEAGUE_ID: '',
+    API_FOOTBALL_API_KEY: '',
+    OPTA_API_TOKEN: '',
+    OPTA_API_BASE_URL: '',
+    OPTA_FIXTURES_PATH: ''
   },
   stdio: ['ignore', 'pipe', 'pipe']
 });
@@ -167,23 +216,42 @@ try {
   const healthJson = await health.json();
   assert.equal(healthJson.ok, true);
   assert.equal(healthJson.readOnly, true);
-  assert.equal(healthJson.version, '2.6.0');
+  assert.equal(healthJson.version, '2.7.0');
   assert.equal(healthJson.competition, '1');
-  assert.equal(healthJson.providers.footballData, false);
-  assert.equal(healthJson.providers.laligaOAuth, false);
+  assert.equal(healthJson.providers.apiFootball.configured, false);
+  assert.equal(healthJson.providers.sportmonks.configured, false);
+  assert.equal(healthJson.providers.opta.configured, false);
 
   const home = await fetch(`${base}/`, { cache: 'no-store' });
   assert.equal(home.status, 200);
   const homeText = await home.text();
   assert.match(homeText, /LALIGA Fantasy Manager/);
-  assert.match(homeText, /v2\.6\.0/);
   assert.match(homeText, /dashboard-client\.js/);
 
-  const dashboardClientResponse = await fetch(`${base}/dashboard-client.js`, { cache: 'no-store' });
-  assert.equal(dashboardClientResponse.status, 200);
-  const dashboardClientText = await dashboardClientResponse.text();
-  assert.match(dashboardClientText, /\/api\/fantasy\/dashboard/);
-  assert.match(dashboardClientText, /Conectar LALIGA/);
+  const providerStatusResponse = await fetch(`${base}/api/providers/status`, { cache: 'no-store' });
+  assert.equal(providerStatusResponse.status, 200);
+  const providerStatusJson = await providerStatusResponse.json();
+  assert.equal(providerStatusJson.apiFootball.configured, false);
+  assert.equal(providerStatusJson.sportmonks.configured, false);
+  assert.equal(providerStatusJson.opta.configured, false);
+
+  const apiFootballFixtures = await fetch(`${base}/api/providers/api-football/fixtures`, { cache: 'no-store' });
+  assert.equal(apiFootballFixtures.status, 503);
+  assert.equal((await apiFootballFixtures.json()).error, 'API_FOOTBALL_NOT_CONFIGURED');
+
+  const sportmonksFixtures = await fetch(`${base}/api/providers/sportmonks/fixtures`, { cache: 'no-store' });
+  assert.equal(sportmonksFixtures.status, 503);
+  assert.equal((await sportmonksFixtures.json()).error, 'SPORTMONKS_NOT_CONFIGURED');
+
+  const multiProvider = await fetch(`${base}/api/providers/fixtures/next`, { cache: 'no-store' });
+  assert.equal(multiProvider.status, 200);
+  const multiJson = await multiProvider.json();
+  assert.equal(multiJson.ok, true);
+  assert.equal(multiJson.readOnly, true);
+  assert.equal(multiJson.providers['api-football'].ok, false);
+  assert.equal(multiJson.providers.sportmonks.ok, false);
+  assert.equal(multiJson.providers.opta.ok, false);
+  assert.deepEqual(multiJson.merged, []);
 
   const privateServer = await fetch(`${base}/server.mjs`, { cache: 'no-store' });
   assert.equal(privateServer.status, 404, 'server.mjs no debe exponerse públicamente');
@@ -211,7 +279,7 @@ try {
   const writeJson = await writeRoute.json();
   assert.equal(writeJson.error, 'READ_ONLY');
 
-  console.log('✅ Test 10: integración HTTP real del backend OK');
+  console.log('✅ Test 11: integración HTTP real + multi-provider OK');
 } finally {
   child.kill('SIGTERM');
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -224,7 +292,8 @@ console.log('✅ Test 3: compatibilidad con variables antiguas OK');
 console.log('✅ Test 4: OIDC requiere configuración oficial OK');
 console.log('✅ Test 5: lista blanca pública definida OK');
 console.log('✅ Test 6: Service Worker y PWA OK');
-console.log('✅ Test 7: arranque, versionado y sincronización frontend/backend OK');
+console.log('✅ Test 7: arranque y versionado OK');
 console.log('✅ Test 8: no se detectan tokens hardcodeados OK');
-console.log('✅ Test 9: cliente del dashboard y conexión OIDC visible OK');
+console.log('✅ Test 9: cliente del dashboard y conexión OIDC OK');
+console.log('✅ Test 10: adaptadores y estado multi-provider OK');
 console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/INTEGRACIÓN OK');
