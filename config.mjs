@@ -35,6 +35,17 @@ const aliases = {
   FOOTBALL_DATA_DAYS: 'DÍAS_DE_DATOS_DE_FÚTBOL'
 };
 
+function envWithAliases(source){
+  const out = { ...source };
+  for (const [canonical, legacy] of Object.entries(aliases)) {
+    if (!String(out[canonical] ?? '').trim() && String(out[legacy] ?? '').trim()) {
+      out[canonical] = out[legacy];
+    }
+  }
+  return out;
+}
+
+/* La ejecución en producción conserva también la compatibilidad global. */
 for (const [canonical, legacy] of Object.entries(aliases)) {
   if (!process.env[canonical] && process.env[legacy]) process.env[canonical] = process.env[legacy];
 }
@@ -44,7 +55,8 @@ function nonEmpty(value, fallback){
   return text || fallback;
 }
 
-export function readConfig(env = process.env){
+export function readConfig(source = process.env){
+  const env = envWithAliases(source);
   const rawDays = Number(env.FOOTBALL_DATA_DAYS ?? DEFAULTS.footballDataDays);
   const footballDataDays = Math.min(
     Math.max(Number.isFinite(rawDays) ? rawDays : DEFAULTS.footballDataDays, 1),
