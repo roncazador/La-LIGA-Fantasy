@@ -69,7 +69,7 @@ assert.equal(config.secureCookie, true);
 
 const configSource = fs.readFileSync('./config.mjs', 'utf8');
 for (const alias of [
-  'LALIGA_CONCOMPETENCIA_ID', 'SESIÓN_NOMBRE_DE LA_COOKIE',
+  'LALIGA_CONCOMPETENCIA_ID', 'SESIÓN_NOMBRE_DE LA COOKIE',
   'COMPETENCIA_DE_DATOS_DE_FÚTBOL', 'DÍAS_DE_DATOS_DE_FÚTBOL'
 ]) {
   assert.equal(configSource.includes(alias), true, `Falta compatibilidad con variable antigua: ${alias}`);
@@ -150,8 +150,13 @@ assert.equal(providerSource.includes('process.env.OPTA_API_TOKEN'), false);
 const dashboardClient = fs.readFileSync('./dashboard-client.js', 'utf8');
 assert.equal(dashboardClient.includes('/api/fantasy/dashboard'), true);
 assert.equal(dashboardClient.includes('/api/auth/status'), true);
+assert.equal(dashboardClient.includes('/api/providers/status'), true);
 assert.equal(dashboardClient.includes('/auth/start?platform=ios'), true);
 assert.equal(dashboardClient.includes('Conectar LALIGA'), true);
+assert.equal(dashboardClient.includes('providerMatrix'), true);
+assert.equal(dashboardClient.includes('API-Football'), true);
+assert.equal(dashboardClient.includes('Sportmonks'), true);
+assert.equal(dashboardClient.includes('Opta / Stats Perform'), true);
 assert.equal(dashboardClient.includes("credentials: 'include'"), true);
 assert.equal(dashboardClient.includes("cache: 'no-store'"), true);
 assert.equal(dashboardClient.includes('solo lectura'), true);
@@ -294,6 +299,6 @@ console.log('✅ Test 5: lista blanca pública definida OK');
 console.log('✅ Test 6: Service Worker y PWA OK');
 console.log('✅ Test 7: arranque y versionado OK');
 console.log('✅ Test 8: no se detectan tokens hardcodeados OK');
-console.log('✅ Test 9: cliente del dashboard y conexión OIDC OK');
+console.log('✅ Test 9: cliente del dashboard + matriz de proveedores OK');
 console.log('✅ Test 10: adaptadores y estado multi-provider OK');
 console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/INTEGRACIÓN OK');
