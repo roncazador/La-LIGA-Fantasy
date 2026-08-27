@@ -33,7 +33,41 @@
   function setConnection(message, ok = true) {
     const node = document.getElementById('conn');
     if (!node) return;
-    node.innerHTML = ok ? `✅ <b>${message}</b>` : `ℹ️ <b>${message}</b>`;
+    node.textContent = `${ok ? '✅' : 'ℹ️'} ${message}`;
+  }
+
+  function ensureProviderMatrix(status) {
+    let node = document.getElementById('providerMatrix');
+    if (!node) {
+      node = document.createElement('div');
+      node.id = 'providerMatrix';
+      node.style.cssText = 'margin:12px 0;padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;';
+      const anchor = document.getElementById('conn');
+      if (anchor?.parentNode) anchor.parentNode.insertBefore(node, anchor.nextSibling);
+      else document.body.prepend(node);
+    }
+
+    const entries = [
+      ['LALIGA', status?.laliga?.configured ? 'LISTO' : 'PENDIENTE', status?.laliga?.configured],
+      ['football-data.org', status?.footballData?.configured ? 'LISTO' : 'SIN TOKEN', status?.footballData?.configured],
+      ['API-Football', status?.apiFootball?.configured ? 'LISTO' : 'SIN CLAVE', status?.apiFootball?.configured],
+      ['Sportmonks', status?.sportmonks?.configured ? 'LISTO' : 'SIN COBERTURA/CLAVE', status?.sportmonks?.configured],
+      ['Opta / Stats Perform', status?.opta?.configured ? 'LISTO' : (status?.opta?.contractReady ? 'FALTA CREDENCIAL' : 'SIN CONTRATO/ENDPOINT'), status?.opta?.configured]
+    ];
+
+    node.replaceChildren(...entries.map(([name, state, ok]) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'padding:9px;border-radius:10px;background:rgba(255,255,255,.035);';
+      const title = document.createElement('div');
+      title.style.cssText = 'font-weight:700;';
+      title.textContent = name;
+      const value = document.createElement('div');
+      value.style.cssText = 'margin-top:4px;font-size:.86em;opacity:.8;';
+      value.textContent = state;
+      card.append(title, value);
+      if (ok) card.dataset.status = 'ok';
+      return card;
+    }));
   }
 
   function ensureConnectControl(configured) {
@@ -47,7 +81,7 @@
       else document.body.prepend(node);
     }
 
-    node.innerHTML = '';
+    node.replaceChildren();
     const label = document.createElement('span');
     label.textContent = configured
       ? 'Conecta tu cuenta LALIGA para cargar plantilla, liga, presupuesto y clasificación.'
@@ -65,6 +99,18 @@
         window.location.assign('/auth/start?platform=ios');
       });
       node.appendChild(button);
+    }
+  }
+
+  async function loadProviderState() {
+    try {
+      const response = await fetch('/api/providers/status', { credentials: 'include', cache: 'no-store' });
+      const status = await response.json().catch(() => ({}));
+      ensureProviderMatrix(status);
+      return status;
+    } catch {
+      ensureProviderMatrix({});
+      return {};
     }
   }
 
@@ -127,7 +173,7 @@
     setText('kCash', cash === null ? '—' : money(cash));
 
     const leagueLabel = leagueName(league);
-    const version = payload.version || '2.6.0';
+    const version = payload.version || '2.7.0';
     const errors = Array.isArray(payload.errors) ? payload.errors : [];
     const summary = [
       user ? `Manager: ${user}` : null,
@@ -150,7 +196,7 @@
   }
 
   async function loadDashboard() {
-    await loadAuthState();
+    await Promise.all([loadProviderState(), loadAuthState()]);
     try {
       const sessionResponse = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
       const session = await sessionResponse.json().catch(() => ({}));
