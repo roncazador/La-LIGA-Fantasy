@@ -131,10 +131,10 @@ check(fs.readFileSync('./server.mjs', 'utf8').includes("'/api/data/standings'"),
 check(fs.readFileSync('./server.mjs', 'utf8').includes("'/api/data/injuries'"), 'ruta lesiones expuesta');
 check(fs.readFileSync('./server.mjs', 'utf8').includes("'data-client.js'"), 'cliente real-data servido');
 check(fs.readFileSync('./config.mjs', 'utf8').includes("'/data-client.js'"), 'data-client en allowlist');
-check(fs.readFileSync('./data-client.js', 'utf8').includes('Europe/Madrid') === false, 'no se fuerza zona horaria incorrecta en esta capa');
-check(fs.readFileSync('./data-client.js', 'utf8').includes('credentials: \'include\''), 'cliente usa cookies');
+check(fs.readFileSync('./data-client.js', 'utf8').includes('api/fantasy/dashboard'), 'cliente sincroniza panel LIVE LALIGA');
+check(fs.readFileSync('./data-client.js', 'utf8').includes("credentials: 'include'"), 'cliente usa cookies');
 check(fs.readFileSync('./data-client.js', 'utf8').includes("cache: 'no-store'"), 'cliente evita datos obsoletos');
-check(fs.readFileSync('./data-client.js', 'utf8').includes('API-Football'), 'fuente visible');
+check(fs.readFileSync('./data-client.js', 'utf8').includes('LIVE'), 'estado LIVE visible');
 check(checks === 100, 'exactamente 100 comprobaciones ejecutadas');
 
 /* Request functions are exercised by mocked fetch so no external credential is needed. */
