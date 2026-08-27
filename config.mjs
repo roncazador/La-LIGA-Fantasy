@@ -1,4 +1,4 @@
-export const VERSION = '2.8.0';
+export const VERSION = '2.9.0';
 
 export const DEFAULTS = {
   laligaApiBaseUrl: 'https://fantasy-api.llt-services.com',
