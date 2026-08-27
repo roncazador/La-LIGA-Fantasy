@@ -33,7 +33,7 @@ check('AlvaroNP96 52', ref.standings.find(x => x.manager === 'AlvaroNP96')?.pfsy
 check('kubakar 27', ref.standings.find(x => x.manager === 'kubakar')?.pfsy === 27);
 check('Akm90 27', ref.standings.find(x => x.manager === 'Akm90')?.pfsy === 27);
 
-/* 21-35: mi equipo */
+/* 21-36: mi equipo */
 const me = ref.rostersVisible?.roncazador || [];
 check('mi roster es array', Array.isArray(me));
 check('mi roster tiene 7 visibles', me.length === 7);
@@ -42,11 +42,12 @@ check('Fermín 19', me.find(x => x.name === 'Fermín')?.pfsy === 19);
 check('Óscar 7', me.find(x => x.name === 'Óscar Valentín')?.pfsy === 7);
 check('Cala 11', me.find(x => x.name === 'Cala')?.pfsy === 11);
 check('Germán POR', me.find(x => x.name === 'Germán')?.position === 'POR');
-check('Fermín MED', me.find(x => x.name === 'Fermín')?.position === 'CEN');
+check('Fermín CEN', me.find(x => x.name === 'Fermín')?.position === 'CEN');
 check('todos tienen disponibilidad', me.every(x => typeof x.availability === 'string' && x.availability));
 check('todos tienen precio válido', me.every(x => Number.isFinite(x.price)));
+check('mi equipo no contiene credenciales', !JSON.stringify(me).match(/api[_-]?key|token|password|bearer/i));
 
-/* 36-55: rivales */
+/* 37-53: rivales */
 const rivalGroups = ['Jonymessi','SURIKT097','saugarr','AlvaroNP96','kubakar'];
 for (const manager of rivalGroups) check(`roster ${manager} array`, Array.isArray(ref.rostersVisible?.[manager]));
 check('Aubameyang 20', ref.rostersVisible.Jonymessi?.find(x => x.name === 'Aubameyang')?.pfsy === 20);
@@ -61,7 +62,7 @@ check('jugadores rivales con posición', Object.values(ref.rostersVisible).flat(
 check('jugadores rivales con PFSY numérico', Object.values(ref.rostersVisible).flat().every(x => Number.isFinite(x.pfsy)));
 check('sin roster fantasma vacío no-array', Object.values(ref.rostersVisible).every(Array.isArray));
 
-/* 56-65: mercado */
+/* 54-63: mercado */
 check('mercado array', Array.isArray(ref.marketListings));
 check('3 anuncios observados', ref.marketListings.length === 3);
 check('anuncio 1 sin nombre inventado', ref.marketListings[0]?.player == null);
@@ -73,7 +74,7 @@ check('Juan Iglesias dudoso', ref.marketListings.find(x => x.player === 'Juan Ig
 check('anuncios con dueño', ref.marketListings.every(x => typeof x.owner === 'string' && x.owner));
 check('anuncios con precio', ref.marketListings.every(x => Number.isFinite(x.price)));
 
-/* 66-72: actividad */
+/* 64-70: actividad */
 check('actividad array', Array.isArray(ref.recentActivity));
 check('actividad 21 entradas', ref.recentActivity.length === 21);
 check('actividad con fechas', ref.recentActivity.every(x => typeof x.date === 'string' && x.date));
@@ -82,7 +83,7 @@ check('Balde 25.001.999', ref.recentActivity.some(x => x.player === 'Álex Balde
 check('Balliu 999.309', ref.recentActivity.some(x => x.player === 'Balliu' && x.amount === 999309));
 check('Bartra 28.111.111', ref.recentActivity.some(x => x.player === 'Bartra' && x.amount === 28111111));
 
-/* 73-84: frontend */
+/* 71-82: frontend */
 check('recording client carga JSON', recordingClient.includes("/recording-data-2026-08-27.json"));
 check('recording client normaliza snapshot', recordingClient.includes('normalizeSnapshot'));
 check('recording client dibuja mi equipo', recordingClient.includes('teamView'));
@@ -96,7 +97,7 @@ check('calendar usa endpoint unificado', calendar.includes('/api/fixtures/next')
 check('calendar no-cache', calendar.includes("cache: 'no-store'"));
 check('data client mantiene dashboard LIVE', dataClient.includes('api/fantasy/dashboard'));
 
-/* 85-92: seguridad/compatibilidad */
+/* 83-92: seguridad/compatibilidad */
 const secret = /(?:x-apisports-key|YOUR_API_KEY|token_en_claro|Bearer\s+[A-Za-z0-9._-]{20,}|apiFootballKey\s*[:=]\s*['"][A-Za-z0-9._-]{20,}['"])/i;
 check('recording client sin secretos', !secret.test(recordingClient));
 check('calendar sin secretos', !secret.test(calendar));
@@ -106,6 +107,8 @@ check('config permite recording client', config.includes("'/recording-client.js'
 check('config permite recording JSON', config.includes("'/recording-data-2026-08-27.json'"));
 check('index móvil', index.includes('@media(max-width:560px)'));
 check('index navegación táctil', index.includes('overflow:auto'));
+check('recording client no contiene fetch de escritura', !recordingClient.match(/POST|PUT|PATCH|DELETE/i));
+check('modo solo lectura visible', index.includes('SOLO LECTURA'));
 
 /* 93-100: invariantes finales */
 check('todos los managers tienen rank', ref.standings.every(x => Number.isInteger(x.rank)));
