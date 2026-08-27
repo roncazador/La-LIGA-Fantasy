@@ -1,4 +1,4 @@
-export const VERSION = '2.6.0';
+export const VERSION = '2.7.0';
 
 export const DEFAULTS = {
   laligaApiBaseUrl: 'https://fantasy-api.llt-services.com',
@@ -6,15 +6,27 @@ export const DEFAULTS = {
   sessionCookieName: 'fm_session',
   allowOrigin: '',
   iosSuccessRedirect: 'laligafantasy://auth-complete',
+
   footballDataBase: 'https://api.football-data.org/v4',
   footballDataCompetition: 'PD',
   footballDataDays: 30,
+
+  sportmonksBase: 'https://api.sportmonks.com/v3/football',
+  sportmonksLeagueId: '',
+  sportmonksSeasonId: '',
+
+  apiFootballBase: 'https://v3.football.api-sports.io',
+  apiFootballLeagueId: '140',
+  apiFootballSeason: '2026',
+
+  optaBaseUrl: '',
+  optaCompetitionId: '',
+
   laligaSigninPolicy: 'B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN',
   laligaTokenUrl: 'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/token'
 };
 
-/* Compatibilidad con las variables antiguas que usamos durante el montaje.
-   Se convierten a los nombres canónicos antes de arrancar server.mjs. */
+/* Compatibilidad con las variables antiguas que usamos durante el montaje. */
 const aliases = {
   LALIGA_COMPETITION_ID: 'LALIGA_CONCOMPETENCIA_ID',
   SESSION_COOKIE_NAME: 'SESIÓN_NOMBRE_DE LA_COOKIE',
@@ -23,9 +35,7 @@ const aliases = {
 };
 
 for (const [canonical, legacy] of Object.entries(aliases)) {
-  if (!process.env[canonical] && process.env[legacy]) {
-    process.env[canonical] = process.env[legacy];
-  }
+  if (!process.env[canonical] && process.env[legacy]) process.env[canonical] = process.env[legacy];
 }
 
 function nonEmpty(value, fallback){
@@ -43,15 +53,32 @@ export function readConfig(env = process.env){
   return {
     port: Number(env.PORT || 3005),
     host: nonEmpty(env.HOST, '0.0.0.0'),
+
     laligaApiBaseUrl: nonEmpty(env.LALIGA_API_BASE_URL, DEFAULTS.laligaApiBaseUrl).replace(/\/+$/, ''),
     laligaCompetitionId: nonEmpty(env.LALIGA_COMPETITION_ID, DEFAULTS.laligaCompetitionId),
     sessionCookieName: nonEmpty(env.SESSION_COOKIE_NAME, DEFAULTS.sessionCookieName),
     allowOrigin: String(env.ALLOW_ORIGIN ?? DEFAULTS.allowOrigin).trim(),
     iosSuccessRedirect: nonEmpty(env.IOS_SUCCESS_REDIRECT, DEFAULTS.iosSuccessRedirect),
+
     footballDataToken: String(env.FOOTBALL_DATA_TOKEN ?? ''),
     footballDataBase: DEFAULTS.footballDataBase,
     footballDataCompetition: nonEmpty(env.FOOTBALL_DATA_COMPETITION, DEFAULTS.footballDataCompetition),
     footballDataDays,
+
+    sportmonksToken: String(env.SPORTMONKS_API_TOKEN ?? ''),
+    sportmonksBase: nonEmpty(env.SPORTMONKS_API_BASE_URL, DEFAULTS.sportmonksBase).replace(/\/+$/, ''),
+    sportmonksLeagueId: String(env.SPORTMONKS_LALIGA_LEAGUE_ID ?? DEFAULTS.sportmonksLeagueId).trim(),
+    sportmonksSeasonId: String(env.SPORTMONKS_LALIGA_SEASON_ID ?? DEFAULTS.sportmonksSeasonId).trim(),
+
+    apiFootballKey: String(env.API_FOOTBALL_API_KEY ?? ''),
+    apiFootballBase: nonEmpty(env.API_FOOTBALL_API_BASE_URL, DEFAULTS.apiFootballBase).replace(/\/+$/, ''),
+    apiFootballLeagueId: nonEmpty(env.API_FOOTBALL_LALIGA_LEAGUE_ID, DEFAULTS.apiFootballLeagueId),
+    apiFootballSeason: nonEmpty(env.API_FOOTBALL_LALIGA_SEASON, DEFAULTS.apiFootballSeason),
+
+    optaToken: String(env.OPTA_API_TOKEN ?? ''),
+    optaBaseUrl: String(env.OPTA_API_BASE_URL ?? DEFAULTS.optaBaseUrl).trim().replace(/\/+$/, ''),
+    optaCompetitionId: String(env.OPTA_LALIGA_COMPETITION_ID ?? DEFAULTS.optaCompetitionId).trim(),
+
     laligaAuthorizeUrl: String(env.LALIGA_AUTHORIZE_URL ?? '').trim(),
     laligaOAuthClientId: String(env.LALIGA_OAUTH_CLIENT_ID ?? '').trim(),
     laligaRedirectUri: String(env.LALIGA_REDIRECT_URI ?? '').trim(),
@@ -63,11 +90,7 @@ export function readConfig(env = process.env){
 }
 
 export function oidcConfigured(config){
-  return Boolean(
-    config.laligaAuthorizeUrl &&
-    config.laligaOAuthClientId &&
-    config.laligaRedirectUri
-  );
+  return Boolean(config.laligaAuthorizeUrl && config.laligaOAuthClientId && config.laligaRedirectUri);
 }
 
 export function publicStaticPath(pathname){
