@@ -160,12 +160,10 @@
     if (status) status.textContent = '⏳ Cargando partidos con el sistema multi-proveedor…';
     ensureFixtureProviderInfo();
 
-    // The legacy UI already knows how to render state.fixtures. Trigger it once
-    // so the new unified backend feeds the existing renderer without duplicating state.
+    // Se conserva la compatibilidad con el renderer antiguo; el cliente de calendario
+    // se carga a continuación y captura el click antes del handler histórico.
     window.setTimeout(() => button.click(), 250);
 
-    // The legacy renderer does not know about the new `primaryProvider` field.
-    // This small observer keeps its status human-readable while the backend response loads.
     if (status && !window.__laligaFixtureObserver) {
       window.__laligaFixtureObserver = new MutationObserver(() => {
         const value = text(status.textContent);
@@ -300,6 +298,12 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') loadDashboard();
   });
+
+  // Carga el cliente especializado después de instalar los handlers legacy del HTML.
+  const calendarScript = document.createElement('script');
+  calendarScript.src = '/calendar-client.js';
+  calendarScript.defer = true;
+  document.head.appendChild(calendarScript);
 
   loadDashboard();
 })();
