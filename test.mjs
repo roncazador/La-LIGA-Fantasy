@@ -8,28 +8,11 @@ import { DEFAULTS, VERSION, oidcConfigured, publicStaticPath, readConfig } from 
 ========================================= */
 
 const allowed = new Set([
-  'profile',
-  'leagues',
-  'league',
-  'squad',
-  'budget',
-  'market',
-  'fixtures',
-  'players',
-  'stats',
-  'rivals',
-  'standings',
-  'week'
+  'profile', 'leagues', 'league', 'squad', 'budget', 'market', 'fixtures',
+  'players', 'stats', 'rivals', 'standings', 'week'
 ]);
 
-for (const route of [
-  'buy',
-  'sell',
-  'bid',
-  'clause',
-  'blind',
-  'lineup-write'
-]) {
+for (const route of ['buy', 'sell', 'bid', 'clause', 'blind', 'lineup-write']) {
   assert.equal(allowed.has(route), false, `Ruta de escritura permitida: ${route}`);
 }
 
@@ -65,36 +48,22 @@ assert.equal(config.secureCookie, true);
 
 const configSource = fs.readFileSync('./config.mjs', 'utf8');
 for (const alias of [
-  'LALIGA_CONCOMPETENCIA_ID',
-  'SESIÓN_NOMBRE_DE LA_COOKIE',
-  'COMPETENCIA_DE_DATOS_DE_FÚTBOL',
-  'DÍAS_DE_DATOS_DE_FÚTBOL'
+  'LALIGA_CONCOMPETENCIA_ID', 'SESIÓN_NOMBRE_DE LA_COOKIE',
+  'COMPETENCIA_DE_DATOS_DE_FÚTBOL', 'DÍAS_DE_DATOS_DE_FÚTBOL'
 ]) {
-  assert.equal(
-    configSource.includes(alias),
-    true,
-    `Falta compatibilidad con variable antigua: ${alias}`
-  );
+  assert.equal(configSource.includes(alias), true, `Falta compatibilidad con variable antigua: ${alias}`);
 }
 
 /* =========================================
    4) OIDC: NO INVENTAR CREDENCIALES
 ========================================= */
 
-assert.equal(
-  oidcConfigured(config),
-  false,
-  'OIDC no debe aparecer configurado sin los 3 parámetros oficiales'
-);
-
-assert.equal(
-  oidcConfigured({
-    laligaAuthorizeUrl: 'https://login.example/authorize',
-    laligaOAuthClientId: 'client',
-    laligaRedirectUri: 'https://example.test/auth/callback'
-  }),
-  true
-);
+assert.equal(oidcConfigured(config), false, 'OIDC no debe aparecer configurado sin los 3 parámetros oficiales');
+assert.equal(oidcConfigured({
+  laligaAuthorizeUrl: 'https://login.example/authorize',
+  laligaOAuthClientId: 'client',
+  laligaRedirectUri: 'https://example.test/auth/callback'
+}), true);
 
 /* =========================================
    5) LISTA BLANCA DE ARCHIVOS PÚBLICOS
@@ -150,11 +119,14 @@ assert.equal(serverSource.includes('sk-test-'), false);
 assert.equal(serverSource.includes('process.env.FOOTBALL_DATA_TOKEN'), false);
 
 /* =========================================
-   9) CLIENTE DE DASHBOARD
+   9) CLIENTE DE DASHBOARD + CONEXIÓN OIDC
 ========================================= */
 
 const dashboardClient = fs.readFileSync('./dashboard-client.js', 'utf8');
 assert.equal(dashboardClient.includes('/api/fantasy/dashboard'), true);
+assert.equal(dashboardClient.includes('/api/auth/status'), true);
+assert.equal(dashboardClient.includes('/auth/start?platform=ios'), true);
+assert.equal(dashboardClient.includes('Conectar LALIGA'), true);
 assert.equal(dashboardClient.includes("credentials: 'include'"), true);
 assert.equal(dashboardClient.includes("cache: 'no-store'"), true);
 assert.equal(dashboardClient.includes('solo lectura'), true);
@@ -165,37 +137,28 @@ assert.equal(dashboardClient.includes('solo lectura'), true);
 
 async function waitForServer(url, timeout = 5000){
   const start = Date.now();
-
   while (Date.now() - start < timeout) {
-    try {
-      return await fetch(url, { cache: 'no-store' });
-    } catch {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    try { return await fetch(url, { cache: 'no-store' }); }
+    catch { await new Promise(resolve => setTimeout(resolve, 100)); }
   }
-
   throw new Error(`Servidor no inició a tiempo: ${url}`);
 }
 
 const port = 34000 + Math.floor(Math.random() * 1000);
-const child = spawn(
-  process.execPath,
-  ['server.mjs'],
-  {
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      PORT: String(port),
-      HOST: '127.0.0.1',
-      SECURE_COOKIE: 'false',
-      FOOTBALL_DATA_TOKEN: '',
-      LALIGA_AUTHORIZE_URL: '',
-      LALIGA_OAUTH_CLIENT_ID: '',
-      LALIGA_REDIRECT_URI: ''
-    },
-    stdio: ['ignore', 'pipe', 'pipe']
-  }
-);
+const child = spawn(process.execPath, ['server.mjs'], {
+  env: {
+    ...process.env,
+    NODE_ENV: 'test',
+    PORT: String(port),
+    HOST: '127.0.0.1',
+    SECURE_COOKIE: 'false',
+    FOOTBALL_DATA_TOKEN: '',
+    LALIGA_AUTHORIZE_URL: '',
+    LALIGA_OAUTH_CLIENT_ID: '',
+    LALIGA_REDIRECT_URI: ''
+  },
+  stdio: ['ignore', 'pipe', 'pipe']
+});
 
 try {
   const base = `http://127.0.0.1:${port}`;
@@ -218,11 +181,12 @@ try {
 
   const dashboardClientResponse = await fetch(`${base}/dashboard-client.js`, { cache: 'no-store' });
   assert.equal(dashboardClientResponse.status, 200);
-  assert.match(await dashboardClientResponse.text(), /\/api\/fantasy\/dashboard/);
+  const dashboardClientText = await dashboardClientResponse.text();
+  assert.match(dashboardClientText, /\/api\/fantasy\/dashboard/);
+  assert.match(dashboardClientText, /Conectar LALIGA/);
 
   const privateServer = await fetch(`${base}/server.mjs`, { cache: 'no-store' });
   assert.equal(privateServer.status, 404, 'server.mjs no debe exponerse públicamente');
-
   const privatePackage = await fetch(`${base}/package.json`, { cache: 'no-store' });
   assert.equal(privatePackage.status, 404, 'package.json no debe exponerse públicamente');
 
@@ -262,5 +226,5 @@ console.log('✅ Test 5: lista blanca pública definida OK');
 console.log('✅ Test 6: Service Worker y PWA OK');
 console.log('✅ Test 7: arranque, versionado y sincronización frontend/backend OK');
 console.log('✅ Test 8: no se detectan tokens hardcodeados OK');
-console.log('✅ Test 9: cliente del dashboard LALIGA OK');
+console.log('✅ Test 9: cliente del dashboard y conexión OIDC visible OK');
 console.log('✅ TODOS LOS TESTS DE SEGURIDAD/ESTABILIDAD/INTEGRACIÓN OK');
