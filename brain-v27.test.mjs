@@ -20,6 +20,12 @@ try{
   assert.ok(Object.values(brain.state.weights).every(Number.isFinite));
   assert.ok(Math.abs(Object.values(brain.state.weights).reduce((a,b)=>a+b,0)-1)<1e-9);
   assert.notDeepEqual(brain.state.weights,before);
+  assert.equal(brain.state.accuratePredictions,0);
+
+  const accurate=brain.learn({expected:10,actual:12,features,position:'MED'});
+  assert.equal(accurate.learned,true);
+  assert.equal(brain.state.accuratePredictions,1);
+  assert.equal(brain.status().accuracy,50);
 
   const positive={...player,weekPoints:18};
   const observed=brain.observePlayers([positive],{week:2,fixture:{context:80,homeAway:'home'}});
@@ -29,7 +35,7 @@ try{
 
   const second=brain.observePlayers([{...player,weekPoints:25}],{week:2,fixture:{context:80,homeAway:'home'}});
   assert.equal(second.learned>=1,true);
-  assert.ok(brain.state.labeledSamples>=3);
+  assert.ok(brain.state.labeledSamples>=4);
   assert.ok(brain.state.meanAbsoluteError>=0);
   assert.ok(['stable','watch','high'].includes(brain.state.drift.status));
 
@@ -39,6 +45,10 @@ try{
   assert.equal(reloaded.status().version,BRAIN_VERSION);
   assert.ok(fs.existsSync(path.join(dir,'model-v27.json')));
   assert.ok(fs.existsSync(path.join(dir,'learning-v27.jsonl')));
+
+  const invalid=reloaded.learn({expected:'bad',actual:4,features,position:'MED'});
+  assert.equal(invalid.learned,false);
+  assert.equal(invalid.reason,'invalid-label');
 
   let loops=0;
   for(let i=1;i<=100000;i++){
@@ -55,11 +65,12 @@ try{
       assert.ok(Object.values(reloaded.state.weights).every(x=>Number.isFinite(x)&&x>0));
       assert.ok(Number.isFinite(reloaded.state.bias));
       assert.ok(Object.values(reloaded.state.positionBias).every(Number.isFinite));
+      assert.ok(reloaded.state.accuratePredictions>=0&&reloaded.state.accuratePredictions<=reloaded.state.labeledSamples);
       loops++;
     }
   }
   assert.equal(loops,10000);
-  assert.ok(reloaded.state.labeledSamples>=10003);
+  assert.ok(reloaded.state.labeledSamples>=10004);
   console.log(`BRAIN v${BRAIN_VERSION}: OK · 100000 micro-pasos · 10000 ciclos de corrección`);
 }finally{
   fs.rmSync(dir,{recursive:true,force:true});
