@@ -12,6 +12,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Run 100 real-data checks
-        run: node realdata.test.mjs
+          node-version: 24.14.1
+      - name: Syntax checks
+        run: |
+          node --check server.mjs
+          node --check config.mjs
+          node --check providers.mjs
+          node --check realdata.mjs
+      - name: Run provider and Render-like QA
+        run: node qa.test.mjs
