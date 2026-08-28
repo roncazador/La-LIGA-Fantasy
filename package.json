@@ -1,6 +1,6 @@
 {
   "name": "laliga-fantasy-manager",
-  "version": "2.11.0",
+  "version": "2.11.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,6 @@
     "test": "node test.mjs"
   },
   "engines": {
-    "node": ">=22"
+    "node": "24.14.1"
   }
 }
