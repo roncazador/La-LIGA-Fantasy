@@ -1,4 +1,4 @@
-export const VERSION = '2.9.1';
+export const VERSION = '2.11.0';
 
 export const DEFAULTS = {
   laligaApiBaseUrl: 'https://fantasy-api.llt-services.com',
@@ -19,7 +19,10 @@ export const DEFAULTS = {
   optaFixturesPath: '',
   optaCompetitionId: '',
   laligaSigninPolicy: 'B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN',
-  laligaTokenUrl: 'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/token'
+  laligaTokenUrl: 'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/token',
+  laligaPasswordClientId: 'af88bcff-1157-40a0-b579-030728aacf0b',
+  laligaPasswordRedirectUri: 'authredirect://com.lfp.laligafantasy',
+  laligaExpectedIssuer: 'https://login.laliga.es/335316eb-f606-4361-bb86-35a7edcdcec1/v2.0/'
 };
 const aliases = {
   LALIGA_COMPETITION_ID: 'LALIGA_CONCOMPETENCIA_ID',
@@ -55,6 +58,9 @@ export function readConfig(source = process.env){
     optaFixturesPath: String(env.OPTA_FIXTURES_PATH ?? DEFAULTS.optaFixturesPath).trim(), optaCompetitionId: String(env.OPTA_LALIGA_COMPETITION_ID ?? DEFAULTS.optaCompetitionId).trim(),
     laligaAuthorizeUrl: String(env.LALIGA_AUTHORIZE_URL ?? '').trim(), laligaOAuthClientId: String(env.LALIGA_OAUTH_CLIENT_ID ?? '').trim(), laligaRedirectUri: String(env.LALIGA_REDIRECT_URI ?? '').trim(),
     laligaSigninPolicy: nonEmpty(env.LALIGA_SIGNIN_POLICY, DEFAULTS.laligaSigninPolicy), laligaTokenUrl: nonEmpty(env.LALIGA_TOKEN_URL, DEFAULTS.laligaTokenUrl),
+    laligaPasswordClientId: nonEmpty(env.LALIGA_PASSWORD_CLIENT_ID, DEFAULTS.laligaPasswordClientId),
+    laligaPasswordRedirectUri: nonEmpty(env.LALIGA_PASSWORD_REDIRECT_URI, DEFAULTS.laligaPasswordRedirectUri),
+    laligaExpectedIssuer: nonEmpty(env.LALIGA_EXPECTED_ISSUER, DEFAULTS.laligaExpectedIssuer),
     secureCookie: env.SECURE_COOKIE !== 'false', frontendUrl: nonEmpty(env.FRONTEND_URL, '/')
   };
 }
@@ -63,7 +69,7 @@ export function publicStaticPath(pathname){
   return new Set([
     '/', '/index.html', '/manifest.json', '/sw.js',
     '/dashboard-client.js', '/calendar-client.js', '/data-client.js',
-    '/recording-client.js', '/official-fixtures-seed-2026-27.json',
-    '/video-reference-snapshot-2026-08-27.json', '/recording-data-2026-08-27.json'
+    '/recording-client.js', '/connection-client.js', '/auth-client.js',
+    '/official-fixtures-seed-2026-27.json', '/video-reference-snapshot-2026-08-27.json', '/recording-data-2026-08-27.json'
   ]).has(pathname);
 }
