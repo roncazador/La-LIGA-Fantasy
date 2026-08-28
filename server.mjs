@@ -40,10 +40,6 @@ function cookieHeader(id, maxAge) {
   return `${config.sessionCookieName}=${encodeURIComponent(id)}; HttpOnly; SameSite=Lax;${secure} Path=/; Max-Age=${maxAge}`;
 }
 
-function sendJsonWithCookie(res, status, body, cookie) {
-  return sendJson(res, status, body, {'Set-Cookie': cookie});
-}
-
 function parseCookies(req) {
   const out = {};
   for (const part of String(req.headers.cookie || '').split(';')) {
@@ -103,10 +99,16 @@ function serveStatic(res, pathname) {
   const file = pathname === '/' ? 'index.html' : pathname.slice(1);
   const full = path.resolve(STATIC_DIR, file);
   if (!full.startsWith(STATIC_DIR + path.sep) || !fs.existsSync(full) || !fs.statSync(full).isFile()) return false;
-  const content = fs.readFileSync(full, 'utf8');
+
+  let content = fs.readFileSync(full, 'utf8');
+  if (file === 'index.html' && !content.includes('connection-client.js')) {
+    const loader = '\n<script src="/connection-client.js" defer></script>\n';
+    content = content.includes('</body>') ? content.replace('</body>', `${loader}</body>`) : `${content}${loader}`;
+  }
+
   res.writeHead(200, {
     'Content-Type': staticContentType(file),
-    'Cache-Control': file === 'index.html' ? 'no-cache' : 'public, max-age=3600',
+    'Cache-Control': file === 'index.html' ? 'no-store, max-age=0, must-revalidate' : 'public, max-age=3600',
     'X-Content-Type-Options':'nosniff',
     'Referrer-Policy':'no-referrer',
     'X-Frame-Options':'DENY'
@@ -141,7 +143,8 @@ function validAccessToken(token) {
   if (!payload) return false;
   const now = Math.floor(Date.now() / 1000);
   const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-  return aud.includes(config.laligaPasswordClientId) && payload.iss === config.laligaExpectedIssuer && Number(payload.exp) > now + 30;
+  const acceptedAudiences = new Set([config.laligaPasswordClientId, config.laligaOAuthClientId].filter(Boolean));
+  return aud.some(value => acceptedAudiences.has(value)) && payload.iss === config.laligaExpectedIssuer && Number(payload.exp) > now + 30;
 }
 
 function validTokenPair(accessToken, idToken) {
@@ -169,27 +172,32 @@ function authStatus() {
     hasAuthorizeUrl: Boolean(config.laligaAuthorizeUrl),
     hasClientId: Boolean(config.laligaOAuthClientId),
     hasRedirectUri: Boolean(config.laligaRedirectUri),
-    policy: config.laligaSigninPolicy
+    policy: config.laligaSigninPolicy,
+    passwordClientIdConfigured: Boolean(config.laligaPasswordClientId),
+    passwordRedirectUriConfigured: Boolean(config.laligaPasswordRedirectUri)
   };
 }
 
 async function refresh(session) {
-  if (!session?.refreshToken || !config.laligaOAuthClientId) return false;
+  if (!session?.refreshToken) return false;
   try {
-    const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent(config.laligaSigninPolicy)}`;
+    const clientId = session.clientId || config.laligaOAuthClientId || config.laligaPasswordClientId;
+    const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent(session.policy || config.laligaSigninPolicy)}`;
     const body = new URLSearchParams({
       grant_type:'refresh_token',
       refresh_token:session.refreshToken,
-      client_id:config.laligaOAuthClientId,
-      scope:`openid ${config.laligaOAuthClientId} offline_access`
+      client_id:clientId,
+      scope:`openid ${clientId} offline_access`
     });
     const response = await fetch(tokenUrl, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body,cache:'no-store',signal:AbortSignal.timeout(12000)});
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || (!data.access_token && !data.id_token)) return false;
-    session.accessToken = data.access_token || data.id_token;
+    const nextToken = data.access_token || data.id_token;
+    if (!response.ok || !nextToken) return false;
+    session.accessToken = nextToken;
     session.refreshToken = data.refresh_token || session.refreshToken;
-    session.expiresAt = Date.now() + Number(data.expires_in || 86400) * 1000;
+    session.expiresAt = Date.now() + Number(data.expires_in || data.id_token_expires_in || 86400) * 1000;
     session.createdAt = Date.now();
+    session.clientId = clientId;
     return true;
   } catch { return false; }
 }
@@ -268,16 +276,17 @@ const server = http.createServer(async (req, res) => {
       const password = typeof body?.password === 'string' ? body.password : '';
       if (!email || email.length > 320 || !password || password.length > 1024) return sendJson(res,400,{error:'INVALID_CREDENTIALS'});
       try {
+        const clientId = config.laligaPasswordClientId;
         const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent('B2C_1A_ResourceOwnerv2')}`;
-        const tokenResponse = await fetch(tokenUrl, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'password',client_id:config.laligaPasswordClientId,scope:`openid ${config.laligaPasswordClientId} offline_access`,redirect_uri:config.laligaPasswordRedirectUri,username:email,password,response_type:'id_token'}),cache:'no-store',signal:AbortSignal.timeout(12000)});
+        const tokenResponse = await fetch(tokenUrl, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'password',client_id:clientId,scope:`openid ${clientId} offline_access`,redirect_uri:config.laligaPasswordRedirectUri,username:email,password,response_type:'id_token'}),cache:'no-store',signal:AbortSignal.timeout(12000)});
         const token = await tokenResponse.json().catch(() => ({}));
         if (!tokenResponse.ok) return sendJson(res,tokenResponse.status === 429 ? 429 : 401,{error:'AUTHENTICATION_FAILED'});
         const accessToken = typeof token.access_token === 'string' ? token.access_token : '';
         const idToken = typeof token.id_token === 'string' ? token.id_token : '';
         if (!validTokenPair(accessToken,idToken)) return sendJson(res,502,{error:'INVALID_PROVIDER_TOKEN'});
         const sessionId = crypto.randomUUID();
-        sessions.set(sessionId,{createdAt:Date.now(),accessToken:accessToken || idToken,refreshToken:typeof token.refresh_token === 'string' ? token.refresh_token : null,expiresAt:Date.now()+Number(token.expires_in || 86400)*1000,authMethod:'laliga-password'});
-        return sendJsonWithCookie(res,200,{authenticated:true,authMethod:'laliga-password',expiresAt:sessions.get(sessionId).expiresAt},cookieHeader(sessionId,2592000));
+        sessions.set(sessionId,{createdAt:Date.now(),accessToken:accessToken || idToken,refreshToken:typeof token.refresh_token === 'string' ? token.refresh_token : null,expiresAt:Date.now()+Number(token.expires_in || token.id_token_expires_in || 86400)*1000,authMethod:'laliga-password',clientId,policy:'B2C_1A_ResourceOwnerv2'});
+        return sendJson(res,200,{authenticated:true,authMethod:'laliga-password',expiresAt:sessions.get(sessionId).expiresAt},{'Set-Cookie':cookieHeader(sessionId,2592000)});
       } catch { return sendJson(res,502,{error:'AUTHENTICATION_PROVIDER_UNAVAILABLE'}); }
     }
 
@@ -304,7 +313,7 @@ const server = http.createServer(async (req, res) => {
       const tokenResponse = await fetch(tokenUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body,cache:'no-store',signal:AbortSignal.timeout(12000)});
       const token = await tokenResponse.json().catch(() => ({}));
       if (!tokenResponse.ok || (!token.access_token && !token.id_token)) return sendJson(res,502,{error:'OIDC_TOKEN_EXCHANGE_FAILED'});
-      sessions.set(sessionId,{createdAt:Date.now(),accessToken:token.access_token || token.id_token,refreshToken:token.refresh_token || null,expiresAt:Date.now()+Number(token.expires_in || 86400)*1000,authMethod:'oidc'});
+      sessions.set(sessionId,{createdAt:Date.now(),accessToken:token.access_token || token.id_token,refreshToken:token.refresh_token || null,expiresAt:Date.now()+Number(token.expires_in || token.id_token_expires_in || 86400)*1000,authMethod:'oidc',clientId:config.laligaOAuthClientId,policy:config.laligaSigninPolicy});
       const location = pending.platform === 'ios' ? config.iosSuccessRedirect : config.frontendUrl;
       res.writeHead(302,{Location:location,'Set-Cookie':cookieHeader(sessionId,2592000),'Cache-Control':'no-store'});
       return res.end();
@@ -373,7 +382,7 @@ const server = http.createServer(async (req, res) => {
       const key = url.pathname.split('/').filter(Boolean)[2] || '';
       if (!READ_ROUTES.has(key)) return sendJson(res,404,{error:'ROUTE_NOT_ALLOWLISTED'});
       const endpoint = fantasyPath(key,url);
-      if (!endpoint || (['league','standings','market','squad','budget','rivals'].includes(key) && !url.searchParams.get('id') && ['league','standings','market','rivals'].includes(key)) || (['squad','budget'].includes(key) && !url.searchParams.get('teamId'))) return sendJson(res,400,{error:'MISSING_PARAMETER'});
+      if (!endpoint || (['league','standings','market','rivals'].includes(key) && !url.searchParams.get('id')) || (['squad','budget'].includes(key) && !url.searchParams.get('teamId'))) return sendJson(res,400,{error:'MISSING_PARAMETER'});
       try { return sendJson(res,200,await upstream(endpoint,session)); }
       catch (error) { return sendJson(res,error.status === 401 ? 401 : 502,{error:'UPSTREAM_READ_FAILED',status:error.status || 502}); }
     }
@@ -383,9 +392,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/data/standings' && req.method === 'GET') return sendJson(res,200,await fetchStandings(config));
     if (url.pathname === '/api/data/injuries' && req.method === 'GET') return sendJson(res,200,await fetchInjuries(config));
 
-    if (url.pathname === '/api/fixtures' && req.method === 'GET') {
-      return sendJson(res,200,await fetchMultiProviderFixtures(config));
-    }
+    if (url.pathname === '/api/fixtures' && req.method === 'GET') return sendJson(res,200,await fetchMultiProviderFixtures(config));
     if (url.pathname === '/api/fixtures/api-football' && req.method === 'GET') {
       const days = Math.min(Math.max(Number(url.searchParams.get('days') || config.footballDataDays),1),90);
       const from = new Date().toISOString().slice(0,10);
