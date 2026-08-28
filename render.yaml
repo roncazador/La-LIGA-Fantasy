@@ -8,6 +8,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 24.14.1
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "10000"
       - key: LALIGA_API_BASE_URL
         value: https://fantasy-api.llt-services.com
       - key: LALIGA_COMPETITION_ID
