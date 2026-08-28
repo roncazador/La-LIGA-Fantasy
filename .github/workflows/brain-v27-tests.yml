@@ -1,0 +1,23 @@
+name: Brain v2.7 tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 */6 * * *'
+
+jobs:
+  brain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+      - name: Syntax
+        run: node --check brain-core-v27.mjs && node --check brain-host-v27.mjs && node --check brain-client-v27.js && node --check brain-v27.test.mjs
+      - name: Deep brain regression
+        run: node brain-v27.test.mjs
