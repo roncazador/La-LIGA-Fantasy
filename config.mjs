@@ -1,4 +1,4 @@
-export const VERSION = '2.12.0';
+export const VERSION = '2.13.0';
 
 export const DEFAULTS = {
   laligaApiBaseUrl: 'https://fantasy-api.llt-services.com/api',
@@ -25,7 +25,7 @@ export const DEFAULTS = {
   laligaExpectedIssuer: 'https://login.laliga.es/335316eb-f606-4361-bb86-35a7edcdcec1/v2.0/'
 };
 const aliases = {
-  LALIGA_COMPETITION_ID: 'LALIGA_CONCOMPETENCIA_ID',
+  LALIGA_COMPETITION_ID: 'LALIGA_CONCOMPENCIA_ID',
   SESSION_COOKIE_NAME: 'SESIÓN_NOMBRE_DE LA_COOKIE',
   FOOTBALL_DATA_COMPETITION: 'COMPETENCIA_DE_DATOS_DE_FÚTBOL',
   FOOTBALL_DATA_DAYS: 'DÍAS_DE_DATOS_DE_FÚTBOL'
