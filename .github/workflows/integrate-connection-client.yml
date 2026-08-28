@@ -1,0 +1,63 @@
+name: Integrate LALIGA connection client
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch server static loader once
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('server.mjs')
+          s = p.read_text()
+          marker = "'/connection-client.js'"
+          changed = False
+
+          old_types = "'data-client.js': 'text/javascript; charset=utf-8',"
+          new_types = old_types + "\n    'connection-client.js': 'text/javascript; charset=utf-8',"
+          if marker not in s and old_types in s:
+              s = s.replace(old_types, new_types, 1)
+              changed = True
+
+          old_scripts = "['/data-client.js', 'data-client.js']"
+          new_scripts = old_scripts + ",\n      ['/connection-client.js', 'connection-client.js']"
+          if marker not in s and old_scripts in s:
+              s = s.replace(old_scripts, new_scripts, 1)
+              changed = True
+
+          old_public = "'/dashboard-client.js', '/calendar-client.js', '/data-client.js',"
+          new_public = "'/dashboard-client.js', '/calendar-client.js', '/data-client.js', '/connection-client.js',"
+          if marker not in s and old_public in s:
+              s = s.replace(old_public, new_public, 1)
+              changed = True
+
+          if changed:
+              p.write_text(s)
+          print('changed=', changed)
+          PY
+
+      - name: Commit integrated server
+        shell: bash
+        run: |
+          if git diff --quiet -- server.mjs; then
+            echo "Server already integrated."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add server.mjs
+          git commit -m 'Integrar cliente de conexión LALIGA en servidor'
+          git push
