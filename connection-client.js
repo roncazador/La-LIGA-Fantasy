@@ -39,12 +39,17 @@
       <div id="connectionDetailsV212" class="note" style="margin-top:9px">Comprobando configuración y sesión…</div>
 
       <div id="connectionMethodsV212" style="margin-top:10px">
-        <div id="ssoBoxV212" style="display:none">
-          <button type="button" id="connectSSOV212" class="primary">🔑 Entrar con LALIGA / Google</button>
+        <div id="ssoBoxV212">
+          <button type="button" id="connectSSOV212" class="primary">🔑 Entrar con Google</button>
+          <div id="googleHelpV212" class="tiny" style="margin-top:6px">Tu cuenta es de Google. LALIGA no usa una contraseña de Fantasy para estas cuentas.</div>
+          <div id="googleFinishV212" style="display:none;margin-top:9px">
+            <div class="tiny" style="margin-bottom:6px">Después de iniciar sesión en Google, pega aquí la URL que empieza por <b>authredirect://com.lfp.laligafantasy</b>. Solo contiene el código temporal de acceso.</div>
+            <input id="googleRedirectV212" type="text" autocomplete="off" inputmode="url" placeholder="authredirect://com.lfp.laligafantasy?code=…&state=…" style="width:100%">
+            <button type="button" id="finishGoogleV212" class="good" style="margin-top:7px">✅ Completar conexión</button>
+          </div>
         </div>
-
         <form id="directLoginV212" style="margin-top:8px">
-          <div style="font-size:11px;font-weight:800;margin-bottom:6px">Acceso con correo y contraseña</div>
+          <div style="font-size:11px;font-weight:800;margin-bottom:6px">Acceso con correo y contraseña (solo cuentas creadas con email)</div>
           <label style="display:block;font-size:11px;margin-bottom:5px">Correo de LALIGA</label>
           <input id="laligaEmailV212" type="email" autocomplete="username" required maxlength="320" placeholder="tu-correo@ejemplo.com">
           <label style="display:block;font-size:11px;margin:8px 0 5px">Contraseña</label>
@@ -64,7 +69,8 @@
     if (hero?.parentNode) hero.parentNode.insertBefore(panel, hero.nextSibling);
     else document.querySelector('.app')?.prepend(panel);
 
-    byId('connectSSOV212')?.addEventListener('click', () => window.location.assign('/auth/start?platform=web'));
+    byId('connectSSOV212')?.addEventListener('click', startGoogle);
+    byId('finishGoogleV212')?.addEventListener('click', finishGoogle);
     byId('directLoginV212')?.addEventListener('submit', loginDirect);
     byId('syncV212')?.addEventListener('click', () => void syncOnce('manual'));
     byId('logoutV212')?.addEventListener('click', logout);
@@ -150,6 +156,27 @@
     window.dispatchEvent(new CustomEvent('laliga:live-data', { detail: summary }));
   }
 
+  async function startGoogle() {
+    const popup = window.open('about:blank', 'laligaGoogleLogin', 'width=520,height=760');
+    setBadge('Preparando Google…', 'yellow'); setWarning('');
+    try {
+      const data = await getJson('/api/auth/google/start');
+      if (popup) popup.location.href = data.authorizeUrl; else window.location.href = data.authorizeUrl;
+      const box = byId('googleFinishV212'); if (box) box.style.display = 'block';
+      setText('connectionDetailsV212', 'Se ha abierto el inicio de sesión oficial de LALIGA. Usa el mismo Google que utilizas en Fantasy.');
+      setWarning('Si al terminar se intenta abrir la app de LALIGA y no puedes volver automáticamente, copia la URL authredirect://… y pégala abajo.');
+    } catch (error) { try { popup?.close(); } catch {} setBadge('Error OAuth','red'); setWarning(`No se pudo preparar el acceso Google: ${error.message || 'error desconocido'}.`); }
+  }
+  async function finishGoogle() {
+    const input = byId('googleRedirectV212'); const redirectUrl = String(input?.value || '').trim();
+    if (!redirectUrl) return setWarning('Pega primero la URL authredirect://… que devuelve LALIGA.');
+    setBadge('Validando Google…','yellow'); setWarning('');
+    try {
+      await getJson('/api/auth/google/finish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({redirectUrl})});
+      if (input) input.value=''; setBadge('Conectada','good'); setLegacyConnectionState(true);
+      setText('connectionDetailsV212','Cuenta Google de LALIGA autenticada. Descargando datos Fantasy reales…'); await syncOnce('google-login');
+    } catch (error) { setBadge('No conectada','red'); const code=error?.data?.detail||error?.message||'error desconocido'; setWarning(code==='GOOGLE_AUTH_FAILED'?'Google/LALIGA rechazó el inicio de sesión.':`No se pudo completar la conexión Google (${code}). Si el código ha caducado, inicia el proceso de nuevo.`); }
+  }
   async function getSession() {
     return getJson('/api/session');
   }
@@ -243,8 +270,8 @@
       const auth = await getAuthStatus();
       const ssoBox = byId('ssoBoxV212');
       if (ssoBox) ssoBox.style.display = auth.configured ? 'block' : 'none';
-      setText('connectionDetailsV212', auth.configured ? 'OAuth oficial disponible o acceso directo con correo y contraseña.' : 'OAuth del navegador no está configurado; usa el acceso directo de LALIGA.');
-      if (!auth.configured) setWarning('El botón OAuth no está activo porque faltan parámetros OIDC. El acceso directo con correo/contraseña sí está preparado.');
+      setText('connectionDetailsV212', 'Inicio de sesión oficial de LALIGA preparado para cuentas Google.');
+      setWarning('Para una cuenta creada con Google debes usar el botón Entrar con Google; el formulario de contraseña no sirve para este tipo de cuenta.');
     } catch {
       setWarning('No se pudo consultar el estado de autenticación del servidor.');
     }

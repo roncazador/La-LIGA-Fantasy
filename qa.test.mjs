@@ -9,7 +9,7 @@ let checks=0;
 function check(v,m){checks+=1;assert.ok(v,m)}
 
 check(VERSION==='2.11.1','version runtime sincronizada');
-check(DEFAULTS.laligaCompetitionId==='1','competición LALIGA');
+check(DEFAULTS.laligaCompetitionId==='1','competición LALIGA'); check(DEFAULTS.laligaApiBaseUrl.endsWith('/api'),'API Fantasy incluye /api');
 check(DEFAULTS.apiFootballLeagueId==='140','API-Football LaLiga');
 check(DEFAULTS.apiFootballSeason==='2026','temporada 2026');
 check(DEFAULTS.sessionCookieName==='fm_session','cookie canónica');
@@ -17,7 +17,7 @@ check(readConfig({}).host==='0.0.0.0','host por defecto público');
 check(readConfig({}).port===3005,'puerto local por defecto');
 check(readConfig({PORT:'10000',HOST:'0.0.0.0'}).port===10000,'Render PORT');
 check(readConfig({PORT:'10000',HOST:'0.0.0.0'}).host==='0.0.0.0','Render HOST');
-check(!oidcConfigured(readConfig({})),'OIDC no inventado');
+check(oidcConfigured(readConfig({})),'OIDC oficial por defecto');
 check(oidcConfigured({laligaAuthorizeUrl:'https://x/authorize',laligaOAuthClientId:'x',laligaRedirectUri:'https://x/callback'}),'OIDC completo');
 for(const p of ['/','/index.html','/dashboard-client.js','/connection-client.js'])check(publicStaticPath(p),`público ${p}`);
 for(const p of ['/server.mjs','/config.mjs','/.env'])check(!publicStaticPath(p),`privado ${p}`);
@@ -69,7 +69,7 @@ check(connectionSource.includes('autocomplete="current-password"'),'campo contra
 check(connectionSource.includes('passwordNode.value = \''\''),'contraseña limpiada tras intento');
 check(!connectionSource.includes('localStorage.setItem(\'laligaPassword'),'contraseña no persistida');
 check(!/console\.log\(.*password/i.test(serverSource),'sin log de contraseña');
-check(!serverSource.includes("case'buy'"),'sin compra');
+check(serverSource.includes("/api/auth/google/start"),'Google start route'); check(serverSource.includes("/api/auth/google/finish"),'Google finish route'); check(!serverSource.includes("case'buy'"),'sin compra');
 check(!serverSource.includes("case'sell'"),'sin venta');
 
 const pkg=JSON.parse(fs.readFileSync('./package.json','utf8'));

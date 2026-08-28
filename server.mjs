@@ -266,6 +266,46 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/session' && req.method === 'GET') return sendJson(res,200,{authenticated:Boolean(getSession(req)),readOnly:true});
     if (url.pathname === '/api/auth/status' && req.method === 'GET') return sendJson(res,200,authStatus());
     if (url.pathname === '/api/providers/status' && req.method === 'GET') return sendJson(res,200,providerStatus(config));
+    if (url.pathname === '/api/auth/google/start' && req.method === 'GET') {
+      const state = crypto.randomBytes(32).toString('base64url');
+      const verifier = crypto.randomBytes(64).toString('base64url');
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+      const sessionId = crypto.randomUUID();
+      sessions.set(sessionId,{createdAt:Date.now(),state,verifier,platform:'web'});
+      const query = new URLSearchParams({p:config.laligaSigninPolicy,client_id:config.laligaOAuthClientId,response_type:'code',redirect_uri:config.laligaRedirectUri,scope:'openid offline_access',code_challenge:challenge,code_challenge_method:'S256',state,nonce:state});
+      return sendJson(res,200,{authorizeUrl:`${config.laligaAuthorizeUrl}?${query.toString()}`,redirectUri:config.laligaRedirectUri},{'Set-Cookie':cookieHeader(sessionId,900)});
+    }
+    if (url.pathname === '/api/auth/google/finish' && req.method === 'POST') {
+      const session = getSession(req);
+      if (!session?.state || !session?.verifier) return sendJson(res,400,{error:'GOOGLE_LOGIN_NOT_STARTED'});
+      let body;
+      try { body = JSON.parse(await readBody(req,12000)); } catch { return sendJson(res,400,{error:'INVALID_JSON'}); }
+      const redirectUrl = typeof body?.redirectUrl === 'string' ? body.redirectUrl.trim() : '';
+      if (!redirectUrl || !redirectUrl.startsWith('authredirect://com.lfp.laligafantasy')) return sendJson(res,400,{error:'INVALID_REDIRECT_URL'});
+      let parsed;
+      try { parsed = new URL(redirectUrl); } catch { return sendJson(res,400,{error:'INVALID_REDIRECT_URL'}); }
+      const code = parsed.searchParams.get('code');
+      const returnedState = parsed.searchParams.get('state');
+      const providerError = parsed.searchParams.get('error');
+      if (providerError) return sendJson(res,401,{error:'GOOGLE_AUTH_FAILED',detail:providerError});
+      if (!code || returnedState !== session.state) return sendJson(res,400,{error:'INVALID_OIDC_CALLBACK'});
+      try {
+        const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent(config.laligaSigninPolicy)}`;
+        const tokenResponse = await fetch(tokenUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'authorization_code',client_id:config.laligaOAuthClientId,code,redirect_uri:config.laligaRedirectUri,code_verifier:session.verifier,scope:'openid offline_access'}),cache:'no-store',signal:AbortSignal.timeout(12000)});
+        const token = await tokenResponse.json().catch(() => ({}));
+        if (!tokenResponse.ok || (!token.access_token && !token.id_token)) return sendJson(res,502,{error:'OIDC_TOKEN_EXCHANGE_FAILED'});
+        session.accessToken=token.access_token || token.id_token;
+        session.refreshToken=token.refresh_token || null;
+        session.expiresAt=Date.now()+Number(token.expires_in || token.id_token_expires_in || 86400)*1000;
+        session.createdAt=Date.now();
+        session.authMethod='oidc-google';
+        session.clientId=config.laligaOAuthClientId;
+        session.policy=config.laligaSigninPolicy;
+        delete session.state;
+        delete session.verifier;
+        return sendJson(res,200,{authenticated:true,authMethod:'oidc-google',expiresAt:session.expiresAt},{'Set-Cookie':cookieHeader(parseCookies(req)[config.sessionCookieName],2592000)});
+      } catch { return sendJson(res,502,{error:'AUTHENTICATION_PROVIDER_UNAVAILABLE'}); }
+    }
 
     if (url.pathname === '/api/auth/login' && req.method === 'POST') {
       const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();

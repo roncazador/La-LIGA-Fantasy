@@ -1,7 +1,7 @@
 export const VERSION = '2.11.1';
 
 export const DEFAULTS = {
-  laligaApiBaseUrl: 'https://fantasy-api.llt-services.com',
+  laligaApiBaseUrl: 'https://fantasy-api.llt-services.com/api',
   laligaCompetitionId: '1',
   sessionCookieName: 'fm_session',
   allowOrigin: '',
@@ -56,7 +56,7 @@ export function readConfig(source = process.env){
     apiFootballLeagueId: nonEmpty(env.API_FOOTBALL_LALIGA_LEAGUE_ID, DEFAULTS.apiFootballLeagueId), apiFootballSeason: nonEmpty(env.API_FOOTBALL_LALIGA_SEASON, DEFAULTS.apiFootballSeason),
     optaToken: String(env.OPTA_API_TOKEN ?? ''), optaBaseUrl: String(env.OPTA_API_BASE_URL ?? DEFAULTS.optaBaseUrl).trim().replace(/\/+$/, ''),
     optaFixturesPath: String(env.OPTA_FIXTURES_PATH ?? DEFAULTS.optaFixturesPath).trim(), optaCompetitionId: String(env.OPTA_LALIGA_COMPETITION_ID ?? DEFAULTS.optaCompetitionId).trim(),
-    laligaAuthorizeUrl: String(env.LALIGA_AUTHORIZE_URL ?? '').trim(), laligaOAuthClientId: String(env.LALIGA_OAUTH_CLIENT_ID ?? '').trim(), laligaRedirectUri: String(env.LALIGA_REDIRECT_URI ?? '').trim(),
+    laligaAuthorizeUrl: nonEmpty(env.LALIGA_AUTHORIZE_URL, 'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/authorize'), laligaOAuthClientId: nonEmpty(env.LALIGA_OAUTH_CLIENT_ID, DEFAULTS.laligaPasswordClientId), laligaRedirectUri: nonEmpty(env.LALIGA_REDIRECT_URI, DEFAULTS.laligaPasswordRedirectUri),
     laligaSigninPolicy: nonEmpty(env.LALIGA_SIGNIN_POLICY, DEFAULTS.laligaSigninPolicy), laligaTokenUrl: nonEmpty(env.LALIGA_TOKEN_URL, DEFAULTS.laligaTokenUrl),
     laligaPasswordClientId: nonEmpty(env.LALIGA_PASSWORD_CLIENT_ID, DEFAULTS.laligaPasswordClientId),
     laligaPasswordRedirectUri: nonEmpty(env.LALIGA_PASSWORD_REDIRECT_URI, DEFAULTS.laligaPasswordRedirectUri),
