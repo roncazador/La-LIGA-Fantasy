@@ -74,6 +74,7 @@ function staticContentType(file){
     'dashboard-client.js': 'text/javascript; charset=utf-8',
     'calendar-client.js': 'text/javascript; charset=utf-8',
     'data-client.js': 'text/javascript; charset=utf-8',
+    'connection-client.js': 'text/javascript; charset=utf-8',
     'official-fixtures-seed-2026-27.json': 'application/json; charset=utf-8'
   }[file] || 'application/octet-stream';
 }
@@ -90,7 +91,8 @@ function serveStatic(res, pathname){
     const scripts = [
       ['/dashboard-client.js', 'dashboard-client.js'],
       ['/calendar-client.js', 'calendar-client.js'],
-      ['/data-client.js', 'data-client.js']
+      ['/data-client.js', 'data-client.js'],
+      ['/connection-client.js', 'connection-client.js']
     ];
     for (const [src, marker] of scripts) {
       if (!content.includes(src)) content = content.replace('</body>', `  <script src="${src}" defer></script>\n</body>`);
