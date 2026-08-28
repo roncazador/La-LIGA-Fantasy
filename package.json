@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --import ./config.mjs server.mjs",
+    "start": "node brain-host-v27.mjs",
     "test": "node qa.test.mjs && node qa-100000.test.mjs"
   },
   "engines": {
