@@ -26,7 +26,7 @@ check(recording.status === 'referencia_observada_no_live', 'grabación marcada c
 check(recording.teamCount === '20/24 fichas', 'plantilla observada 20/24');
 check(recording.teamValue === 269039595, 'valor de equipo observado correcto');
 check(recording.marketBalance === 40542121, 'saldo de mercado observado correcto');
-check(calendar.includes('/api/fixtures/next'), 'calendario usa endpoint unificado');
+check(calendar.includes('/api/fantasy/fixtures?week='), 'calendario usa ruta oficial autenticada');
 check(calendar.includes('official-fixtures-seed-2026-27.json'), 'calendario mantiene semilla oficial');
 check(calendar.includes('referencia histórica, no LIVE') || calendar.includes('No se presenta como dato en tiempo real'), 'snapshot etiquetado como no LIVE');
 check(dataClient.includes('/video-reference-snapshot-2026-08-27.json') || dataClient.includes('recording-data-2026-08-27.json'), 'panel de datos usa snapshot externo');
