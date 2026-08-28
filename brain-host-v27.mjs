@@ -9,6 +9,7 @@ const internalPort=Math.max(1024, publicPort-1);
 const host=process.env.HOST||'0.0.0.0';
 const internalHost='127.0.0.1';
 const brain=createBrain({dir:process.env.BRAIN_STATE_DIR||'./.brain-data'});
+const MAX_JSON_BODY=64*1024;
 let child;
 let shuttingDown=false;
 
@@ -53,6 +54,34 @@ async function autonomousCycle(){
   }catch(error){ console.error(`[brain-host] autonomous cycle skipped: ${error.message}`); }
 }
 
+function readJson(req,limit=MAX_JSON_BODY){
+  return new Promise((resolve,reject)=>{
+    let size=0;
+    const chunks=[];
+    let settled=false;
+    const fail=(error)=>{if(settled)return;settled=true;reject(error);};
+    req.on('data',chunk=>{
+      size+=chunk.length;
+      if(size>limit){req.destroy();fail(Object.assign(new Error('REQUEST_TOO_LARGE'),{status:413}));return;}
+      chunks.push(chunk);
+    });
+    req.on('error',fail);
+    req.on('end',()=>{
+      if(settled)return;
+      settled=true;
+      try{resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}'));}
+      catch{reject(Object.assign(new Error('INVALID_JSON'),{status:400}));}
+    });
+  });
+}
+
+function adminAuthorized(req){
+  const expected=String(process.env.BRAIN_ADMIN_TOKEN||'').trim();
+  if(!expected) return false;
+  const authorization=String(req.headers.authorization||'');
+  return authorization.startsWith('Bearer ') && authorization.slice(7)===expected;
+}
+
 function proxy(req,res,bodyOverride=null){
   const headers={...req.headers,host:`${internalHost}:${internalPort}`};
   const options={hostname:internalHost,port:internalPort,path:req.url,method:req.method,headers};
@@ -91,7 +120,7 @@ function proxy(req,res,bodyOverride=null){
   if(bodyOverride!=null) upstream.write(bodyOverride); else req.pipe(upstream);
 }
 
-const server=http.createServer((req,res)=>{
+const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);
     if(url.pathname==='/brain-client-v27.js'&&req.method==='GET'){
@@ -101,10 +130,17 @@ const server=http.createServer((req,res)=>{
     if(url.pathname==='/api/brain/status'&&req.method==='GET')return json(res,200,brain.status());
     if(url.pathname==='/api/brain/model'&&req.method==='GET')return json(res,200,{version:BRAIN_VERSION,weights:brain.state.weights,positionBias:brain.state.positionBias,drift:brain.state.drift});
     if(url.pathname==='/api/brain/predict'&&req.method==='POST'){
-      const chunks=[];req.on('data',c=>chunks.push(c));req.on('end',()=>{try{const p=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');return json(res,200,brain.predict(p.player||p,{fixture:p.fixture||{}}));}catch(error){return json(res,400,{error:'INVALID_JSON',detail:error.message})}});return;
+      try{
+        const p=await readJson(req);
+        return json(res,200,brain.predict(p.player||p,{fixture:p.fixture||{}}));
+      }catch(error){return json(res,error.status||400,{error:error.message||'INVALID_JSON'});}
     }
     if(url.pathname==='/api/brain/learn'&&req.method==='POST'){
-      const chunks=[];req.on('data',c=>chunks.push(c));req.on('end',()=>{try{const p=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');return json(res,200,brain.learn(p));}catch(error){return json(res,400,{error:'INVALID_JSON',detail:error.message})}});return;
+      if(!adminAuthorized(req)) return json(res,403,{error:'BRAIN_LEARN_FORBIDDEN'});
+      try{
+        const p=await readJson(req);
+        return json(res,200,brain.learn(p));
+      }catch(error){return json(res,error.status||400,{error:error.message||'INVALID_JSON'});}
     }
     proxy(req,res);
   }catch(error){json(res,500,{error:'BRAIN_HOST_ERROR',detail:error.message})}
