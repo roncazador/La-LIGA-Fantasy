@@ -3,31 +3,38 @@
 Fecha: 28/08/2026
 Rama: `main`
 
-## Objetivo actual
-Manager Fantasy en modo **solo lectura**, optimizado para móvil/iPhone, que combina datos LIVE cuando hay sesión con una referencia visual de la app oficial cuando no la hay.
-
-## Estado v2.12
-La interfaz principal está consolidada en un único controlador `dashboard-client.js`, con seis apartados grandes: **Resumen**, **Cerebro**, **Equipo**, **Partidos**, **Mercado** y **Liga**.
-El antiguo `calendar-client.js` queda como puente compatible para evitar dos controladores de calendario funcionando a la vez.
-
-## Calendario
-El cliente usa `/api/fixtures`, que ya entrega el resultado multi-proveedor deduplicado en `merged`. También acepta `matches` y la semilla oficial `fixtures` para tolerancia con respuestas antiguas. Cuando los proveedores externos no responden, se utiliza `official-fixtures-seed-2026-27.json` como respaldo explícitamente marcado y nunca como LIVE.
-
-## Cerebro v2.12
-El cerebro recibe plantilla, mercado y calendario desde el mismo estado de aplicación. Calcula rendimiento, disponibilidad, contexto del próximo partido, señal de mercado, riesgo y confianza. La confianza baja cuando faltan campos; no se inventan datos.
-
-## Conexión LIVE
-`/api/fantasy/dashboard` es la fuente autenticada para perfil, liga, clasificación, plantilla, presupuesto y mercado. Los cambios LIVE se publican con `laliga:live-data`, y el controlador unificado vuelve a analizar los datos para que interfaz y cerebro no trabajen con copias diferentes.
+## Estado v2.13
+La aplicación visible está consolidada en un único controlador oficial: `calendar-client.js`. Los clientes heredados `dashboard-client.js` y `connection-client.js` son shims pasivos y no hacen consultas duplicadas.
 
 ## Interfaz
-Se ocultan los paneles heredados y se mantiene una navegación táctil simple, con una sola vista grande por apartado y menos elementos simultáneos en pantalla.
+Se ocultan las capas antiguas y se presenta una única interfaz grande, táctil y ligera con seis apartados: **Inicio**, **Cerebro**, **Equipo**, **Partidos**, **Mercado** y **Liga**.
+Los botones principales tienen un área de toque amplia y el calendario también aparece en Inicio para que no vuelva a quedar oculto detrás de una pestaña.
+
+## Calendario
+La fuente activa es exclusivamente **LALIGA oficial**.
+- Sin API-Football en el controlador activo.
+- Sin football-data.org en el controlador activo.
+- Sin Sportmonks en el controlador activo.
+- Sin Opta en el controlador activo.
+- El calendario público parte de `official-fixtures-seed-2026-27.json`.
+- Con sesión oficial, se consulta `/api/fantasy/fixtures?week=...` para intentar recuperar calendario y estado/resultado oficial.
+- Cuando el proveedor oficial autenticado no responde, se usa únicamente la semilla oficial verificada y se marca como no LIVE.
+
+El normalizador elimina duplicados por fecha + local + visitante y conserva un único partido. No muestra etiquetas de múltiples proveedores.
+
+## Resultados en directo
+El normalizador entiende estados como `1H`, `2H`, `HT`, `LIVE`, `FT`, etc., y extrae marcadores de varias formas habituales (`homeScore`, `awayScore`, `score.home`, `score.fullTime.home`, `goals.home`, etc.).
+Cuando existe información oficial de marcador se muestra en la tarjeta del partido; la interfaz refresca cada 30 s si detecta un partido en directo y cada 5 min en caso contrario.
+
+## Cerebro
+El cerebro activo está integrado en el controlador visual y recibe la plantilla, mercado y calendario desde el mismo estado. Calcula score, confianza, disponibilidad, contexto del próximo partido, mercado y riesgo. El contexto del próximo rival procede del calendario oficial activo.
 
 ## Seguridad
-Nunca poner claves API, tokens, cookies o credenciales en frontend o JSON público.
-No activar compras, ventas, pujas ni modificaciones de plantilla.
+No se exponen claves, tokens, cookies ni credenciales. La app sigue en modo solo lectura.
 
 ## Pruebas
-`npm test` ejecuta `qa-10000.test.mjs` con **10.000 casos deterministas** que recorren normalización de partidos, respuesta `merged`, semilla de calendario, extracción de plantilla/mercado, scoring y confianza del cerebro, integración LIVE, contratos de interfaz y rutas públicas/privadas.
+`npm test` ejecuta `qa.test.mjs` y `qa-100000.test.mjs`.
+La suite profunda realiza **100.000 micro-pasos** deterministas y cada 10 pasos abre un bloque de verificación con 10 comprobaciones adicionales. Se verifican especialmente normalización, deduplicación, fuente única oficial, estados LIVE, marcadores, ausencia de datos inventados, versión, UI y shims pasivos.
 
-## Nota para futuras iteraciones
-No rehacer arquitectura ni añadir capas de diagnóstico innecesarias. Primero corregir errores de CI, duplicidades y datos; después ampliar el cerebro Fantasy sobre la base v2.12.
+## Regla para futuras mejoras
+Mantener una sola interfaz activa, una sola fuente de calendario y un solo estado compartido. No volver a añadir controladores paralelos ni proveedores duplicados. Cada actualización debe conservar el gate de 100.000 micro-pasos.
