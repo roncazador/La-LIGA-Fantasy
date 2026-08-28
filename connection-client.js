@@ -42,8 +42,8 @@
         <div id="ssoBoxV212">
           <button type="button" id="connectSSOV212" class="primary">🔑 Entrar con Google</button>
           <div id="googleHelpV212" class="tiny" style="margin-top:6px">Tu cuenta es de Google. LALIGA no usa una contraseña de Fantasy para estas cuentas.</div>
-          <div id="googleFinishV212" style="display:none;margin-top:9px">
-            <div class="tiny" style="margin-bottom:6px">Después de iniciar sesión en Google, pega aquí la URL que empieza por <b>authredirect://com.lfp.laligafantasy</b>. Solo contiene el código temporal de acceso.</div>
+          <div id="googleFinishV212" style="display:block;margin-top:9px">
+            <div class="tiny" style="margin-bottom:6px">Después de iniciar sesión en Google, si LALIGA devuelve una URL que empieza por <b>authredirect://com.lfp.laligafantasy</b>, pégala aquí. Solo contiene el código temporal de acceso.</div>
             <input id="googleRedirectV212" type="text" autocomplete="off" inputmode="url" placeholder="authredirect://com.lfp.laligafantasy?code=…&state=…" style="width:100%">
             <button type="button" id="finishGoogleV212" class="good" style="margin-top:7px">✅ Completar conexión</button>
           </div>
@@ -99,10 +99,19 @@
   }
 
   async function getJson(url, options = {}) {
-    const response = await fetch(url, { credentials: 'include', cache: 'no-store', ...options });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw Object.assign(new Error(data.error || `HTTP_${response.status}`), { status: response.status, data });
-    return data;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(url, { credentials: 'include', cache: 'no-store', signal: controller.signal, ...options });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw Object.assign(new Error(data.error || `HTTP_${response.status}`), { status: response.status, data });
+      return data;
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error('REQUEST_TIMEOUT');
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   function pickNumber(...values) {
@@ -129,14 +138,12 @@
 
   function updateDashboard(summary) {
     if (!summary) return;
-
     const profile = summary.profile || {};
     const standing = Array.isArray(summary.standing) ? summary.standing : Array.isArray(summary.standing?.data) ? summary.standing.data : [];
     const mine = standing.find(row => {
       const id = findFirst(row, ['userId', 'managerId', 'id']);
       return String(id ?? '') === String(profile.id ?? profile.userId ?? profile.managerId ?? '');
     }) || standing.find(row => String(findFirst(row, ['username', 'managerName', 'name']) ?? '').trim().toLowerCase() === String(profile.username ?? profile.managerName ?? profile.name ?? '').trim().toLowerCase());
-
     const rank = pickNumber(findFirst(mine, ['rank', 'position', 'place']));
     const points = pickNumber(findFirst(mine, ['pfsy', 'pfsY', 'points', 'score', 'totalPoints']));
     const budget = summary.budget || {};
@@ -145,45 +152,48 @@
     const value = pickNumber(findFirst(team, ['value', 'marketValue', 'teamValue']));
     const players = findFirst(team, ['players', 'roster', 'squad']);
     const squad = Array.isArray(players) ? players.length : null;
-
     if (rank !== null) setText('kRank', String(rank));
     if (points !== null) setText('kPoints', String(points));
     if (cash !== null) setText('kCash', money(cash));
     if (value !== null) setText('kValue', money(value));
     if (squad !== null) setText('kSquad', String(squad));
-
     window.__laligaLiveDashboard = summary;
     window.dispatchEvent(new CustomEvent('laliga:live-data', { detail: summary }));
   }
 
   async function startGoogle() {
-    const popup = window.open('about:blank', 'laligaGoogleLogin', 'width=520,height=760');
-    setBadge('Preparando Google…', 'yellow'); setWarning('');
+    setBadge('Preparando Google…', 'yellow');
+    setWarning('');
+    setText('connectionDetailsV212', 'Preparando el inicio de sesión oficial de LALIGA…');
     try {
       const data = await getJson('/api/auth/google/start');
-      if (popup) popup.location.href = data.authorizeUrl; else window.location.href = data.authorizeUrl;
-      const box = byId('googleFinishV212'); if (box) box.style.display = 'block';
-      setText('connectionDetailsV212', 'Se ha abierto el inicio de sesión oficial de LALIGA. Usa el mismo Google que utilizas en Fantasy.');
-      setWarning('Si al terminar se intenta abrir la app de LALIGA y no puedes volver automáticamente, copia la URL authredirect://… y pégala abajo.');
-    } catch (error) { try { popup?.close(); } catch {} setBadge('Error OAuth','red'); setWarning(`No se pudo preparar el acceso Google: ${error.message || 'error desconocido'}.`); }
+      if (!data?.authorizeUrl) throw new Error('AUTH_URL_MISSING');
+      sessionStorage.setItem('laliga_google_login_pending', '1');
+      setBadge('Abriendo Google…', 'yellow');
+      setText('connectionDetailsV212', 'Redirigiendo al inicio de sesión oficial de LALIGA/Google…');
+      window.location.assign(data.authorizeUrl);
+    } catch (error) {
+      const message = error?.message || 'UNKNOWN_ERROR';
+      setBadge('Error Google', 'red');
+      if (message === 'REQUEST_TIMEOUT') setWarning('El servidor tardó demasiado en preparar el acceso. Recarga la página y vuelve a pulsar Entrar con Google.');
+      else if (message === 'AUTH_URL_MISSING') setWarning('El servidor no devolvió la URL de acceso de LALIGA.');
+      else setWarning(`No se pudo preparar el acceso Google (${message}).`);
+    }
   }
+
   async function finishGoogle() {
     const input = byId('googleRedirectV212'); const redirectUrl = String(input?.value || '').trim();
     if (!redirectUrl) return setWarning('Pega primero la URL authredirect://… que devuelve LALIGA.');
     setBadge('Validando Google…','yellow'); setWarning('');
     try {
       await getJson('/api/auth/google/finish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({redirectUrl})});
-      if (input) input.value=''; setBadge('Conectada','good'); setLegacyConnectionState(true);
+      if (input) input.value=''; sessionStorage.removeItem('laliga_google_login_pending'); setBadge('Conectada','good'); setLegacyConnectionState(true);
       setText('connectionDetailsV212','Cuenta Google de LALIGA autenticada. Descargando datos Fantasy reales…'); await syncOnce('google-login');
     } catch (error) { setBadge('No conectada','red'); const code=error?.data?.detail||error?.message||'error desconocido'; setWarning(code==='GOOGLE_AUTH_FAILED'?'Google/LALIGA rechazó el inicio de sesión.':`No se pudo completar la conexión Google (${code}). Si el código ha caducado, inicia el proceso de nuevo.`); }
   }
-  async function getSession() {
-    return getJson('/api/session');
-  }
 
-  async function getAuthStatus() {
-    return getJson('/api/auth/status');
-  }
+  async function getSession() { return getJson('/api/session'); }
+  async function getAuthStatus() { return getJson('/api/auth/status'); }
 
   async function loginDirect(event) {
     event.preventDefault();
@@ -192,41 +202,27 @@
     const button = event.currentTarget.querySelector('button[type="submit"]');
     const email = String(emailNode?.value || '').trim();
     const password = String(passwordNode?.value || '');
-
     if (!email || !password) return;
     button.disabled = true;
-    setBadge('Autenticando…', 'yellow');
-    setWarning('');
+    setBadge('Autenticando…', 'yellow'); setWarning('');
     setText('connectionDetailsV212', 'Autenticando directamente contra LALIGA…');
-
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        credentials: 'include',
-        cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      const response = await fetch('/api/auth/login', { method: 'POST', credentials: 'include', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw Object.assign(new Error(data.error || `HTTP_${response.status}`), { status: response.status, data });
-
       if (passwordNode) passwordNode.value = '';
-      setBadge('Conectada', 'good');
-      setLegacyConnectionState(true);
+      setBadge('Conectada', 'good'); setLegacyConnectionState(true);
       setText('connectionDetailsV212', 'Cuenta autenticada. Descargando datos Fantasy en directo…');
       await syncOnce('login');
     } catch (error) {
       if (passwordNode) passwordNode.value = '';
-      setBadge('No conectada', 'red');
-      setLegacyConnectionState(false);
+      setBadge('No conectada', 'red'); setLegacyConnectionState(false);
       if (error.message === 'LOGIN_RATE_LIMITED') setWarning('Demasiados intentos. Espera unos minutos antes de volver a intentarlo.');
       else if (error.message === 'AUTHENTICATION_PROVIDER_UNAVAILABLE') setWarning('El servicio de autenticación de LALIGA no está disponible en este momento.');
       else if (error.message === 'INVALID_PROVIDER_TOKEN') setWarning('LALIGA respondió, pero el token recibido no pudo validarse.');
       else setWarning('No se pudo autenticar la cuenta. Comprueba el correo y la contraseña de LALIGA.');
       setText('connectionDetailsV212', 'No se ha podido iniciar la sesión.');
-    } finally {
-      button.disabled = false;
-    }
+    } finally { button.disabled = false; }
   }
 
   async function syncOnce(reason = 'manual') {
@@ -236,19 +232,15 @@
       setBadge('Sincronizando…', 'yellow');
       const session = await getSession();
       if (!session.authenticated) {
-        setBadge('No conectada', 'yellow');
-        setLegacyConnectionState(false);
+        setBadge('No conectada', 'yellow'); setLegacyConnectionState(false);
         setText('connectionDetailsV212', `Acceso preparado · última sincronización: ${fmt(localStorage.getItem(LAST_SYNC_KEY))}`);
         return;
       }
-
       const dashboard = await getJson('/api/fantasy/dashboard');
       const now = new Date().toISOString();
       localStorage.setItem(LAST_SYNC_KEY, now);
       localStorage.setItem(LIVE_KEY, JSON.stringify({ savedAt: now, dashboard }));
-      window.__laligaLiveDashboard = dashboard;
-      updateDashboard(dashboard);
-
+      window.__laligaLiveDashboard = dashboard; updateDashboard(dashboard);
       const errors = Array.isArray(dashboard.errors) ? dashboard.errors : [];
       setBadge(errors.length ? 'LIVE · parcial' : 'LIVE · conectado', errors.length ? 'yellow' : 'good');
       setLegacyConnectionState(true);
@@ -259,9 +251,7 @@
       setLegacyConnectionState(error.status !== 401);
       setText('connectionDetailsV212', `No se pudo completar la sincronización (${reason}).`);
       setWarning(error.status === 401 ? 'La sesión ha caducado. Vuelve a conectar la cuenta.' : 'Se mantiene el último estado local disponible; no se inventan datos nuevos.');
-    } finally {
-      running = false;
-    }
+    } finally { running = false; }
   }
 
   async function boot() {
@@ -271,11 +261,18 @@
       const ssoBox = byId('ssoBoxV212');
       if (ssoBox) ssoBox.style.display = auth.configured ? 'block' : 'none';
       setText('connectionDetailsV212', 'Inicio de sesión oficial de LALIGA preparado para cuentas Google.');
-      setWarning('Para una cuenta creada con Google debes usar el botón Entrar con Google; el formulario de contraseña no sirve para este tipo de cuenta.');
-    } catch {
-      setWarning('No se pudo consultar el estado de autenticación del servidor.');
-    }
+      if (sessionStorage.getItem('laliga_google_login_pending') === '1') setWarning('Si acabas de volver de Google, completa la conexión con la URL authredirect://… que haya devuelto LALIGA.');
+      else setWarning('Para una cuenta creada con Google debes usar el botón Entrar con Google; el formulario de contraseña no sirve para este tipo de cuenta.');
+    } catch { setWarning('No se pudo consultar el estado de autenticación del servidor.'); }
     await syncOnce('inicio');
+  }
+
+  async function logout() {
+    try { await getJson('/api/auth/logout', { method: 'POST' }); } catch {}
+    sessionStorage.removeItem('laliga_google_login_pending');
+    setBadge('No conectada', 'yellow');
+    setLegacyConnectionState(false);
+    setText('connectionDetailsV212', 'Sesión cerrada.');
   }
 
   window.LALIGA_CONNECTION = Object.freeze({ sync: syncOnce });
