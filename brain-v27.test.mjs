@@ -24,12 +24,12 @@ try{
   const positive={...player,weekPoints:18};
   const observed=brain.observePlayers([positive],{week:2,fixture:{context:80,homeAway:'home'}});
   assert.equal(observed.observed,1);
-  assert.equal(observed.learned,0);
+  assert.equal(observed.learned>=1,true);
   assert.equal(brain.state.observations>=1,true);
 
   const second=brain.observePlayers([{...player,weekPoints:25}],{week:2,fixture:{context:80,homeAway:'home'}});
   assert.equal(second.learned>=1,true);
-  assert.ok(brain.state.labeledSamples>=2);
+  assert.ok(brain.state.labeledSamples>=3);
   assert.ok(brain.state.meanAbsoluteError>=0);
   assert.ok(['stable','watch','high'].includes(brain.state.drift.status));
 
@@ -59,7 +59,7 @@ try{
     }
   }
   assert.equal(loops,10000);
-  assert.ok(reloaded.state.labeledSamples>=10002);
+  assert.ok(reloaded.state.labeledSamples>=10003);
   console.log(`BRAIN v${BRAIN_VERSION}: OK · 100000 micro-pasos · 10000 ciclos de corrección`);
 }finally{
   fs.rmSync(dir,{recursive:true,force:true});
