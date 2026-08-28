@@ -51,7 +51,21 @@
 
   async function syncOnce(reason = 'manual') { if (running) return; running = true; try { setBadge('Sincronizando…', 'yellow'); const session = await getSession(); if (!session.authenticated) { setBadge('No conectada', 'yellow'); setLegacyConnectionState(false); setText('connectionDetailsV212', `Acceso preparado · última sincronización: ${fmt(localStorage.getItem(LAST_SYNC_KEY))}`); return; } const dashboard = await getJson('/api/fantasy/dashboard'); const now = new Date().toISOString(); localStorage.setItem(LAST_SYNC_KEY, now); localStorage.setItem(LIVE_KEY, JSON.stringify({ savedAt: now, dashboard })); window.__laligaLiveDashboard = dashboard; updateDashboard(dashboard); const errors = Array.isArray(dashboard.errors) ? dashboard.errors : []; setBadge(errors.length ? 'LIVE · parcial' : 'LIVE · conectado', errors.length ? 'yellow' : 'good'); setLegacyConnectionState(true); setText('connectionDetailsV212', `Última sincronización: ${fmt(now)} · datos reales recibidos · ${errors.length ? `faltan: ${errors.join(', ')}` : 'sin errores reportados'}.`); setWarning(errors.length ? `El servidor pudo recuperar la sesión, pero algunas fuentes de datos fallaron: ${errors.join(', ')}.` : ''); } catch (error) { setBadge(error.status === 401 ? 'Sesión caducada' : 'Error de datos', 'red'); setLegacyConnectionState(error.status !== 401); setText('connectionDetailsV212', `No se pudo completar la sincronización (${reason}).`); setWarning(error.status === 401 ? 'La sesión ha caducado. Vuelve a conectar la cuenta.' : 'Se mantiene el último estado local disponible; no se inventan datos nuevos.'); } finally { running = false; } }
 
-  async function boot() { ensurePanel(); try { const auth = await getAuthStatus(); const ssoBox = byId('ssoBoxV212'); if (ssoBox) ssoBox.style.display = auth.configured ? 'block' : 'none'; setText('connectionDetailsV212', 'Inicio de sesión oficial de LALIGA preparado para cuentas Google.'); if (sessionStorage.getItem('laliga_google_login_pending') === '1') setWarning('Si acabas de volver de Google, completa la conexión con la URL authredirect://… que haya devuelto LALIGA.'); else setWarning('Para una cuenta creada con Google debes usar el botón Entrar con Google; el formulario de contraseña no sirve para este tipo de cuenta.'); } catch { setWarning('No se pudo consultar el estado de autenticación del servidor.'); } await syncOnce('inicio'); }
+  async function loadBrain26() {
+    if (window.__fantasyBrain26Loaded) return;
+    try {
+      const response = await fetch('/brain-engine-v26.js', { credentials:'include', cache:'no-store' });
+      if (!response.ok) throw new Error(`BRAIN_26_HTTP_${response.status}`);
+      const source = await response.text();
+      (0, eval)(source);
+      window.__fantasyBrain26Loaded = true;
+    } catch (error) {
+      const marker = byId('brainStatus');
+      if (marker) marker.textContent = `Motor v2.6 no disponible (${error.message})`;
+    }
+  }
+
+  async function boot() { ensurePanel(); void loadBrain26(); try { const auth = await getAuthStatus(); const ssoBox = byId('ssoBoxV212'); if (ssoBox) ssoBox.style.display = auth.configured ? 'block' : 'none'; setText('connectionDetailsV212', 'Inicio de sesión oficial de LALIGA preparado para cuentas Google.'); if (sessionStorage.getItem('laliga_google_login_pending') === '1') setWarning('Si acabas de volver de Google, completa la conexión con la URL authredirect://… que haya devuelto LALIGA.'); else setWarning('Para una cuenta creada con Google debes usar el botón Entrar con Google; el formulario de contraseña no sirve para este tipo de cuenta.'); } catch { setWarning('No se pudo consultar el estado de autenticación del servidor.'); } await syncOnce('inicio'); }
 
   async function logout() { try { window.location.assign('/auth/logout'); } catch {} }
   window.LALIGA_CONNECTION = Object.freeze({ sync: syncOnce });
