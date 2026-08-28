@@ -19,7 +19,7 @@ check(readConfig({PORT:'10000',HOST:'0.0.0.0'}).port===10000,'Render PORT');
 check(readConfig({PORT:'10000',HOST:'0.0.0.0'}).host==='0.0.0.0','Render HOST');
 check(oidcConfigured(readConfig({})),'OIDC oficial por defecto');
 check(oidcConfigured({laligaAuthorizeUrl:'https://x/authorize',laligaOAuthClientId:'x',laligaRedirectUri:'https://x/callback'}),'OIDC completo');
-for(const p of ['/','/index.html','/dashboard-client.js','/connection-client.js'])check(publicStaticPath(p),`público ${p}`);
+for(const p of ['/','/index.html','/dashboard-client.js','/connection-client.js','/brain-engine-v26.js'])check(publicStaticPath(p),`público ${p}`);
 for(const p of ['/server.mjs','/config.mjs','/.env'])check(!publicStaticPath(p),`privado ${p}`);
 
 const api={response:[{fixture:{id:10,date:'2026-08-28T18:00:00Z',status:{short:'NS'}},league:{id:140,round:'Regular Season - 2'},teams:{home:{id:1,name:'FC Barcelona'},away:{id:2,name:'Real Madrid'}}}]};
@@ -56,6 +56,7 @@ check(status.opta.configured,'Opta status');
 
 const serverSource=fs.readFileSync('./server.mjs','utf8');
 const connectionSource=fs.readFileSync('./connection-client.js','utf8');
+const brain26Source=fs.readFileSync('./brain-engine-v26.js','utf8');
 check(/server\.listen\(\s*config\.port\s*,\s*config\.host/.test(serverSource),'servidor escucha PORT/HOST');
 check(serverSource.includes("url.pathname === '/api/health'"),'health route');
 check(serverSource.includes('cookieHeader'),'cookie helper');
@@ -71,12 +72,19 @@ check(!connectionSource.includes('localStorage.setItem(\'laligaPassword'),'contr
 check(!/console\.log\(.*password/i.test(serverSource),'sin log de contraseña');
 check(serverSource.includes("/api/auth/google/start"),'Google start route'); check(serverSource.includes("/api/auth/google/finish"),'Google finish route'); check(!serverSource.includes("case'buy'"),'sin compra');
 check(!serverSource.includes("case'sell'"),'sin venta');
+check(connectionSource.includes("fetch('/brain-engine-v26.js'"),'cerebro v2.6 cargado por el cliente de conexión');
+check(connectionSource.includes('__fantasyBrain26Loaded'),'cerebro v2.6 no se duplica');
+check(brain26Source.includes("const BRAIN_VERSION = '2.6'"),'versión cerebro v2.6');
+check(brain26Source.includes('dataQuality'),'calidad de datos por campo');
+check(brain26Source.includes('transferScore'),'señal específica de mercado');
+check(brain26Source.includes('FALTA INFORMACIÓN'),'decisión por incertidumbre');
+check(brain26Source.includes('No se inventan datos nuevos'),'sin inventar datos en fallback');
 
 const pkg=JSON.parse(fs.readFileSync('./package.json','utf8'));
 check(pkg.version===VERSION,'package/runtime sincronizados');
 check(pkg.engines.node==='24.14.1','Node fijado');
 check(pkg.scripts.start.includes('server.mjs'),'start válido');
-for(const f of ['server.mjs','config.mjs','providers.mjs','realdata.mjs','brain-engine.js','brain-engine-v25.js','connection-client.js'])check(fs.existsSync(f),`archivo crítico ${f}`);
+for(const f of ['server.mjs','config.mjs','providers.mjs','realdata.mjs','brain-engine.js','brain-engine-v25.js','brain-engine-v26.js','connection-client.js'])check(fs.existsSync(f),`archivo crítico ${f}`);
 
 const port=39000+Math.floor(Math.random()*500);
 const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,NODE_ENV:'test',PORT:String(port),HOST:'0.0.0.0',SECURE_COOKIE:'false'},stdio:['ignore','pipe','pipe']});
@@ -91,6 +99,10 @@ try{
   check(hb.version===VERSION,'health version');
   const html=await (await fetch(`http://127.0.0.1:${port}/`,{cache:'no-store'})).text();
   check(html.includes('<script src="/connection-client.js" defer></script>'),'index carga connection-client');
+  const brain=await fetch(`http://127.0.0.1:${port}/brain-engine-v26.js`,{cache:'no-store'});
+  check(brain.status===200,'brain v2.6 servido públicamente');
+  const brainText=await brain.text();
+  check(brainText.includes("BRAIN_VERSION = '2.6'"),'brain v2.6 accesible');
   const s=await fetch(`http://127.0.0.1:${port}/api/session`,{cache:'no-store'});
   const sb=await s.json();
   check(s.status===200&&sb.authenticated===false,'session anónima');
