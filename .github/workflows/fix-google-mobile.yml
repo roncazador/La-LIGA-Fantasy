@@ -1,0 +1,50 @@
+name: Fix Google login on mobile
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch mobile OAuth flow
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('connection-client.js')
+          s = p.read_text()
+          old = """  async function getJson(url, options = {}) {\n    const response = await fetch(url, { credentials: 'include', cache: 'no-store', ...options });\n    const data = await response.json().catch(() => ({}));\n    if (!response.ok) throw Object.assign(new Error(data.error || `HTTP_${response.status}`), { status: response.status, data });\n    return data;\n  }"""
+          new = """  async function getJson(url, options = {}) {\n    const controller = new AbortController();\n    const timeout = setTimeout(() => controller.abort(), 15000);\n    try {\n      const response = await fetch(url, { credentials: 'include', cache: 'no-store', signal: controller.signal, ...options });\n      const data = await response.json().catch(() => ({}));\n      if (!response.ok) throw Object.assign(new Error(data.error || `HTTP_${response.status}`), { status: response.status, data });\n      return data;\n    } catch (error) {\n      if (error?.name === 'AbortError') throw new Error('REQUEST_TIMEOUT');\n      throw error;\n    } finally {\n      clearTimeout(timeout);\n    }\n  }"""
+          if old not in s: raise SystemExit('getJson block not found')
+          s = s.replace(old, new, 1)
+          start = s.index('  async function startGoogle() {')
+          end = s.index('  async function finishGoogle() {', start)
+          replacement = """  async function startGoogle() {\n    setBadge('Preparando Google…', 'yellow');\n    setWarning('');\n    setText('connectionDetailsV212', 'Preparando el inicio de sesión oficial de LALIGA…');\n    try {\n      const data = await getJson('/api/auth/google/start');\n      if (!data?.authorizeUrl) throw new Error('AUTH_URL_MISSING');\n      sessionStorage.setItem('laliga_google_login_pending', '1');\n      setBadge('Abriendo Google…', 'yellow');\n      setText('connectionDetailsV212', 'Redirigiendo al inicio de sesión oficial de LALIGA/Google…');\n      window.location.assign(data.authorizeUrl);\n    } catch (error) {\n      const message = error?.message || 'UNKNOWN_ERROR';\n      setBadge('Error Google', 'red');\n      if (message === 'REQUEST_TIMEOUT') setWarning('El servidor tardó demasiado en preparar el acceso. Recarga la página y vuelve a pulsar Entrar con Google.');\n      else if (message === 'AUTH_URL_MISSING') setWarning('El servidor no devolvió la URL de acceso de LALIGA.');\n      else setWarning(`No se pudo preparar el acceso Google (${message}).`);\n    }\n  }\n"""
+          s = s[:start] + replacement + s[end:]
+          s = s.replace("if (input) input.value=''; setBadge('Conectada','good');", "if (input) input.value=''; sessionStorage.removeItem('laliga_google_login_pending'); setBadge('Conectada','good');")
+          p.write_text(s)
+          q = Path('qa.test.mjs')
+          qs = q.read_text()
+          if "Google mobile uses same-tab redirect" not in qs:
+              qs += "\nconst connectionClient = fs.readFileSync('./connection-client.js','utf8');\ncheck(connectionClient.includes('window.location.assign(data.authorizeUrl)'), 'Google mobile uses same-tab redirect');\ncheck(connectionClient.includes('REQUEST_TIMEOUT'), 'Google start timeout');\ncheck(!connectionClient.includes(\"window.open('about:blank', 'laligaGoogleLogin'\"), 'Google mobile no popup');\n"
+          q.write_text(qs)
+          PY
+      - name: Run syntax checks
+        run: |
+          node --check connection-client.js
+          node --check qa.test.mjs
+      - name: Commit and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add connection-client.js qa.test.mjs .github/workflows/fix-google-mobile.yml
+          git commit -m 'Fix Google login flow on iPhone' || exit 0
+          git rm .github/workflows/fix-google-mobile.yml || true
+          git commit -m 'Remove one-shot Google login workflow' || true
+          git push
