@@ -18,8 +18,10 @@ jobs:
         with:
           node-version: 24.14.1
       - name: Syntax
-        run: node --check brain-core-v27.mjs && node --check brain-host-v27.mjs && node --check brain-client-v27.js && node --check brain-v27.test.mjs && node --check brain-runtime-v27.test.mjs
+        run: node --check brain-core-v27.mjs && node --check brain-host-v27.mjs && node --check brain-client-v27.js && node --check brain-v27.test.mjs && node --check brain-runtime-v27.test.mjs && node --check deployment-contract-v27.test.mjs
       - name: Deep brain regression
         run: node brain-v27.test.mjs
       - name: Runtime integration regression
         run: node brain-runtime-v27.test.mjs
+      - name: Deployment contract regression
+        run: node deployment-contract-v27.test.mjs
