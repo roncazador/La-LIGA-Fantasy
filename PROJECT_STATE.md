@@ -1,10 +1,23 @@
 # La-LIGA Fantasy — estado compacto
 
-Fecha: 27/08/2026
+Fecha: 28/08/2026
 Rama: `main`
 
 ## Objetivo actual
 Manager Fantasy en modo **solo lectura**, optimizado para móvil/iPhone, que combina datos LIVE cuando hay sesión con una referencia visual de la app oficial cuando no la hay.
+
+## Cerebro actual
+`brain-engine-v25.js` queda como motor anterior. `brain-engine-v26.js` es ahora el motor activo y se carga una sola vez desde `connection-client.js`.
+
+La v2.6 añade:
+- confianza basada en campos realmente recibidos;
+- penalización por información ausente sin tratarla como dato favorable/neutro;
+- ajuste por posición;
+- forma y momentum combinados con señal de precio/valor;
+- riesgo explícito por rotación/lesión/estado textual;
+- `transferScore` separado del score de alineación;
+- decisiones `TITULAR`, `MANTENER`, `SALIDA`, `VIGILAR MERCADO`, `COMPRAR / PRIORIDAD`, `NO FORZAR` y `FALTA INFORMACIÓN`;
+- distinción visible entre `LALIGA LIVE` y fuentes de referencia.
 
 ## Vista visual actual
 El panel unificado debe mostrar, con navegación táctil:
@@ -34,10 +47,10 @@ Nunca poner claves API, tokens, cookies o credenciales en frontend o JSON públi
 No activar compras, ventas, pujas ni modificaciones de plantilla.
 
 ## Siguiente prioridad
-1. Consolidar la UI para evitar paneles duplicados.
-2. Mantener `recording-data-2026-08-27.json` como fuente compacta de referencia visual.
-3. Validar CI con contrato de UI/datos antes de seguir añadiendo lógica.
-4. Conservar el backend LIVE como fuente prioritaria cuando la sesión oficial esté autenticada.
+1. Validar CI completo del motor v2.6 y contrato de UI/datos.
+2. Consolidar la UI para evitar paneles duplicados.
+3. Conectar el `transferScore` con datos reales del mercado LIVE cuando la sesión oficial proporcione suficiente información.
+4. Mantener `recording-data-2026-08-27.json` como fuente compacta de referencia visual.
 
 ## Nota para futuras iteraciones
-No rehacer arquitectura ni añadir capas de diagnóstico innecesarias. Primero corregir errores de CI, duplicidades y datos; después ampliar el cerebro Fantasy.
+No rehacer arquitectura ni añadir capas de diagnóstico innecesarias. Primero corregir errores de CI, duplicidades y datos; después ampliar el cerebro Fantasy sobre la base v2.6.
