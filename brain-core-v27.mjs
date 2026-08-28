@@ -100,7 +100,7 @@ function freshState(){
     updatedAt:null,
     observations:0,
     labeledSamples:0,
-    correctDirectional:0,
+    accuratePredictions:0,
     totalAbsoluteError:0,
     meanAbsoluteError:null,
     weights:{...DEFAULT_WEIGHTS},
@@ -126,6 +126,9 @@ export class BrainV27{
     if(!this.state.version) this.state.version=BRAIN_VERSION;
     if(!this.state.positionBias) this.state.positionBias={POR:0,DEF:0,MED:0,DEL:0,UNK:0};
     if(!this.state.pending) this.state.pending={};
+    if(this.state.accuratePredictions==null) this.state.accuratePredictions=0;
+    if(this.state.totalAbsoluteError==null) this.state.totalAbsoluteError=0;
+    if(this.state.meanAbsoluteError==null && this.state.labeledSamples>0) this.state.meanAbsoluteError=this.state.totalAbsoluteError/this.state.labeledSamples;
     this.learningRate=clamp(Number(options.learningRate ?? process.env.BRAIN_LEARNING_RATE ?? 0.035),0.001,0.2);
   }
 
@@ -163,7 +166,7 @@ export class BrainV27{
     this.state.labeledSamples+=1;
     this.state.totalAbsoluteError+=Math.abs(error);
     this.state.meanAbsoluteError=this.state.totalAbsoluteError/this.state.labeledSamples;
-    if(Math.sign(expected)===Math.sign(actual) || Math.abs(error)<3) this.state.correctDirectional+=1;
+    if(Math.abs(error)<=3) this.state.accuratePredictions+=1;
     const ratio=Math.min(1,Math.abs(error)/20);
     this.state.drift.score=clamp(this.state.drift.score*0.94+ratio*0.06);
     this.state.drift.status=this.state.drift.score>0.28?'high':this.state.drift.score>0.14?'watch':'stable';
@@ -179,10 +182,11 @@ export class BrainV27{
 
   observePlayers(players,context={}){
     const list=Array.isArray(players)?players:[];
-    let learned=0, pending=0;
+    let learned=0, pending=0, observed=0;
     for(const raw of list){
       const id=playerIdentity(raw);
       if(!id.name) continue;
+      observed+=1;
       const prediction=this.predict(raw,context);
       const week=text(context.week ?? context.matchday ?? 'unknown');
       const key=crypto.createHash('sha1').update(`${id.key}|${week}`).digest('hex');
@@ -200,7 +204,7 @@ export class BrainV27{
     }
     this.state.lastObservationAt=nowIso();
     this.save();
-    return {observed:list.length,learned,pending,modelVersion:BRAIN_VERSION};
+    return {observed,learned,pending,modelVersion:BRAIN_VERSION};
   }
 
   ingestDashboard(dashboard,meta={}){
@@ -231,7 +235,7 @@ export class BrainV27{
       observations:this.state.observations,
       labeledSamples:this.state.labeledSamples,
       meanAbsoluteError:this.state.meanAbsoluteError==null?null:Math.round(this.state.meanAbsoluteError*100)/100,
-      accuracy:this.state.labeledSamples?Math.round(this.state.correctDirectional/this.state.labeledSamples*100):null,
+      accuracy:this.state.labeledSamples?Math.round(this.state.accuratePredictions/this.state.labeledSamples*100):null,
       weights:this.state.weights,
       positionBias:this.state.positionBias,
       confidence:this.predict({name:'__system__'}).confidence,
