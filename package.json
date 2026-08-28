@@ -1,11 +1,11 @@
 {
   "name": "laliga-fantasy-manager",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node --import ./config.mjs server.mjs",
-    "test": "node qa-10000.test.mjs"
+    "test": "node qa.test.mjs && node qa-100000.test.mjs"
   },
   "engines": {
     "node": "24.14.1"
