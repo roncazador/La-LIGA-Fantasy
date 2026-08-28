@@ -1,6 +1,4 @@
-const CACHE_NAME = 'fm-v253';
-// Compatibilidad con el contrato histórico que validaba la migración fm-v251.
-const LEGACY_CACHE_MARKER = 'fm-v251';
+const CACHE_NAME = 'fm-v213';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
@@ -35,32 +33,24 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
-
   const pathname = new URL(request.url).pathname;
   const freshResources = new Set([
-    '/index.html',
-    '/dashboard-client.js',
-    '/calendar-client.js',
-    '/data-client.js',
-    '/recording-client.js',
-    '/official-fixtures-seed-2026-27.json',
-    '/video-reference-snapshot-2026-08-27.json',
-    '/recording-data-2026-08-27.json'
+    '/index.html','/dashboard-client.js','/calendar-client.js','/data-client.js',
+    '/recording-client.js','/official-fixtures-seed-2026-27.json',
+    '/video-reference-snapshot-2026-08-27.json','/recording-data-2026-08-27.json'
   ]);
-
   if (request.mode === 'navigate' || freshResources.has(pathname)) {
     event.respondWith(
-      fetch(request, { cache: 'no-store' })
+      fetch(request,{cache:'no-store'})
         .then(response => {
-          const copy = response.clone();
-          const key = pathname.endsWith('/index.html') || request.mode === 'navigate' ? './index.html' : pathname;
-          caches.open(CACHE_NAME).then(cache => cache.put(key, copy));
+          const copy=response.clone();
+          const key=pathname.endsWith('/index.html') || request.mode === 'navigate' ? './index.html' : pathname;
+          caches.open(CACHE_NAME).then(cache=>cache.put(key,copy));
           return response;
         })
-        .catch(() => caches.match(request).then(cached => cached || caches.match('./index.html')))
+        .catch(()=>caches.match(request).then(cached=>cached||caches.match('./index.html')))
     );
     return;
   }
-
-  event.respondWith(caches.match(request).then(cached => cached || fetch(request)));
+  event.respondWith(caches.match(request).then(cached=>cached||fetch(request)));
 });
