@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const files = p => fs.readFileSync(p,'utf8');
 const recording=files('recording-client.js'), dataClient=files('data-client.js'), dashboard=files('dashboard-client.js'), connection=files('connection-client.js'), calendar=files('calendar-client.js'), config=files('config.mjs'), index=files('index.html'), sw=files('sw.js'), pkg=JSON.parse(files('package.json'));
+const brainCore=files('brain-core-v27.mjs'), brainHost=files('brain-host-v27.mjs'), brainClient=files('brain-client-v27.js'), render=files('render.yaml');
 const checks=[];
 const check=(name,ok)=>checks.push([name,Boolean(ok)]);
 check('package v2.13',pkg.version==='2.13.0');
@@ -33,6 +34,18 @@ check('calendar sin secretos',!secret.test(calendar));
 check('data client sin secretos',!secret.test(dataClient));
 check('recording sin secretos',!secret.test(recording));
 check('config sin .env público',!config.includes("'/.env'"));
-assert.equal(checks.length,29);
+
+check('brain core existe',brainCore.includes('class BrainV27'));
+check('brain core versión 2.7',brainCore.includes("BRAIN_VERSION = '2.7.0'"));
+check('brain tiene memoria persistente',brainCore.includes('model-v27.json'));
+check('brain aprende pesos',brainCore.includes('this.state.weights[key]'));
+check('brain controla deriva',brainCore.includes('this.state.drift'));
+check('brain host es el nuevo start',pkg.scripts.start==='node brain-host-v27.mjs');
+check('brain host expone status',brainHost.includes("/api/brain/status"));
+check('brain host hace ciclo autónomo',brainHost.includes('autonomousCycle')&&brainHost.includes('20*60*1000'));
+check('brain client visible',brainClient.includes('brain27Panel'));
+check('Render apunta al almacenamiento cerebral',render.includes('BRAIN_STATE_DIR')&&render.includes('/var/data/brain'));
+
+assert.equal(checks.length,38,`Se esperaban 38 comprobaciones y hay ${checks.length}`);
 for(const [i,[name,ok]] of checks.entries())assert.ok(ok,`V32-${String(i+1).padStart(3,'0')}: ${name}`);
-console.log('✅ V32: 29/29 comprobaciones superadas');
+console.log('✅ V32: 38/38 comprobaciones superadas');
