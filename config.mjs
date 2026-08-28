@@ -69,7 +69,7 @@ export function publicStaticPath(pathname){
   return new Set([
     '/', '/index.html', '/manifest.json', '/sw.js',
     '/dashboard-client.js', '/calendar-client.js', '/data-client.js',
-    '/recording-client.js', '/connection-client.js', '/auth-client.js',
+    '/recording-client.js', '/connection-client.js', '/auth-client.js', '/brain-engine-v26.js',
     '/official-fixtures-seed-2026-27.json', '/video-reference-snapshot-2026-08-27.json', '/recording-data-2026-08-27.json'
   ]).has(pathname);
 }
