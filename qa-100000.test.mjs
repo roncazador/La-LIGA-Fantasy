@@ -9,7 +9,7 @@ const seed = JSON.parse(fs.readFileSync('./official-fixtures-seed-2026-27.json',
 const pkg = JSON.parse(fs.readFileSync('./package.json','utf8'));
 
 assert.equal(pkg.engines.node,'24.14.1');
-assert.equal(pkg.version,'2.12.0','version bump is applied in the next package update');
+assert.equal(pkg.version,'2.13.0');
 assert.ok(source.includes("const V='2.13.0'"));
 assert.ok(source.includes("OFF='LALIGA oficial'"));
 assert.ok(source.includes("/api/fantasy/fixtures?week="));
@@ -58,41 +58,37 @@ const sample = {
 
 let microSteps = 0;
 let verificationBlocks = 0;
-for (let i=1; i<=100000; i++) {
-  const payload = i % 3 === 0 ? sample : {fixtures: seed.fixtures.slice(0, Math.min(seed.fixtures.length, 1 + (i % 6)))};
-  const a = api.normalize(payload);
-  const b = api.normalize(a);
-
-  assert.ok(Array.isArray(a), `step ${i}: normalize returns array`);
-  assert.ok(a.every(x => x.home && x.away && x.utcDate), `step ${i}: fixture identity complete`);
-  assert.ok(a.every(x => x.source === 'LALIGA oficial'), `step ${i}: single official source`);
-  assert.ok(a.every(x => x.sources === undefined), `step ${i}: no multi-source field leak`);
-  assert.equal(new Set(a.map(x => `${x.utcDate}|${x.home}|${x.away}`)).size, a.length, `step ${i}: no duplicate fixtures`);
-  assert.ok(a.every(x => ['PRÓXIMO','EN DIRECTO','DESCANSO','FINALIZADO','CANCELADO','APLAZADO'].includes(x.status)), `step ${i}: normalized status`);
-  assert.ok(a.every(x => x.homeScore === null || Number.isInteger(x.homeScore)), `step ${i}: home score shape`);
-  assert.ok(a.every(x => x.awayScore === null || Number.isInteger(x.awayScore)), `step ${i}: away score shape`);
-  assert.ok(b.length === a.length, `step ${i}: idempotent length`);
-  assert.deepEqual(b.map(x=>x.id), a.map(x=>x.id), `step ${i}: idempotent identity`);
-
-  if (i % 10 === 0) {
+for (let i=1;i<=100000;i++) {
+  const payload=i%3===0?sample:{fixtures:seed.fixtures.slice(0,Math.min(seed.fixtures.length,1+(i%6)))};
+  const a=api.normalize(payload);
+  const b=api.normalize(a);
+  assert.ok(Array.isArray(a),`step ${i}: normalize array`);
+  assert.ok(a.every(x=>x.home&&x.away&&x.utcDate),`step ${i}: identity`);
+  assert.ok(a.every(x=>x.source==='LALIGA oficial'),`step ${i}: official source only`);
+  assert.ok(a.every(x=>x.sources===undefined),`step ${i}: no multi-source leak`);
+  assert.equal(new Set(a.map(x=>`${x.utcDate}|${x.home}|${x.away}`)).size,a.length,`step ${i}: no duplicates`);
+  assert.ok(a.every(x=>['PRÓXIMO','EN DIRECTO','DESCANSO','FINALIZADO','CANCELADO','APLAZADO'].includes(x.status)),`step ${i}: status`);
+  assert.ok(a.every(x=>x.homeScore===null||Number.isInteger(x.homeScore)),`step ${i}: home score`);
+  assert.ok(a.every(x=>x.awayScore===null||Number.isInteger(x.awayScore)),`step ${i}: away score`);
+  assert.equal(b.length,a.length,`step ${i}: idempotent length`);
+  assert.deepEqual(b.map(x=>x.id),a.map(x=>x.id),`step ${i}: idempotent ids`);
+  if(i%10===0){
     verificationBlocks++;
-    // The user requested a ten-check verification boundary every ten micro-steps.
-    const live = api.normalize({fixtures:[{id:'live',utcDate:'2026-08-29T20:00:00Z',home:'A',away:'B',status:'2H',score:{home:2,away:1}}]})[0];
-    const upcoming = api.normalize({fixtures:[{id:'up',utcDate:'2099-01-01T20:00:00Z',home:'A',away:'B',status:'NS'}]})[0];
+    const live=api.normalize({fixtures:[{id:'live',utcDate:'2026-08-29T20:00:00Z',home:'A',away:'B',status:'2H',score:{home:2,away:1}}]})[0];
+    const upcoming=api.normalize({fixtures:[{id:'up',utcDate:'2099-01-01T20:00:00Z',home:'A',away:'B',status:'NS'}]})[0];
     assert.equal(live.status,'EN DIRECTO',`block ${verificationBlocks}: live status`);
-    assert.equal(live.homeScore,2,`block ${verificationBlocks}: live home score`);
-    assert.equal(live.awayScore,1,`block ${verificationBlocks}: live away score`);
+    assert.equal(live.homeScore,2,`block ${verificationBlocks}: live home`);
+    assert.equal(live.awayScore,1,`block ${verificationBlocks}: live away`);
     assert.equal(live.source,'LALIGA oficial',`block ${verificationBlocks}: live source`);
     assert.equal(upcoming.status,'PRÓXIMO',`block ${verificationBlocks}: upcoming status`);
-    assert.equal(upcoming.homeScore,null,`block ${verificationBlocks}: no fake home score`);
-    assert.equal(upcoming.awayScore,null,`block ${verificationBlocks}: no fake away score`);
+    assert.equal(upcoming.homeScore,null,`block ${verificationBlocks}: upcoming no fake home score`);
+    assert.equal(upcoming.awayScore,null,`block ${verificationBlocks}: upcoming no fake away score`);
     assert.equal(upcoming.source,'LALIGA oficial',`block ${verificationBlocks}: upcoming source`);
-    assert.ok(api.version==='2.13.0',`block ${verificationBlocks}: version contract`);
-    assert.ok(source.includes('Fuente única') || source.includes('LALIGA oficial'),`block ${verificationBlocks}: official-only UI contract`);
+    assert.equal(api.version,'2.13.0',`block ${verificationBlocks}: version`);
+    assert.ok(source.includes('LALIGA oficial'),`block ${verificationBlocks}: official-only UI`);
   }
   microSteps++;
 }
-
 assert.equal(microSteps,100000);
 assert.equal(verificationBlocks,10000);
 console.log('100000 MICRO-STEPS OK');
