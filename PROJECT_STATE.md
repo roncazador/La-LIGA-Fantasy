@@ -3,7 +3,7 @@
 Fecha: 28/08/2026
 Rama: `main`
 
-## Estado v2.14 / Cerebro v2.7
+## Estado v2.13 / Cerebro v2.7
 La aplicación visible está consolidada en un único controlador oficial: `calendar-client.js`. Los clientes heredados `dashboard-client.js` y `connection-client.js` son shims pasivos y no hacen consultas duplicadas.
 
 El arranque de producción pasa ahora por `brain-host-v27.mjs`, que coloca el cerebro delante del backend sin alterar la API existente.
