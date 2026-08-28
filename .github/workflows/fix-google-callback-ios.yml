@@ -1,0 +1,135 @@
+name: Fix Google callback on iPhone
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch OAuth callback and mobile UX
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('server.mjs')
+          s = p.read_text()
+
+          old = "sessions.set(sessionId,{createdAt:Date.now(),state,verifier,platform:'web'});"
+          new = "sessions.set(sessionId,{createdAt:Date.now(),state,verifier,platform:'web',redirectUri:config.laligaRedirectUri});"
+          if old not in s:
+              raise SystemExit('server start session pattern not found')
+          s = s.replace(old, new, 1)
+
+          old = """      const redirectUrl = typeof body?.redirectUrl === 'string' ? body.redirectUrl.trim() : '';
+      if (!redirectUrl || !redirectUrl.startsWith('authredirect://com.lfp.laligafantasy')) return sendJson(res,400,{error:'INVALID_REDIRECT_URL'});
+      let parsed;
+      try { parsed = new URL(redirectUrl); } catch { return sendJson(res,400,{error:'INVALID_REDIRECT_URL'}); }
+      const code = parsed.searchParams.get('code');"""
+          new = """      const redirectUrl = typeof body?.redirectUrl === 'string' ? body.redirectUrl.trim() : '';
+      const configuredRedirect = session.redirectUri || config.laligaRedirectUri;
+      let parsed;
+      try { parsed = new URL(redirectUrl); } catch { return sendJson(res,400,{error:'INVALID_REDIRECT_URL'}); }
+      let configured;
+      try { configured = new URL(configuredRedirect); } catch { return sendJson(res,400,{error:'INVALID_REDIRECT_CONFIGURATION'}); }
+      const isNativeCallback = parsed.protocol === 'authredirect:' && parsed.hostname === 'com.lfp.laligafantasy';
+      const isConfiguredWebCallback = parsed.origin === configured.origin && parsed.pathname === configured.pathname;
+      if (!redirectUrl || (!isNativeCallback && !isConfiguredWebCallback)) return sendJson(res,400,{error:'INVALID_REDIRECT_URL'});
+      const code = parsed.searchParams.get('code');"""
+          if old not in s:
+              raise SystemExit('server finish redirect pattern not found')
+          s = s.replace(old, new, 1)
+
+          old = "redirect_uri:config.laligaRedirectUri,code_verifier:session.verifier,scope:'openid offline_access'"
+          new = "redirect_uri:configuredRedirect,code_verifier:session.verifier,scope:'openid offline_access'"
+          if old not in s:
+              raise SystemExit('server token exchange redirect pattern not found')
+          s = s.replace(old, new, 1)
+
+          old = "const query = new URLSearchParams({p:config.laligaSigninPolicy,client_id:config.laligaOAuthClientId,response_type:'code',redirect_uri:config.laligaRedirectUri,scope:'openid offline_access',code_challenge:challenge,code_challenge_method:'S256',state,nonce:state});"
+          new = "const query = new URLSearchParams({p:config.laligaSigninPolicy,client_id:config.laligaOAuthClientId,response_type:'code',response_mode:'query',redirect_uri:config.laligaRedirectUri,scope:'openid offline_access',code_challenge:challenge,code_challenge_method:'S256',state,nonce:state});"
+          if old not in s:
+              raise SystemExit('server authorize query pattern not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          q = Path('connection-client.js')
+          c = q.read_text()
+          start = c.index("  async function startGoogle() {")
+          end = c.index("  async function finishGoogle() {", start)
+          replacement = r'''  async function startGoogle() {
+    setBadge('Preparando Google…', 'yellow');
+    setWarning('');
+    setText('connectionDetailsV212', 'Preparando el inicio de sesión oficial de LALIGA…');
+    try {
+      const data = await getJson('/api/auth/google/start');
+      if (!data?.authorizeUrl) throw new Error('AUTH_URL_MISSING');
+      sessionStorage.setItem('laliga_google_login_pending', '1');
+      sessionStorage.setItem('laliga_google_redirect_uri', String(data.redirectUri || ''));
+      setBadge('Abriendo Google…', 'yellow');
+      if (String(data.redirectUri || '').toLowerCase().startsWith('https://jwt.ms')) {
+        setText('connectionDetailsV212', 'Después de Google volverás a jwt.ms. No introduzcas ningún token allí: copia la URL completa de la barra de Safari y pégala aquí.');
+      } else {
+        setText('connectionDetailsV212', 'Redirigiendo al inicio de sesión oficial de LALIGA/Google…');
+      }
+      window.location.assign(data.authorizeUrl);
+    } catch (error) {
+      const message = error?.message || 'UNKNOWN_ERROR';
+      setBadge('Error Google', 'red');
+      if (message === 'REQUEST_TIMEOUT') setWarning('El servidor tardó demasiado en preparar el acceso. Recarga la página y vuelve a pulsar Entrar con Google.');
+      else if (message === 'AUTH_URL_MISSING') setWarning('El servidor no devolvió la URL de acceso de LALIGA.');
+      else setWarning(`No se pudo preparar el acceso Google (${message}).`);
+    }
+  }
+'''
+          c = c[:start] + replacement + c[end:]
+
+          old = "if (input) input.value=''; sessionStorage.removeItem('laliga_google_login_pending'); setBadge('Conectada','good');"
+          new = "if (input) input.value=''; sessionStorage.removeItem('laliga_google_login_pending'); sessionStorage.removeItem('laliga_google_redirect_uri'); setBadge('Conectada','good');"
+          if old not in c:
+              # tolerate the pre-existing version without the pending cleanup
+              old = "if (input) input.value=''; setBadge('Conectada','good');"
+              new = "if (input) input.value=''; sessionStorage.removeItem('laliga_google_login_pending'); sessionStorage.removeItem('laliga_google_redirect_uri'); setBadge('Conectada','good');"
+              if old not in c:
+                  raise SystemExit('connection success cleanup pattern not found')
+          c = c.replace(old, new, 1)
+
+          c = c.replace("placeholder=\"authredirect://com.lfp.laligafantasy?code=…&state=…\"", "placeholder=\"Pega aquí la URL completa de retorno (authredirect://… o https://jwt.ms/?code=…)\"")
+          c = c.replace("Después de iniciar sesión en Google, pega aquí la URL que empieza por <b>authredirect://com.lfp.laligafantasy</b>. Solo contiene el código temporal de acceso.", "Después de iniciar sesión en Google, pega aquí la <b>URL completa de retorno</b>. Si Safari te lleva a jwt.ms, copia la URL de la barra de direcciones; <b>no pegues el token decodificado</b>.")
+          q.write_text(c)
+
+          qa = Path('qa.test.mjs')
+          tests = qa.read_text()
+          additions = """
+const serverSource = fs.readFileSync('./server.mjs','utf8');
+check(serverSource.includes("response_mode:'query'"), 'OAuth callback explicitly uses query response mode');
+check(serverSource.includes('configuredRedirect'), 'OAuth finish keeps the configured redirect URI');
+const connectionSource = fs.readFileSync('./connection-client.js','utf8');
+check(connectionSource.includes('jwt.ms'), 'Google mobile UX explains jwt.ms callback');
+check(connectionSource.includes('window.location.assign(data.authorizeUrl)'), 'Google mobile uses same-tab redirect');
+"""
+          if 'OAuth callback explicitly uses query response mode' not in tests:
+              tests += additions
+          qa.write_text(tests)
+          PY
+      - name: Run syntax checks
+        run: |
+          node --check server.mjs
+          node --check connection-client.js
+          node --check qa.test.mjs
+          node qa.test.mjs
+      - name: Commit and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add server.mjs connection-client.js qa.test.mjs .github/workflows/fix-google-callback-ios.yml
+          git commit -m 'Fix Google callback handling on iPhone' || exit 0
+          git rm .github/workflows/fix-google-callback-ios.yml || true
+          git commit -m 'Remove one-shot OAuth callback workflow' || true
+          git push
