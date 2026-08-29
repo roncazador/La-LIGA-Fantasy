@@ -1,13 +1,13 @@
 # La-LIGA Fantasy — estado compacto
 
 Fecha: 29/08/2026
-Rama: `main`
+Rama de referencia: `main`
 
 ## Estado actual
 Aplicación móvil horizontal para LALIGA Fantasy, en modo solo lectura, con una interfaz principal grande y táctil. La arquitectura debe conservar **un único estado compartido**, **un único calendario visible** y **un único controlador de refresco**; los clientes heredados quedan como shims pasivos.
 
 ## Cerebro propio
-`brain-core-v27.mjs` mantiene el modelo adaptativo interno: rendimiento, disponibilidad, contexto, mercado y riesgo; sesgos por posición, error medio, deriva y muestras pendientes. `brain-history-v28.mjs` añade memoria histórica persistente por jugador (jornada, puntos, minutos, titularidad, disponibilidad y tendencia reciente). `brain-history-hook-v28.mjs` incorpora esa memoria al contexto de predicción cuando hay suficiente histórico.
+`brain-core-v27.mjs` mantiene el modelo adaptativo interno: rendimiento, disponibilidad, contexto, mercado y riesgo; sesgos por posición, error medio, deriva y muestras pendientes. `brain-history-v28.mjs` añade memoria histórica persistente por jugador (jornada, puntos, minutos, titularidad, disponibilidad y tendencia reciente). `brain-calibration-v28.mjs` calibra la confianza con 10 intervalos sin modificar el score. `brain-reliability-v29.mjs` añade una capa auditable de fiabilidad que combina evidencia, calidad/completitud, frescura, deriva y calidad de fuente. `brain-reliability-hook-v29.mjs` integra esa capa en predicciones y status.
 
 El cerebro aprende solo a partir de resultados observados. No se reescribe arbitrariamente el código fuente. El aprendizaje modifica el modelo persistente y queda registrado para auditoría.
 
@@ -38,8 +38,12 @@ La navegación principal se concentra en **Inicio, Cerebro, Plantilla, XI óptim
 El caché se ha invalidado a `fm-v301` y precarga los nuevos clientes autónomos. Las rutas `/api/*` se solicitan sin caché. El objetivo es evitar que Edge/iPhone siga ejecutando una versión antigua del calendario.
 
 ## Render
-`render.yaml` sigue usando `startCommand: npm start` y `healthCheckPath: /api/health`. `npm start` carga el hook de memoria histórica y `brain-host-v27.mjs`.
-`BRAIN_STATE_DIR=/var/data/brain` es la ubicación preparada para memoria/modelo/cache. Para conservar realmente el aprendizaje y el calendario cacheado entre reinicios/despliegues de Render se necesita almacenamiento persistente compatible; no se debe asumir que el disco efímero conserva estos archivos.
+`render.yaml` usa `runtime: node`, Node 24.14.1, `startCommand: npm start`, `healthCheckPath: /api/health`, región Frankfurt y cierre ordenado de hasta 60 segundos. El build ejecuta `npm install --no-audit --no-fund && npm run render:verify` y `autoDeployTrigger: checksPass`, de forma que Render no debe desplegar un commit cuyo CI no haya pasado. Esto sigue la especificación actual de Render para Blueprints y health checks. citeturn354110view0turn532324search1
+
+`BRAIN_STATE_DIR=/var/data/brain` es la ubicación preparada para memoria/modelo/cache. Sin disco persistente el servicio sigue siendo funcional, pero el aprendizaje local puede ser efímero. Los discos persistentes de Render requieren un servicio compatible de pago. citeturn532324search3
+
+## Auto-reparación IA
+La capa de self-healing detecta fallos de CI, obtiene logs, calcula huellas estables, consulta memoria histórica, propone parches mínimos, valida rutas/tamaño/secretos, ejecuta `npm test` y registra el resultado. Tiene límites y cooldown para evitar ciclos infinitos. `main` no debe ser modificado directamente por el agente; las reparaciones deben llegar por PR.
 
 ## Seguridad
 - modo solo lectura;
@@ -58,11 +62,13 @@ Cada mejora debe pasar como mínimo:
 - fuzz/recuperación ante datos corruptos;
 - runtime/arranque y health check;
 - persistencia y recarga de memoria;
+- calibración y fiabilidad del cerebro;
 - contrato de despliegue Render;
 - regresión de calendario autónomo de 10.000 casos;
 - comprobación de ausencia de duplicados y botones heredados;
 - comprobación de caché móvil/service worker;
-- comprobaciones de interfaz y datos públicos de FutbolFantasy.
+- comprobaciones de interfaz y datos públicos de FutbolFantasy;
+- self-healing y memoria de fallos.
 
 Cuando una prueba falla, se corrige el problema y se vuelve a ejecutar el bloque afectado con al menos 10 casos de corrección antes de cerrar la versión. Nunca se debe marcar una actualización como validada mientras haya un fallo conocido sin corregir.
 
