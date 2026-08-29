@@ -18,10 +18,11 @@
     const h=status.history||{};
     const calibration=status.calibration||{};
     const reliability=status.reliability||{};
+    const recentFailures=Array.isArray(status.recentFailures)?status.recentFailures:[];
     panel.innerHTML=`
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
         <div><h3 style="margin:0">🧠 Cerebro propio · ${esc(status.version||'2.7.0')}</h3>
-        <div class="of213-muted">Aprende de observaciones y resultados reales. Reajusta sus propios pesos, calibra la confianza, vigila su deriva y conserva memoria histórica por jugador.</div></div>
+        <div class="of213-muted">Aprende de observaciones y resultados finales. Reajusta sus propios pesos, calibra la confianza, vigila su deriva y conserva memoria histórica por jugador.</div></div>
         <span class="of213-tag ${stable?'ofGreen':'ofYellow'}">${stable?'● ESTABLE':'◐ APRENDIENDO'}</span>
       </div>
       <div class="of213-g4" style="margin-top:10px">
@@ -42,6 +43,7 @@
         <div class="of213-card"><h3>Pesos aprendidos</h3><div class="of213-list">${Object.entries(status.weights||{}).map(([k,v])=>`<div class="of213-row"><span>${esc(k)}</span><b>${(Number(v)*100).toFixed(1)}%</b></div>`).join('')}</div></div>
         <div class="of213-card"><h3>Posiciones</h3><div class="of213-list">${Object.entries(status.positionBias||{}).map(([k,v])=>`<div class="of213-row"><span>${esc(k)}</span><b>${Number(v)>=0?'+':''}${(Number(v)*100).toFixed(1)}%</b></div>`).join('')}</div></div>
       </div>
+      <div class="of213-card"><h3>Respuesta a fallos recientes</h3><div class="of213-row"><span>Tasa de fallos recientes</span><b>${pct(status.recentFailureRate)}</b></div><div class="of213-note">Los fallos recientes reducen la confianza; no modifican directamente el score.</div>${recentFailures.map(f=>`<div class="of213-row"><span>${esc(f.position||'UNK')} · ${esc(f.actual)} vs ${esc(f.expected)}</span><b>${esc(f.error>0?'+':'')}${esc(f.error)}</b></div>`).join('')||'<div class="of213-note">Sin fallos recientes registrados.</div>'}</div>
       <div class="of213-card"><h3>Intervalos de calibración</h3><div class="of213-list">${(calibration.buckets||[]).filter(b=>b.samples>0).slice(-5).map(b=>`<div class="of213-row"><span>${b.confidenceMin}-${b.confidenceMax}% · ${b.samples} muestras</span><b>${b.successRate==null?'N/D':b.successRate+'%'}</b></div>`).join('')||'<div class="of213-note">Aún no hay suficientes muestras calibradas.</div>'}</div></div>
       <div class="of213-note">Fuente de aprendizaje: <b>${esc(status.sourcePolicy)}</b>. El calendario visible continúa usando únicamente LALIGA oficial; las fuentes auxiliares solo aportan señales de entrenamiento.</div>
     `;
