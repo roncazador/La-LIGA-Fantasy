@@ -1,7 +1,1 @@
-(() => {
-  'use strict';
-  // Compatibility shim: login is now initiated by the single v2.13 interface.
-  // No legacy panels, intervals or duplicate LIVE dashboard requests are created here.
-  window.LALIGA_CONNECTION = window.LALIGA_CONNECTION || Object.freeze({ sync: async () => false });
-  window.LALIGA_LEGACY_CONNECTION_DISABLED = true;
-})();
+(()=>{'use strict';window.LALIGA_CONNECTION=window.LALIGA_CONNECTION||Object.freeze({sync:async()=>false});window.LALIGA_LEGACY_CONNECTION_DISABLED=true;function load(src){if(document.querySelector(`script[src="${src}"]`))return;const s=document.createElement('script');s.src=src;s.defer=true;s.dataset.layer='v29';document.head.appendChild(s)}function boot(){load('/calendar-overlay-v29.js')}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot()})();
