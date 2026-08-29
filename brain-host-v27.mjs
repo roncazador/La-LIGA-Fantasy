@@ -3,13 +3,13 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createBrain, BRAIN_VERSION } from './brain-core-v27.mjs';
-import { createPlayerHistory, HISTORY_VERSION } from './brain-history-v28.mjs';
+import { history, HISTORY_VERSION } from './brain-history-hook-v28.mjs';
 import { fetchFutbolFantasy, fetchLaligaOfficialSeed, mergeCalendarSources } from './calendar-service-v29.mjs';
 import { fetchFutbolFantasyData } from './futbolfantasy-data-v30.mjs';
 
 const publicPort=Number(process.env.PORT||10000),internalPort=Math.max(1024,publicPort-1),host=process.env.HOST||'0.0.0.0',internalHost='127.0.0.1';
 const brainDir=process.env.BRAIN_STATE_DIR||'./.brain-data';
-const brain=createBrain({dir:brainDir}),history=createPlayerHistory({dir:brainDir});
+const brain=createBrain({dir:brainDir});
 const calendarCacheFile=path.resolve(brainDir,'calendar-cache-v30.json');
 const MAX_JSON_BODY=64*1024;let child;let shuttingDown=false;
 function startChild(){const env={...process.env,PORT:String(internalPort),HOST:internalHost,FRONTEND_URL:process.env.FRONTEND_URL||'/'};child=spawn(process.execPath,['--import','./config.mjs','server.mjs'],{env,stdio:['ignore','pipe','pipe']});child.stdout.on('data',d=>process.stdout.write(`[backend] ${d}`));child.stderr.on('data',d=>process.stderr.write(`[backend] ${d}`));child.on('exit',(code,signal)=>{if(!shuttingDown)setTimeout(startChild,1000);console.error(`[brain-host] backend exited code=${code} signal=${signal}`)})}
