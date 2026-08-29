@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "updatedAt": "2026-08-29T16:59:00Z",
+  "updatedAt": "2026-08-29T19:17:00Z",
   "repairs": [],
   "failures": [],
   "corrections": [
@@ -13,6 +13,7 @@
     {"id":"calendar-merge-information-loss","area":"calendar","symptom":"Un contraste LIVE/marcador podía perderse si el registro oficial ya existía con campos vacíos.","rootCause":"mergeCalendarSources solo añadía la segunda fuente.","correction":"Mantener identidad oficial y completar campos vacíos/promover estados más avanzados sin degradar.","regression":"Oficial TIMED + LIVE/2-1 y oficial FT + LIVE.","status":"fixed"},
     {"id":"calendar-invalid-score","area":"calendar","symptom":"Marcadores negativos o absurdamente altos podían pasar la normalización.","rootCause":"Solo se comprobaba Number finito.","correction":"Aceptar solo enteros de 0 a 99 y jornadas válidas.","regression":"Marcadores -1 y 200 producen null.","status":"fixed"},
     {"id":"calendar-date-normalization-contract","area":"calendar","symptom":"La regresión profunda comparaba literalmente una fecha UTC sin milisegundos contra la salida normalizada ISO completa.","rootCause":"La prueba no distinguía igualdad temporal de igualdad textual.","correction":"Comparar con new Date(base.utcDate).toISOString() y mantener normalización canónica.","regression":"100.000 micro-pasos de calendario con fechas normalizadas.","status":"fixed"},
+    {"id":"calendar-official-seed-static","area":"calendar","symptom":"La semilla oficial era un archivo estático que podía quedar desactualizado y obligar a una carga o mantenimiento manual.","rootCause":"La ruta de respaldo no tenía un refresco automático desde la fuente oficial.","correction":"Al entrar en el calendario, consultar automáticamente el feed público oficial de LALIGA, cachearlo y usar el JSON local solo como último respaldo.","regression":"Contrato exige refresh oficial, temporada 2026/27 y endpoint autónomo sin intervención manual.","status":"fixed"},
     {"id":"render-persistence-expectation","area":"render","symptom":"/var/data/brain podía interpretarse como persistencia garantizada.","rootCause":"La ruta existe aunque el filesystem puede ser efímero sin disco persistente.","correction":"Mantener arranque funcional y documentar la condición real de persistencia.","regression":"Preflight y documentación Render.","status":"fixed"},
     {"id":"render-api-base-path-drift","area":"render","symptom":"render.yaml inyectaba LALIGA_API_BASE_URL sin /api mientras DEFAULTS ya incluía /api y server.mjs concatena rutas /v1/ directamente.","rootCause":"Contrato de entorno y configuración canónica divergentes.","correction":"Usar exactamente el mismo base path canónico en Render.","regression":"Render contract exige https://fantasy-api.llt-services.com/api.","status":"fixed"},
     {"id":"stale-readme-version","area":"docs","symptom":"README mostraba v2.10.0 con aplicación v2.15.0.","rootCause":"Documentación no sincronizada.","correction":"Sincronizar README con el estado real.","regression":"Revisión documental de versión.","status":"fixed"}
