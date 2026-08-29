@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "updatedAt": "2026-08-29T19:17:00Z",
+  "updatedAt": "2026-08-29T20:24:00Z",
   "repairs": [],
   "failures": [],
   "corrections": [
@@ -16,6 +16,7 @@
     {"id":"calendar-official-seed-static","area":"calendar","symptom":"La semilla oficial era un archivo estático que podía quedar desactualizado y obligar a una carga o mantenimiento manual.","rootCause":"La ruta de respaldo no tenía un refresco automático desde la fuente oficial.","correction":"Al entrar en el calendario, consultar automáticamente el feed público oficial de LALIGA, cachearlo y usar el JSON local solo como último respaldo.","regression":"Contrato exige refresh oficial, temporada 2026/27 y endpoint autónomo sin intervención manual.","status":"fixed"},
     {"id":"render-persistence-expectation","area":"render","symptom":"/var/data/brain podía interpretarse como persistencia garantizada.","rootCause":"La ruta existe aunque el filesystem puede ser efímero sin disco persistente.","correction":"Mantener arranque funcional y documentar la condición real de persistencia.","regression":"Preflight y documentación Render.","status":"fixed"},
     {"id":"render-api-base-path-drift","area":"render","symptom":"render.yaml inyectaba LALIGA_API_BASE_URL sin /api mientras DEFAULTS ya incluía /api y server.mjs concatena rutas /v1/ directamente.","rootCause":"Contrato de entorno y configuración canónica divergentes.","correction":"Usar exactamente el mismo base path canónico en Render.","regression":"Render contract exige https://fantasy-api.llt-services.com/api.","status":"fixed"},
-    {"id":"stale-readme-version","area":"docs","symptom":"README mostraba v2.10.0 con aplicación v2.15.0.","rootCause":"Documentación no sincronizada.","correction":"Sincronizar README con el estado real.","regression":"Revisión documental de versión.","status":"fixed"}
+    {"id":"stale-readme-version","area":"docs","symptom":"README mostraba v2.10.0 con aplicación v2.15.0.","rootCause":"Documentación no sincronizada.","correction":"Sincronizar README con el estado real.","regression":"Revisión documental de versión.","status":"fixed"},
+    {"id":"brain-hook-double-install","area":"brain","symptom":"Las capas de memoria y fiabilidad se instalaban modificando el mismo prototipo y podían envolverse más de una vez si se cargaban repetidamente.","rootCause":"Los hooks no tenían un marcador global de instalación.","correction":"Usar símbolos globales estables para que cada hook se instale una sola vez por proceso.","regression":"Contrato de composición de hooks comprueba un único import y sentinel global.","status":"fixed"}
   ]
 }
