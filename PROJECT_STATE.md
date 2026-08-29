@@ -3,9 +3,10 @@
 Fecha: 29/08/2026
 Rama de referencia: `main`
 Versión backend: `2.15.0`
+CI contract: extensible (mínimo 65 comprobaciones)
 
 ## Estado actual
-Aplicación móvil horizontal para LALIGA Fantasy, en modo solo lectura, con una interfaz principal grande y táctil. La arquitectura debe conservar **un único estado compartido**, **un único calendario visible** y **un único controlador de refresco**; los clientes heredados quedan como shims pasivos.
+Aplicación móvil horizontal para LALIGA Fantasy, en modo solo lectura, con una interfaz principal grande y táctil. La arquitectura conserva **un único estado compartido**, **un único calendario visible** y **un único controlador de refresco**; los clientes heredados quedan como shims pasivos.
 
 ## Cerebro propio
 `brain-core-v27.mjs` mantiene el modelo adaptativo interno: rendimiento, disponibilidad, contexto, mercado y riesgo; sesgos por posición, error medio, deriva y muestras pendientes. `brain-history-v28.mjs` añade memoria histórica persistente por jugador. `brain-calibration-v28.mjs` calibra la confianza con 10 intervalos sin modificar el score. `brain-reliability-v29.mjs` añade una capa auditable de fiabilidad que combina evidencia, calidad/completitud, frescura, deriva y calidad de fuente. `brain-reliability-hook-v29.mjs` integra esa capa en predicciones y status.
@@ -15,7 +16,7 @@ El cerebro aprende solo a partir de resultados observados. No se reescribe arbit
 ## Render
 `render.yaml` usa Node 24.14.1, `startCommand: npm start`, `healthCheckPath: /api/health`, región Frankfurt y cierre ordenado. El build ejecuta `npm install --no-audit --no-fund && npm run render:verify`, y `autoDeployTrigger: checksPass` evita el auto-despliegue de commits cuyo CI no haya pasado. `render-preflight.mjs` valida archivos, versión de Node, puerto y sintaxis antes del despliegue.
 
-`BRAIN_STATE_DIR=/var/data/brain` es la ubicación preparada para modelo/historial/cache. Sin disco persistente el servicio sigue siendo funcional, pero ese estado local puede ser efímero; Render reserva los discos persistentes para servicios compatibles de pago.
+`BRAIN_STATE_DIR=/var/data/brain` es la ubicación preparada para modelo/historial/cache. Sin disco persistente el servicio sigue siendo funcional, pero ese estado local puede ser efímero.
 
 ## Calendario autónomo
 La pantalla **Partidos** se carga automáticamente, sin botones manuales. `calendar-autonomous-v30.js` es el único renderizador activo. Prioridad: LALIGA oficial autenticada → FutbolFantasy.com como contraste → caché persistente → semilla oficial protegida. Los estados LIVE/resultados solo se muestran si una fuente los proporciona.
