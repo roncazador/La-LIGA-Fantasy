@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { mergeCalendarSources } from './calendar-service-v29.mjs';
+import { readConfig } from './config.mjs';
+import { fixtureKey } from './providers.mjs';
+const official={source:'LALIGA oficial',matches:[{id:'1',utcDate:'2026-09-01T19:00:00Z',home:'Real Madrid',away:'Barcelona',status:'TIMED',matchday:4}]};
+const ff={source:'futbolfantasy.com',matches:[{id:'ff1',utcDate:'2026-09-01T19:00:00Z',home:'Real Madrid',away:'Barcelona',status:'PRÓXIMO',matchday:4}]};
+const merged=mergeCalendarSources([official,ff]);
+assert.equal(merged.length,1);
+assert.deepEqual(merged[0].sources,['LALIGA oficial','futbolfantasy.com']);
+assert.equal(fixtureKey(merged[0]),fixtureKey(official.matches[0]));
+const cfg=readConfig({});
+assert.equal(cfg.futbolFantasyUrl,'https://www.futbolfantasy.com');
+assert.equal(cfg.laligaCompetitionId,'1');
+console.log('Calendar v29 unit tests: 100% passed');
