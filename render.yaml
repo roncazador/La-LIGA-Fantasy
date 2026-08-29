@@ -2,9 +2,12 @@ services:
   - type: web
     name: laliga-fantasy-manager
     runtime: node
-    buildCommand: npm install
+    region: frankfurt
+    autoDeployTrigger: checksPass
+    buildCommand: npm install --no-audit --no-fund && npm run render:verify
     startCommand: npm start
     healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 60
     envVars:
       - key: NODE_ENV
         value: production
@@ -20,7 +23,7 @@ services:
         value: "1"
       - key: SESSION_COOKIE_NAME
         value: fm_session
-      # Brain v2.7 stores its learned model here. For persistence across
-      # deploys/restarts, mount a Render persistent disk at /var/data.
+      # Persist model/history/cache here when a Render persistent disk is attached.
+      # Without a persistent disk the service remains functional, but learned state is ephemeral.
       - key: BRAIN_STATE_DIR
         value: /var/data/brain
