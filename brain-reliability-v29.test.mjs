@@ -12,6 +12,7 @@ assert.equal(assessPredictionReliability(samples[0]).reason,'señales consistent
 assert.equal(assessPredictionReliability(samples[2]).reason,'pocas muestras');
 const source=fs.readFileSync('./brain-reliability-hook-v29.mjs','utf8');
 assert.ok(source.includes('BrainV27.prototype.predict'));
+assert.ok(source.includes('BrainV27.prototype.status'));
 assert.ok(source.includes('rawConfidence'));
-assert.ok(source.includes('reliability'));
-console.log('BRAIN RELIABILITY v2.9: 10/10 checks passed');
+assert.ok(source.includes('reliabilityVersion'));
+console.log('BRAIN RELIABILITY v2.9: 12/12 checks passed');
