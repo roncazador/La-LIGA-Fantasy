@@ -1,7 +1,20 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { mergeCalendarSources } from './calendar-service-v29.mjs';
 import { readConfig } from './config.mjs';
 import { fixtureKey } from './providers.mjs';
+
+const service=fs.readFileSync('./calendar-service-v29.mjs','utf8');
+const host=fs.readFileSync('./brain-host-v27.mjs','utf8');
+const client=fs.readFileSync('./calendar-autonomous-v30.js','utf8');
+assert.ok(service.includes('fetchLaligaOfficialSeed'));
+assert.ok(service.includes('https://www.laliga.com/calendar-2026-2027/laliga-easports'));
+assert.ok(service.includes('apim.laliga.com/public-service/api/v1/matches'));
+assert.ok(service.includes('laliga-easports-2026'));
+assert.ok(host.includes('fetchLaligaOfficialSeed'));
+assert.ok(host.includes("officialMode:sessionRaw.length?'authenticated':'auto-refreshed-seed'"));
+assert.ok(client.includes('/api/calendar/autonomous'));
+assert.ok(client.includes('setInterval(()=>get().then(render).catch(()=>{}),30000)'));
 
 const official={source:'LALIGA oficial',matches:[{id:'1',utcDate:'2026-09-01T19:00:00Z',home:'Real Madrid',away:'Barcelona',status:'TIMED',matchday:4}]};
 const ff={source:'futbolfantasy.com',matches:[{id:'ff1',utcDate:'2026-09-01T19:00:00Z',home:'Real Madrid',away:'Barcelona',status:'LIVE',matchday:4,homeScore:2,awayScore:1}]};
@@ -26,4 +39,4 @@ assert.equal(invalidScores[0].awayScore,null);
 const cfg=readConfig({});
 assert.equal(cfg.futbolFantasyUrl,'https://www.futbolfantasy.com');
 assert.equal(cfg.laligaCompetitionId,'1');
-console.log('Calendar v29 structural regression: 100% passed');
+console.log('Calendar v29 automatic official refresh regression: 100% passed');
