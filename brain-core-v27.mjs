@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createCalibrationState, recordCalibration, calibrationSummary, calibratedConfidence } from './brain-calibration-v28.mjs';
 
 export const BRAIN_VERSION = '2.7.0';
+export const CALIBRATION_VERSION = '2.8.0';
 
 const DEFAULT_WEIGHTS = Object.freeze({
   performance: 0.34,
@@ -94,7 +96,7 @@ function normalizeWeights(weights){
 
 function freshState(){
   return {
-    schema:1,
+    schema:2,
     version:BRAIN_VERSION,
     createdAt:nowIso(),
     updatedAt:null,
@@ -111,6 +113,7 @@ function freshState(){
     recentErrors:[],
     recentUpdates:[],
     drift:{score:0,status:'stable'},
+    calibration:createCalibrationState(),
     lastObservationAt:null,
     lastLearningAt:null
   };
@@ -129,6 +132,7 @@ export class BrainV27{
     if(this.state.accuratePredictions==null) this.state.accuratePredictions=0;
     if(this.state.totalAbsoluteError==null) this.state.totalAbsoluteError=0;
     if(this.state.meanAbsoluteError==null && this.state.labeledSamples>0) this.state.meanAbsoluteError=this.state.totalAbsoluteError/this.state.labeledSamples;
+    this.state.calibration=createCalibrationState(this.state.calibration);
     this.learningRate=clamp(Number(options.learningRate ?? process.env.BRAIN_LEARNING_RATE ?? 0.035),0.001,0.2);
   }
 
@@ -141,8 +145,9 @@ export class BrainV27{
     const pb=this.state.positionBias[f.position] ?? 0;
     const score=clamp(base + this.state.bias + pb);
     const expectedPoints=Math.max(0,Math.round((score*20 + (f.media ?? 0)*0.7)*10)/10);
-    const confidence=Math.round(clamp(0.35 + this.state.labeledSamples/2000*0.45 + (f.weeklyPoints!=null?0.10:0) + (this.state.drift.status==='stable'?0.10:0),0,1)*100);
-    return {score,expectedPoints,confidence,features:f,weights:{...this.state.weights},modelVersion:BRAIN_VERSION};
+    const rawConfidence=Math.round(clamp(0.35 + this.state.labeledSamples/2000*0.45 + (f.weeklyPoints!=null?0.10:0) + (this.state.drift.status==='stable'?0.10:0),0,1)*100);
+    const confidence=calibratedConfidence(rawConfidence,this.state.calibration);
+    return {score,expectedPoints,confidence,rawConfidence,features:f,weights:{...this.state.weights},modelVersion:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION};
   }
 
   learn(sample){
@@ -167,6 +172,7 @@ export class BrainV27{
     this.state.totalAbsoluteError+=Math.abs(error);
     this.state.meanAbsoluteError=this.state.totalAbsoluteError/this.state.labeledSamples;
     if(Math.abs(error)<=3) this.state.accuratePredictions+=1;
+    this.state.calibration=recordCalibration(this.state.calibration,Number(sample.confidence ?? sample.rawConfidence ?? 50),error);
     const ratio=Math.min(1,Math.abs(error)/20);
     this.state.drift.score=clamp(this.state.drift.score*0.94+ratio*0.06);
     this.state.drift.status=this.state.drift.score>0.28?'high':this.state.drift.score>0.14?'watch':'stable';
@@ -175,9 +181,9 @@ export class BrainV27{
     this.state.recentUpdates.push({at:nowIso(),position:pos,error:Math.round(error*100)/100,before,after:{...this.state.weights}});
     this.state.recentUpdates=this.state.recentUpdates.slice(-100);
     this.state.lastLearningAt=nowIso();
-    this.log({type:'learn',position:pos,error,weights:this.state.weights});
+    this.log({type:'learn',position:pos,error,confidence:Number(sample.confidence ?? sample.rawConfidence ?? 50),weights:this.state.weights,calibration:this.state.calibration});
     this.save();
-    return {learned:true,error,weights:this.state.weights};
+    return {learned:true,error,weights:this.state.weights,calibration:calibrationSummary(this.state.calibration)};
   }
 
   observePlayers(players,context={}){
@@ -193,18 +199,18 @@ export class BrainV27{
       if(prediction.features.weeklyPoints!=null){
         const prior=this.state.pending[key];
         const expected=prior?.expected ?? prediction.expectedPoints;
-        const result=this.learn({expected,actual:prediction.features.weeklyPoints,features:prior?.features ?? prediction.features,position:prediction.features.position});
+        const result=this.learn({expected,actual:prediction.features.weeklyPoints,features:prior?.features ?? prediction.features,position:prediction.features.position,confidence:prior?.confidence ?? prediction.confidence,rawConfidence:prior?.rawConfidence ?? prediction.rawConfidence});
         if(result.learned) learned+=1;
         delete this.state.pending[key];
       }else if(!this.state.pending[key]){
-        this.state.pending[key]={createdAt:nowIso(),player:id,week,expected:prediction.expectedPoints,features:prediction.features};
+        this.state.pending[key]={createdAt:nowIso(),player:id,week,expected:prediction.expectedPoints,confidence:prediction.confidence,rawConfidence:prediction.rawConfidence,features:prediction.features};
         pending+=1;
       }
       this.state.observations+=1;
     }
     this.state.lastObservationAt=nowIso();
     this.save();
-    return {observed,learned,pending,modelVersion:BRAIN_VERSION};
+    return {observed,learned,pending,modelVersion:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION};
   }
 
   ingestDashboard(dashboard,meta={}){
@@ -232,6 +238,7 @@ export class BrainV27{
   status(){
     return {
       version:BRAIN_VERSION,
+      calibrationVersion:CALIBRATION_VERSION,
       observations:this.state.observations,
       labeledSamples:this.state.labeledSamples,
       meanAbsoluteError:this.state.meanAbsoluteError==null?null:Math.round(this.state.meanAbsoluteError*100)/100,
@@ -239,7 +246,9 @@ export class BrainV27{
       weights:this.state.weights,
       positionBias:this.state.positionBias,
       confidence:this.predict({name:'__system__'}).confidence,
+      rawConfidence:this.predict({name:'__system__'}).rawConfidence,
       drift:this.state.drift,
+      calibration:calibrationSummary(this.state.calibration),
       pendingSamples:Object.keys(this.state.pending).length,
       lastObservationAt:this.state.lastObservationAt,
       lastLearningAt:this.state.lastLearningAt,
