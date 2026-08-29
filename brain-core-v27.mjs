@@ -15,6 +15,7 @@ const DEFAULT_WEIGHTS = Object.freeze({
 });
 
 const POSITIONS = ['POR','DEF','MED','DEL','UNK'];
+const PENDING_MAX_AGE_MS = 21*24*60*60*1000;
 const clamp = (x,min=0,max=1) => Math.max(min, Math.min(max, Number.isFinite(Number(x)) ? Number(x) : min));
 const num = x => Number.isFinite(Number(x)) ? Number(x) : null;
 const text = x => String(x ?? '').trim();
@@ -60,6 +61,18 @@ function playerIdentity(p){
   const team=text(p?.team?.name ?? p?.teamName ?? p?.clubName ?? p?.club ?? p?.team ?? p?.player?.team?.name);
   const id=text(p?.id ?? p?.playerId ?? p?.player?.id);
   return {name,team,id,key:id ? `id:${id}` : `${norm(name)}|${norm(team)}`};
+}
+
+function markerTrue(...values){
+  return values.some(v => v === true || /^(true|final|finished|complete|completed|closed|done|ft)$/i.test(text(v)));
+}
+
+function outcomeIsFinal(player,context={}){
+  return markerTrue(
+    player?.weeklyPointsFinal,player?.weekPointsFinal,player?.matchdayComplete,player?.weekComplete,
+    player?.matchdayStatus,player?.weekStatus,context?.weeklyPointsFinal,context?.weekComplete,
+    context?.matchdayComplete,context?.isFinal,context?.weekStatus,context?.matchdayStatus
+  );
 }
 
 export function extractFeatures(player, context={}){
@@ -129,6 +142,8 @@ export class BrainV27{
     if(!this.state.version) this.state.version=BRAIN_VERSION;
     if(!this.state.positionBias) this.state.positionBias={POR:0,DEF:0,MED:0,DEL:0,UNK:0};
     if(!this.state.pending) this.state.pending={};
+    if(!this.state.recentErrors) this.state.recentErrors=[];
+    if(!this.state.recentUpdates) this.state.recentUpdates=[];
     if(this.state.accuratePredictions==null) this.state.accuratePredictions=0;
     if(this.state.totalAbsoluteError==null) this.state.totalAbsoluteError=0;
     if(this.state.meanAbsoluteError==null && this.state.labeledSamples>0) this.state.meanAbsoluteError=this.state.totalAbsoluteError/this.state.labeledSamples;
@@ -145,7 +160,11 @@ export class BrainV27{
     const pb=this.state.positionBias[f.position] ?? 0;
     const score=clamp(base + this.state.bias + pb);
     const expectedPoints=Math.max(0,Math.round((score*20 + (f.media ?? 0)*0.7)*10)/10);
-    const rawConfidence=Math.round(clamp(0.35 + this.state.labeledSamples/2000*0.45 + (f.weeklyPoints!=null?0.10:0) + (this.state.drift.status==='stable'?0.10:0),0,1)*100);
+    const recent=this.state.recentErrors.slice(-20);
+    const recentFailureRate=recent.length?recent.filter(x=>Math.abs(Number(x.error)||0)>3).length/recent.length:0;
+    const maePenalty=this.state.labeledSamples>=20 ? Math.min(0.18,(this.state.meanAbsoluteError||0)/20*0.18) : 0;
+    const failurePenalty=recentFailureRate*0.15;
+    const rawConfidence=Math.round(clamp(0.35 + this.state.labeledSamples/2000*0.45 + (f.weeklyPoints!=null?0.10:0) + (this.state.drift.status==='stable'?0.10:0) - maePenalty - failurePenalty,0,1)*100);
     const confidence=calibratedConfidence(rawConfidence,this.state.calibration);
     return {score,expectedPoints,confidence,rawConfidence,features:f,weights:{...this.state.weights},modelVersion:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION};
   }
@@ -154,6 +173,7 @@ export class BrainV27{
     const expected=Number(sample.expected);
     const actual=Number(sample.actual);
     if(!Number.isFinite(expected)||!Number.isFinite(actual)) return {learned:false,reason:'invalid-label'};
+    if(sample.final===false) return {learned:false,reason:'non-final-label'};
     const error=actual-expected;
     const normalizedError=Math.max(-1,Math.min(1,error/20));
     const rate=this.learningRate;
@@ -176,34 +196,41 @@ export class BrainV27{
     const ratio=Math.min(1,Math.abs(error)/20);
     this.state.drift.score=clamp(this.state.drift.score*0.94+ratio*0.06);
     this.state.drift.status=this.state.drift.score>0.28?'high':this.state.drift.score>0.14?'watch':'stable';
-    this.state.recentErrors.push({at:nowIso(),error:Math.round(error*100)/100,expected,actual});
+    const failure=Math.abs(error)>3;
+    this.state.recentErrors.push({at:nowIso(),error:Math.round(error*100)/100,expected,actual,outcome:failure?'failure':'success',position:pos});
     this.state.recentErrors=this.state.recentErrors.slice(-250);
-    this.state.recentUpdates.push({at:nowIso(),position:pos,error:Math.round(error*100)/100,before,after:{...this.state.weights}});
+    this.state.recentUpdates.push({at:nowIso(),position:pos,error:Math.round(error*100)/100,before,after:{...this.state.weights},outcome:failure?'failure':'success'});
     this.state.recentUpdates=this.state.recentUpdates.slice(-100);
     this.state.lastLearningAt=nowIso();
-    this.log({type:'learn',position:pos,error,confidence:Number(sample.confidence ?? sample.rawConfidence ?? 50),weights:this.state.weights,calibration:this.state.calibration});
+    this.log({type:'learn',outcome:failure?'failure':'success',position:pos,error,confidence:Number(sample.confidence ?? sample.rawConfidence ?? 50),weights:this.state.weights,calibration:this.state.calibration});
     this.save();
-    return {learned:true,error,weights:this.state.weights,calibration:calibrationSummary(this.state.calibration)};
+    return {learned:true,error,weights:this.state.weights,calibration:calibrationSummary(this.state.calibration),outcome:failure?'failure':'success'};
   }
 
   observePlayers(players,context={}){
     const list=Array.isArray(players)?players:[];
     let learned=0, pending=0, observed=0;
+    const now=Date.now();
+    for(const [key,item] of Object.entries(this.state.pending)){
+      const age=now-new Date(item?.createdAt||0).getTime();
+      if(!Number.isFinite(age)||age>PENDING_MAX_AGE_MS) delete this.state.pending[key];
+    }
     for(const raw of list){
       const id=playerIdentity(raw);
       if(!id.name) continue;
       observed+=1;
+      const final=outcomeIsFinal(raw,context);
       const prediction=this.predict(raw,context);
       const week=text(context.week ?? context.matchday ?? 'unknown');
       const key=crypto.createHash('sha1').update(`${id.key}|${week}`).digest('hex');
-      if(prediction.features.weeklyPoints!=null){
-        const prior=this.state.pending[key];
-        const expected=prior?.expected ?? prediction.expectedPoints;
-        const result=this.learn({expected,actual:prediction.features.weeklyPoints,features:prior?.features ?? prediction.features,position:prediction.features.position,confidence:prior?.confidence ?? prediction.confidence,rawConfidence:prior?.rawConfidence ?? prediction.rawConfidence});
+      const weeklyPoints=prediction.features.weeklyPoints;
+      const prior=this.state.pending[key];
+      if(final && weeklyPoints!=null && prior){
+        const result=this.learn({expected:prior.expected,actual:weeklyPoints,features:prior.features,position:prior.position,confidence:prior.confidence,rawConfidence:prior.rawConfidence,final:true});
         if(result.learned) learned+=1;
         delete this.state.pending[key];
-      }else if(!this.state.pending[key]){
-        this.state.pending[key]={createdAt:nowIso(),player:id,week,expected:prediction.expectedPoints,confidence:prediction.confidence,rawConfidence:prediction.rawConfidence,features:prediction.features};
+      }else if(!final && !prior){
+        this.state.pending[key]={createdAt:nowIso(),player:id,week,expected:prediction.expectedPoints,confidence:prediction.confidence,rawConfidence:prediction.rawConfidence,features:prediction.features,position:prediction.features.position};
         pending+=1;
       }
       this.state.observations+=1;
@@ -218,9 +245,10 @@ export class BrainV27{
     const players=Array.isArray(team?.players)?team.players:Array.isArray(team?.squad)?team.squad:Array.isArray(team?.roster)?team.roster:[];
     const market=Array.isArray(dashboard?.market)?dashboard.market:Array.isArray(dashboard?.market?.data)?dashboard.market.data:[];
     const week=dashboard?.week?.weekNumber ?? dashboard?.week?.number ?? dashboard?.week?.matchday ?? dashboard?.week?.currentWeek ?? meta.week;
-    const result=this.observePlayers(players,{week,source:'official'});
-    this.log({type:'ingest-dashboard',players:players.length,market:market.length,week,source:'official',result});
-    return {players:players.length,market:market.length,week,...result};
+    const weekComplete=markerTrue(dashboard?.week?.completed,dashboard?.week?.isCompleted,dashboard?.week?.closed,dashboard?.week?.status,meta?.weekComplete);
+    const result=this.observePlayers(players,{week,source:'official',weekComplete,matchdayComplete:weekComplete});
+    this.log({type:'ingest-dashboard',players:players.length,market:market.length,week,weekComplete,source:'official',result});
+    return {players:players.length,market:market.length,week,weekComplete,...result};
   }
 
   ingestAuxiliary(payload={}){
@@ -236,6 +264,8 @@ export class BrainV27{
   }
 
   status(){
+    const recent=this.state.recentErrors.slice(-20);
+    const recentFailureRate=recent.length?Math.round(recent.filter(x=>Math.abs(Number(x.error)||0)>3).length/recent.length*100):null;
     return {
       version:BRAIN_VERSION,
       calibrationVersion:CALIBRATION_VERSION,
@@ -243,6 +273,8 @@ export class BrainV27{
       labeledSamples:this.state.labeledSamples,
       meanAbsoluteError:this.state.meanAbsoluteError==null?null:Math.round(this.state.meanAbsoluteError*100)/100,
       accuracy:this.state.labeledSamples?Math.round(this.state.accuratePredictions/this.state.labeledSamples*100):null,
+      recentFailureRate,
+      recentFailures:recent.filter(x=>Math.abs(Number(x.error)||0)>3).slice(-5),
       weights:this.state.weights,
       positionBias:this.state.positionBias,
       confidence:this.predict({name:'__system__'}).confidence,

@@ -18,7 +18,7 @@ services:
       - key: PORT
         value: "10000"
       - key: LALIGA_API_BASE_URL
-        value: https://fantasy-api.llt-services.com
+        value: https://fantasy-api.llt-services.com/api
       - key: LALIGA_COMPETITION_ID
         value: "1"
       - key: SESSION_COOKIE_NAME

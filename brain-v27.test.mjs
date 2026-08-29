@@ -15,29 +15,37 @@ try{
   assert.ok(p1.confidence>=0&&p1.confidence<=100);
   const before={...brain.state.weights};
   const features=extractFeatures(player,{fixture:{context:75,homeAway:'home'}});
-  const learned=brain.learn({expected:p1.expectedPoints,actual:p1.expectedPoints+8,features,position:'MED'});
+  const learned=brain.learn({expected:p1.expectedPoints,actual:p1.expectedPoints+8,features,position:'MED',final:true});
   assert.equal(learned.learned,true);
   assert.ok(Object.values(brain.state.weights).every(Number.isFinite));
   assert.ok(Math.abs(Object.values(brain.state.weights).reduce((a,b)=>a+b,0)-1)<1e-9);
   assert.notDeepEqual(brain.state.weights,before);
   assert.equal(brain.state.accuratePredictions,0);
 
-  const accurate=brain.learn({expected:10,actual:12,features,position:'MED'});
+  const nonFinal=brain.learn({expected:10,actual:20,features,position:'MED',final:false});
+  assert.equal(nonFinal.learned,false);
+  assert.equal(nonFinal.reason,'non-final-label');
+
+  const accurate=brain.learn({expected:10,actual:12,features,position:'MED',final:true});
   assert.equal(accurate.learned,true);
   assert.equal(brain.state.accuratePredictions,1);
   assert.equal(brain.status().accuracy,50);
 
   const positive={...player,weekPoints:18};
-  const observed=brain.observePlayers([positive],{week:2,fixture:{context:80,homeAway:'home'}});
+  const observed=brain.observePlayers([positive],{week:2,weekComplete:false,fixture:{context:80,homeAway:'home'}});
   assert.equal(observed.observed,1);
-  assert.equal(observed.learned>=1,true);
-  assert.equal(brain.state.observations>=1,true);
+  assert.equal(observed.learned,0);
+  assert.equal(observed.pending,1);
 
-  const second=brain.observePlayers([{...player,weekPoints:25}],{week:2,fixture:{context:80,homeAway:'home'}});
-  assert.equal(second.learned>=1,true);
-  assert.ok(brain.state.labeledSamples>=4);
+  const second=brain.observePlayers([{...player,weekPoints:25}],{week:2,weekComplete:true,fixture:{context:80,homeAway:'home'}});
+  assert.equal(second.learned,1);
+  assert.ok(brain.state.labeledSamples>=3);
   assert.ok(brain.state.meanAbsoluteError>=0);
   assert.ok(['stable','watch','high'].includes(brain.state.drift.status));
+  assert.ok(brain.state.recentErrors.at(-1).outcome==='failure');
+
+  const afterError=brain.predict(player,{fixture:{context:80,homeAway:'home'},week:3}).rawConfidence;
+  assert.ok(afterError < p1.rawConfidence + 25);
 
   const reloaded=new BrainV27({dir,learningRate:0.06});
   assert.equal(reloaded.state.labeledSamples,brain.state.labeledSamples);
@@ -46,7 +54,7 @@ try{
   assert.ok(fs.existsSync(path.join(dir,'model-v27.json')));
   assert.ok(fs.existsSync(path.join(dir,'learning-v27.jsonl')));
 
-  const invalid=reloaded.learn({expected:'bad',actual:4,features,position:'MED'});
+  const invalid=reloaded.learn({expected:'bad',actual:4,features,position:'MED',final:true});
   assert.equal(invalid.learned,false);
   assert.equal(invalid.reason,'invalid-label');
 
@@ -60,7 +68,7 @@ try{
     if(i%10===0){
       const f=extractFeatures(synthetic,{fixture:{context:40+(i%61),homeAway:'home'}});
       const actual=pred.expectedPoints+(i%3===0?4:-2);
-      reloaded.learn({expected:pred.expectedPoints,actual,features:f,position:f.position});
+      reloaded.learn({expected:pred.expectedPoints,actual,features:f,position:f.position,final:true});
       assert.ok(Math.abs(Object.values(reloaded.state.weights).reduce((a,b)=>a+b,0)-1)<1e-9);
       assert.ok(Object.values(reloaded.state.weights).every(x=>Number.isFinite(x)&&x>0));
       assert.ok(Number.isFinite(reloaded.state.bias));
@@ -70,7 +78,7 @@ try{
     }
   }
   assert.equal(loops,10000);
-  assert.ok(reloaded.state.labeledSamples>=10004);
+  assert.ok(reloaded.state.labeledSamples>=10003);
   console.log(`BRAIN v${BRAIN_VERSION}: OK · 100000 micro-pasos · 10000 ciclos de corrección`);
 }finally{
   fs.rmSync(dir,{recursive:true,force:true});
