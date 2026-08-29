@@ -18,7 +18,28 @@ jobs:
         with:
           node-version: 24.14.1
       - name: Syntax and safety gate
-        run: node --check brain-core-v27.mjs && node --check brain-host-v27.mjs && node --check brain-client-v27.js && node --check brain-history-v28.mjs && node --check brain-history-hook-v28.mjs && node --check calendar-service-v29.mjs && node --check calendar-autonomous-v30.js && node --check focus-ui-v30.js && node --check providers.mjs && node --check config.mjs && node --check server.mjs && node --check calendar-v29.test.mjs && node --check calendar-autonomous-v30.test.mjs && node --check deployment-contract-v27.test.mjs
+        run: |
+          node --check brain-core-v27.mjs
+          node --check brain-host-v27.mjs
+          node --check brain-client-v27.js
+          node --check brain-history-v28.mjs
+          node --check brain-history-hook-v28.mjs
+          node --check brain-calibration-v28.mjs
+          node --check brain-reliability-v29.mjs
+          node --check brain-reliability-hook-v29.mjs
+          node --check render-preflight.mjs
+          node --check calendar-service-v29.mjs
+          node --check calendar-autonomous-v30.js
+          node --check focus-ui-v30.js
+          node --check providers.mjs
+          node --check config.mjs
+          node --check server.mjs
+          node --check brain-calibration-v28.test.mjs
+          node --check brain-reliability-v29.test.mjs
+          node --check render-preflight.test.mjs
+          node --check calendar-v29.test.mjs
+          node --check calendar-autonomous-v30.test.mjs
+          node --check deployment-contract-v27.test.mjs
       - name: Deep brain regression
         run: node brain-v27.test.mjs
       - name: Runtime integration regression
@@ -27,6 +48,12 @@ jobs:
         run: node brain-fuzz-v27.test.mjs
       - name: Historical memory regression
         run: node brain-history-v28.test.mjs
+      - name: Confidence calibration regression
+        run: node brain-calibration-v28.test.mjs
+      - name: Reliability regression
+        run: node brain-reliability-v29.test.mjs
+      - name: Render preflight regression
+        run: node render-preflight.test.mjs
       - name: Calendar source regression
         run: node calendar-v29.test.mjs
       - name: Autonomous calendar 10000-case regression

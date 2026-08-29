@@ -1,70 +1,44 @@
 # La-LIGA Fantasy — estado compacto
 
 Fecha: 29/08/2026
-Rama: `main`
+Rama de referencia: `main`
+Versión backend: `2.15.0`
+CI contract: extensible (mínimo 65 comprobaciones)
 
 ## Estado actual
-Aplicación móvil horizontal para LALIGA Fantasy, en modo solo lectura, con una interfaz principal grande y táctil. La arquitectura debe conservar **un único estado compartido**, **un único calendario visible** y **un único controlador de refresco**; los clientes heredados quedan como shims pasivos.
+Aplicación móvil horizontal para LALIGA Fantasy, en modo solo lectura, con una interfaz principal grande y táctil. La arquitectura conserva **un único estado compartido**, **un único calendario visible** y **un único controlador de refresco**; los clientes heredados quedan como shims pasivos.
 
 ## Cerebro propio
-`brain-core-v27.mjs` mantiene el modelo adaptativo interno: rendimiento, disponibilidad, contexto, mercado y riesgo; sesgos por posición, error medio, deriva y muestras pendientes. `brain-history-v28.mjs` añade memoria histórica persistente por jugador (jornada, puntos, minutos, titularidad, disponibilidad y tendencia reciente). `brain-history-hook-v28.mjs` incorpora esa memoria al contexto de predicción cuando hay suficiente histórico.
+`brain-core-v27.mjs` mantiene el modelo adaptativo interno: rendimiento, disponibilidad, contexto, mercado y riesgo; sesgos por posición, error medio, deriva y muestras pendientes. `brain-history-v28.mjs` añade memoria histórica persistente por jugador. `brain-calibration-v28.mjs` calibra la confianza con 10 intervalos sin modificar el score. `brain-reliability-v29.mjs` añade una capa auditable de fiabilidad que combina evidencia, calidad/completitud, frescura, deriva y calidad de fuente. `brain-reliability-hook-v29.mjs` integra esa capa en predicciones y status.
 
 El cerebro aprende solo a partir de resultados observados. No se reescribe arbitrariamente el código fuente. El aprendizaje modifica el modelo persistente y queda registrado para auditoría.
 
-## Automatización
-`brain-host-v27.mjs` arranca delante del backend y ejecuta ciclos autónomos periódicos de observación de jugadores, lesiones y clasificación. La sesión LALIGA y sus tokens se manejan exclusivamente en servidor.
+## Render
+`render.yaml` usa Node 24.14.1, `startCommand: npm start`, `healthCheckPath: /api/health`, región Frankfurt y cierre ordenado. El build ejecuta `npm install --no-audit --no-fund && npm run render:verify`, y `autoDeployTrigger: checksPass` evita el auto-despliegue de commits cuyo CI no haya pasado. `render-preflight.mjs` valida archivos, versión de Node, puerto y sintaxis antes del despliegue.
 
-## Calendario autónomo v3.0
-La pantalla **Partidos** se carga automáticamente, sin botones manuales. `calendar-autonomous-v30.js` es el único renderizador activo.
+`BRAIN_STATE_DIR=/var/data/brain` es la ubicación preparada para modelo/historial/cache. Sin disco persistente el servicio sigue siendo funcional, pero ese estado local puede ser efímero.
 
-Prioridad de datos:
-1. **LALIGA oficial autenticada**.
-2. **FutbolFantasy.com** como fuente pública de contraste.
-3. **Caché persistente del último calendario válido**.
-4. `official-fixtures-seed-2026-27.json` como último recurso estructural.
-
-Los partidos se deduplican por fecha + local + visitante. Los resultados/estados LIVE solo se muestran cuando una fuente proporciona esa información; nunca se inventan.
-
-`calendar-service-v29.mjs` incorpora caché, stale-if-error, circuit breaker, timeout, límite de respuesta, validación de fechas/equipos e integridad. `brain-host-v27.mjs` persiste además el último calendario válido en `calendar-cache-v30.json`.
+## Calendario autónomo
+La pantalla **Partidos** se carga automáticamente, sin botones manuales. `calendar-autonomous-v30.js` es el único renderizador activo. Prioridad: LALIGA oficial autenticada → FutbolFantasy.com como contraste → caché persistente → semilla oficial protegida. Los estados LIVE/resultados solo se muestran si una fuente los proporciona.
 
 ## FutbolFantasy.com
-`calendar-service-v29.mjs` obtiene y normaliza el calendario público cuando está disponible. `futbolfantasy-data-v30.mjs` inspecciona varias áreas públicas (inicio, LaLiga, alineaciones probables, lesionados y estadísticas) y expone un inventario seguro mediante `/api/futbolfantasy/data`.
-`futbolfantasy-ui-v30.js` muestra en el apartado Datos cuántas páginas, enlaces, títulos y registros de calendario públicos se han podido recoger. Se mantiene explícita la diferencia entre contraste público y fuente oficial.
+El sistema obtiene y normaliza datos públicos cuando están disponibles. La capa de datos inspecciona inicio, LaLiga, alineaciones probables, lesionados y estadísticas y los presenta como contraste público, sin convertirlos silenciosamente en fuente oficial.
 
-## Interfaz v30
-La navegación principal se concentra en **Inicio, Cerebro, Plantilla, XI óptimo, Partidos y Mercado**, con un botón **Más** para apartados secundarios. Los botones táctiles son grandes y el calendario ocupa un bloque visual principal.
-
-## Service Worker / móvil
-El caché se ha invalidado a `fm-v301` y precarga los nuevos clientes autónomos. Las rutas `/api/*` se solicitan sin caché. El objetivo es evitar que Edge/iPhone siga ejecutando una versión antigua del calendario.
-
-## Render
-`render.yaml` sigue usando `startCommand: npm start` y `healthCheckPath: /api/health`. `npm start` carga el hook de memoria histórica y `brain-host-v27.mjs`.
-`BRAIN_STATE_DIR=/var/data/brain` es la ubicación preparada para memoria/modelo/cache. Para conservar realmente el aprendizaje y el calendario cacheado entre reinicios/despliegues de Render se necesita almacenamiento persistente compatible; no se debe asumir que el disco efímero conserva estos archivos.
-
-## Seguridad
-- modo solo lectura;
-- no se envían acciones de compra/venta/alineación;
-- no se exponen secretos al cliente;
-- `/api/brain/learn` requiere `BRAIN_ADMIN_TOKEN`;
-- límites de cuerpo/respuesta y timeouts;
-- fallos de fuentes externas no deben dejar el calendario vacío si existe caché/semilla válida;
-- proveedores externos no pueden desplazar silenciosamente la fuente oficial.
+## Auto-reparación IA
+La capa self-healing detecta fallos de CI, obtiene logs, genera huellas estables, consulta memoria histórica, propone parches mínimos, valida rutas/tamaño/secretos, ejecuta `npm test`, registra éxitos y aplica cooldown ante ciclos repetitivos. `main` no debe ser modificado directamente por el agente; las reparaciones llegan por PR.
 
 ## Pruebas obligatorias por actualización
-Cada mejora debe pasar como mínimo:
-- sintaxis de todos los archivos tocados y de sus dependencias;
-- batería profunda del cerebro de 100.000 micro-pasos;
-- bloques de corrección cada 10 iteraciones;
-- fuzz/recuperación ante datos corruptos;
-- runtime/arranque y health check;
-- persistencia y recarga de memoria;
-- contrato de despliegue Render;
-- regresión de calendario autónomo de 10.000 casos;
-- comprobación de ausencia de duplicados y botones heredados;
-- comprobación de caché móvil/service worker;
-- comprobaciones de interfaz y datos públicos de FutbolFantasy.
+- sintaxis de archivos tocados y dependencias;
+- 100.000 micro-pasos del cerebro;
+- 10.000 bloques de corrección;
+- fuzz/recuperación;
+- runtime/health/persistencia;
+- calibración y fiabilidad;
+- Render preflight;
+- calendario autónomo de 10.000 casos / 50.000 aserciones;
+- ausencia de duplicados y botones heredados;
+- caché móvil/service worker;
+- UI y datos públicos FutbolFantasy;
+- self-healing y memoria de fallos.
 
-Cuando una prueba falla, se corrige el problema y se vuelve a ejecutar el bloque afectado con al menos 10 casos de corrección antes de cerrar la versión. Nunca se debe marcar una actualización como validada mientras haya un fallo conocido sin corregir.
-
-## Reglas permanentes de futuras mejoras
-Mantener una sola interfaz activa, una sola fuente oficial de calendario, un solo estado compartido, un único controlador de refresco, botones grandes, diseño sencillo para móvil horizontal, cero datos duplicados, calendario siempre visible y carga automática. El cerebro debe evolucionar incrementalmente con datos reales, medir si mejora respecto al estado anterior, conservar memoria histórica y no reescribirse de forma destructiva.
+Ante cualquier fallo, se corrige y se repite el bloque afectado con al menos 10 pruebas de corrección. No se fusiona una versión mientras exista un fallo conocido sin corregir.

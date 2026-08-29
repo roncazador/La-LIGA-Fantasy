@@ -14,13 +14,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.14.1
       - name: Syntax checks
         run: |
           node --check recording-client.js
           node --check data-client.js
           node --check dashboard-client.js
           node --check calendar-client.js
+          node --check calendar-autonomous-v30.js
+          node --check futbolfantasy-ui-v30.js
+          node --check brain-client-v27.js
+          node --check brain-reliability-v29.mjs
+          node --check brain-reliability-hook-v29.mjs
           node --check recording-ui-v30.test.mjs
       - name: Run UI/data contract v30
         run: node recording-ui-v30.test.mjs
