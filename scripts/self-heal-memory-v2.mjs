@@ -1,0 +1,11 @@
+import crypto from 'node:crypto';
+
+export const MEMORY_VERSION='2.0.0';
+const DAY=24*60*60*1000;
+const compact=value=>String(value??'').toLowerCase().replace(/run_id|job_id|timestamps?|0x[0-9a-f]+|\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?z/gi,'').replace(/\d+/g,'#').replace(/\s+/g,' ').trim();
+export function failureFingerprint(workflow,logs){return crypto.createHash('sha256').update(`${compact(workflow)}\n${compact(logs)}`.slice(-12000)).digest('hex').slice(0,24)}
+export function recentForFingerprint(memory,fingerprint,now=Date.now(),windowMs=DAY){const list=[...(memory?.failures||[]),...(memory?.repairs||[])];return list.filter(item=>item.fingerprint===fingerprint&&now-new Date(item.at||item.failedAt||item.fixedAt||0).getTime()<windowMs)}
+export function canAttempt(memory,fingerprint,options={}){const max=Number(options.maxAttempts24h??2),items=recentForFingerprint(memory,fingerprint,options.now??Date.now(),options.windowMs??DAY);if(items.some(item=>item.outcome==='tests-passed'))return{ok:false,reason:'ALREADY_FIXED',count:items.length};if(items.length>=max)return{ok:false,reason:'COOLDOWN',count:items.length};return{ok:true,reason:'ELIGIBLE',count:items.length}}
+export function learnFailure(memory,entry){const out={...memory,version:MEMORY_VERSION,repairs:Array.isArray(memory?.repairs)?memory.repairs:[],failures:Array.isArray(memory?.failures)?memory.failures:[]};out.failures=[...out.failures,{...entry,fingerprint:entry.fingerprint||failureFingerprint(entry.workflow,entry.signature),at:entry.at||new Date().toISOString()}].slice(-100);out.updatedAt=new Date().toISOString();return out}
+export function learnRepair(memory,entry){const out={...memory,version:MEMORY_VERSION,repairs:Array.isArray(memory?.repairs)?memory.repairs:[],failures:Array.isArray(memory?.failures)?memory.failures:[]};out.repairs=[...out.repairs,{...entry,fingerprint:entry.fingerprint||failureFingerprint(entry.workflow,entry.signature),at:entry.at||entry.fixedAt||new Date().toISOString()}].slice(-100);out.updatedAt=new Date().toISOString();return out}
+export function recall(memory,workflow,logs){const fingerprint=failureFingerprint(workflow,logs),items=recentForFingerprint(memory,fingerprint),successful=items.find(item=>item.outcome==='tests-passed');return{fingerprint,recent:items,successful:successful||null,decision:canAttempt(memory,fingerprint)}}
