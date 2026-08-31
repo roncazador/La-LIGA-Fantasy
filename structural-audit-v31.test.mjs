@@ -13,7 +13,7 @@ const next=read('NEXT_IMPROVEMENT.md');
 const sw=read('sw.js');
 const brain=read('brain-core-v27.mjs');
 const reliabilityHook=read('brain-reliability-hook-v29.mjs');
-const selfHealAgent=read('scripts/self-heal-agent-v2.test.mjs');
+const selfHealAgent=read('scripts/self-heal-agent.mjs');
 const selfHealMemory=read('scripts/self-heal-memory-v2.test.mjs');
 
 const checks=[
@@ -32,7 +32,7 @@ const checks=[
   ['match detail reads optional lineups only',detail.includes('lineups')&&detail.includes('alineaciones')],
   ['match detail never fabricates missing player data',detail.includes("Alineación probable todavía no disponible")],
   ['project preserves read-only mode',projectState.includes('solo lectura')],
-  ['self-healing remains contractual',selfHealAgent.includes('npm test')&&selfHealMemory.includes('correcc')],
+  ['self-healing remains contractual',selfHealAgent.includes("sh('npm',['test']")&&selfHealMemory.includes('learnCorrection')],
   ['reliability hook separates confidence layers',reliabilityHook.includes('rawConfidence')&&reliabilityHook.includes('calibratedConfidence')],
   ['PWA caches calendar and detail layers',sw.includes('./calendar-autonomous-v30.js')&&sw.includes('./match-detail-ui-v31.js')],
   ['test script includes structural audit',packageJson.scripts.test.includes('structural-audit-v31.test.mjs')],
