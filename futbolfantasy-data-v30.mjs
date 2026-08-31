@@ -10,12 +10,8 @@ export async function fetchFutbolFantasyData(config={}){
 
   const base=text(config.futbolFantasyUrl||'https://www.futbolfantasy.com').replace(/\/$/,'');
   let normalized=null;
-  try {
-    if(base==='https://www.futbolfantasy.com') normalized=await fetchPublicSources();
-    else normalized=await fetchPublicSources();
-  } catch {
-    normalized=null;
-  }
+  try { normalized=await fetchPublicSources({baseUrl:base}); }
+  catch { normalized=null; }
 
   let calendar=[];
   try {
@@ -24,7 +20,7 @@ export async function fetchFutbolFantasyData(config={}){
   } catch {}
 
   const data={
-    version:'3.3.0',
+    version:'3.3.1',
     source:'public-fantasy-contrast',
     readOnly:true,
     sourcePolicy:'public-contrast-only',
@@ -33,20 +29,17 @@ export async function fetchFutbolFantasyData(config={}){
     players:normalized?.players||[],
     injuries:normalized?.injuries||[],
     stats:normalized?.stats||[],
+    points:normalized?.points||[],
     pages:normalized?.pages||[],
-    references:(normalized?.matches||[]).map(match=>({
-      home:match.home,
-      away:match.away,
-      evidence:match.evidence||[],
-      playerCount:Array.isArray(match.players)?match.players.length:0
-    })),
-    availableSources:FUTBOLFANTASY_PUBLIC_SOURCES.map(({key,url})=>({key,url})),
+    references:normalized?.references||[],
+    availableSources:FUTBOLFANTASY_PUBLIC_SOURCES.map(({key,path})=>({key,path})),
     counts:{
       calendar:calendar.length,
       matches:normalized?.matches?.length||0,
       players:normalized?.players?.length||0,
       injuries:normalized?.injuries?.length||0,
       stats:normalized?.stats?.length||0,
+      points:normalized?.points?.length||0,
       pages:normalized?.pages?.length||0
     },
     checkedAt:normalized?.retrievedAt||new Date().toISOString()
