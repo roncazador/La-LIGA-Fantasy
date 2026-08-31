@@ -3,6 +3,7 @@ name: Calendar interface tests
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -12,14 +13,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Node 24.14.1
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.14.1
+        uses: ./.github/actions/node24
       - name: Syntax checks
         run: |
           node --check calendar-client.js
+          node --check calendar-autonomous-v35.js
           node --check data-client.js
           node --check dashboard-client.js
           node --check recording-client.js
-      - name: Run 100 interface checks
+          node --check connection-client.js
+      - name: Run calendar interface contract
         run: node calendar.test.mjs
