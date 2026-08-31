@@ -6,14 +6,7 @@ import { createCalibrationState, recordCalibration, calibrationSummary, calibrat
 export const BRAIN_VERSION = '2.7.0';
 export const CALIBRATION_VERSION = '2.8.0';
 
-const DEFAULT_WEIGHTS = Object.freeze({
-  performance: 0.34,
-  availability: 0.21,
-  context: 0.20,
-  market: 0.15,
-  risk: 0.10
-});
-
+const DEFAULT_WEIGHTS = Object.freeze({ performance: 0.34, availability: 0.21, context: 0.20, market: 0.15, risk: 0.10 });
 const POSITIONS = ['POR','DEF','MED','DEL','UNK'];
 const PENDING_MAX_AGE_MS = 21*24*60*60*1000;
 const clamp = (x,min=0,max=1) => Math.max(min, Math.min(max, Number.isFinite(Number(x)) ? Number(x) : min));
@@ -21,247 +14,23 @@ const num = x => Number.isFinite(Number(x)) ? Number(x) : null;
 const text = x => String(x ?? '').trim();
 const norm = x => text(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 const nowIso = () => new Date().toISOString();
-
-function position(raw){
-  const p=text(raw).toUpperCase();
-  if(['GK','POR','PORTERO'].includes(p)) return 'POR';
-  if(['DF','DEF','DEFENSA'].includes(p)) return 'DEF';
-  if(['MF','MED','MEDIO','MEDIOCENTRO','CEN'].includes(p)) return 'MED';
-  if(['FW','DEL','DELANTERO'].includes(p)) return 'DEL';
-  return POSITIONS.includes(p) ? p : 'UNK';
-}
-
-function ensureDir(dir){ fs.mkdirSync(dir,{recursive:true}); return dir; }
-function atomicWrite(file,data){ const tmp=`${file}.${process.pid}.${Date.now()}.tmp`; fs.writeFileSync(tmp,data,'utf8'); fs.renameSync(tmp,file); }
-
-function safeLoad(file,fallback){
-  try { return JSON.parse(fs.readFileSync(file,'utf8')); }
-  catch { return fallback; }
-}
-
-function feature(value, fallback=0.5){ return clamp(value == null ? fallback : value); }
-
-function pickWeeklyPoints(p){
-  const keys=['weekPoints','weeklyPoints','pointsThisWeek','currentWeekPoints','pfsYWeek','pfsyWeek','pointsWeek','matchPoints','roundPoints','jornadaPoints'];
-  for(const k of keys){ const v=num(p?.[k]); if(v!=null) return v; }
-  return null;
-}
-
-function pickPoints(p){
-  const keys=['points','pfsy','pfsY','fantasyPoints','totalPoints','score'];
-  for(const k of keys){ const v=num(p?.[k]); if(v!=null) return v; }
-  return 0;
-}
-
-function pickPrice(p){ return num(p?.price ?? p?.marketPrice ?? p?.currentPrice); }
-function pickValue(p){ return num(p?.value ?? p?.marketValue ?? p?.estimatedValue); }
-
-function playerIdentity(p){
-  const name=text(p?.name ?? p?.playerName ?? p?.fullName ?? p?.player?.name);
-  const team=text(p?.team?.name ?? p?.teamName ?? p?.clubName ?? p?.club ?? p?.team ?? p?.player?.team?.name);
-  const id=text(p?.id ?? p?.playerId ?? p?.player?.id);
-  return {name,team,id,key:id ? `id:${id}` : `${norm(name)}|${norm(team)}`};
-}
-
-function markerTrue(...values){
-  return values.some(v => v === true || /^(true|final|finished|complete|completed|closed|done|ft)$/i.test(text(v)));
-}
-
-function outcomeIsFinal(player,context={}){
-  return markerTrue(
-    player?.weeklyPointsFinal,player?.weekPointsFinal,player?.matchdayComplete,player?.weekComplete,
-    player?.matchdayStatus,player?.weekStatus,context?.weeklyPointsFinal,context?.weekComplete,
-    context?.matchdayComplete,context?.isFinal,context?.weekStatus,context?.matchdayStatus
-  );
-}
-
-export function extractFeatures(player, context={}){
-  const points=pickPoints(player);
-  const minutes=num(player?.minutes) ?? 0;
-  const starts=num(player?.starts) ?? 0;
-  const appearances=num(player?.appearances ?? player?.apps ?? player?.matches) ?? 0;
-  const media=num(player?.media ?? player?.average ?? player?.rating);
-  const price=pickPrice(player), value=pickValue(player);
-  const status=text(player?.availability ?? player?.status ?? player?.healthStatus);
-  const rotation=num(player?.rotationRisk), injury=num(player?.injuryRisk);
-  const performance=feature(Math.min(1,points/25)*0.55 + Math.min(1,minutes/900)*0.25 + Math.min(1,starts/10)*0.12 + Math.min(1,appearances/15)*0.08);
-  const observedAvailability=feature((Math.min(1,minutes/900)*0.55)+(Math.min(1,starts/10)*0.35)+(Math.min(1,appearances/15)*0.10),0.55);
-  const unavailable=/(inj|lesi|duda|doubt|suspend|sanc|baja|out)/i.test(status);
-  const availability=unavailable ? Math.min(observedAvailability,0.18) : observedAvailability;
-  const teamFixture=context.fixture?.context;
-  const homeAway=context.fixture?.homeAway;
-  const baseContext=teamFixture==null ? 0.5 : clamp(Number(teamFixture)/100);
-  const homeBoost=homeAway==='home'?0.04:homeAway==='away'?-0.02:0;
-  const contextFeature=clamp(baseContext+homeBoost);
-  const marketMargin=price>0 && value>0 ? (value-price)/value : null;
-  const trend=num(player?.trend3d ?? player?.change3d ?? player?.trend7d ?? player?.change7d);
-  const market=marketMargin==null ? feature(0.5 + clamp((trend ?? 0)/25,-0.5,0.5)*0.35) : feature(0.5+clamp(marketMargin,-0.5,0.5));
-  const risk=feature(1 - ((rotation==null?0:rotation<=1?rotation:rotation/100)*0.65 + (injury==null?0:injury<=1?injury:injury/100)*0.35));
-  return {performance,availability,context:contextFeature,market,risk,media,points,minutes,starts,appearances,price,value,weeklyPoints:pickWeeklyPoints(player),position:position(player?.position ?? player?.positionName ?? player?.role),unavailable};
-}
-
-function normalizeWeights(weights){
-  const safe={...DEFAULT_WEIGHTS};
-  for(const k of Object.keys(safe)) if(num(weights?.[k])!=null) safe[k]=Math.max(0.01,Number(weights[k]));
-  const total=Object.values(safe).reduce((a,b)=>a+b,0);
-  return Object.fromEntries(Object.entries(safe).map(([k,v])=>[k,v/total]));
-}
-
-function freshState(){
-  return {
-    schema:2,
-    version:BRAIN_VERSION,
-    createdAt:nowIso(),
-    updatedAt:null,
-    observations:0,
-    labeledSamples:0,
-    accuratePredictions:0,
-    totalAbsoluteError:0,
-    meanAbsoluteError:null,
-    weights:{...DEFAULT_WEIGHTS},
-    bias:0.15,
-    positionBias:{POR:0,DEF:0,MED:0,DEL:0,UNK:0},
-    sourceReliability:{official:1,auxiliary:0.75},
-    pending:{},
-    recentErrors:[],
-    recentUpdates:[],
-    drift:{score:0,status:'stable'},
-    calibration:createCalibrationState(),
-    lastObservationAt:null,
-    lastLearningAt:null
-  };
-}
+function position(raw){const p=text(raw).toUpperCase();if(['GK','POR','PORTERO'].includes(p))return'POR';if(['DF','DEF','DEFENSA'].includes(p))return'DEF';if(['MF','MED','MEDIO','MEDIOCENTRO','CEN'].includes(p))return'MED';if(['FW','DEL','DELANTERO'].includes(p))return'DEL';return'UNK'}
+function playerIdentity(raw){const id=raw?.id??raw?.playerId??raw?.uuid;const name=text(raw?.name??raw?.player?.name??raw?.playerName);return{id:id!=null?String(id):'',name,key:id!=null?`id:${id}`:`name:${norm(name)}`}}
+function markerTrue(...values){return values.some(v=>v===true||['true','closed','complete','completed','finished','final'].includes(text(v).toLowerCase()))}
+function outcomeIsFinal(raw,context={}){return markerTrue(raw?.final,raw?.isFinal,raw?.finalized,raw?.finished,raw?.status,context?.final,context?.weekComplete,context?.matchdayComplete)}
 
 export class BrainV27{
-  constructor(options={}){
-    this.dir=ensureDir(path.resolve(options.dir || process.env.BRAIN_STATE_DIR || './.brain-data'));
-    this.stateFile=path.join(this.dir,'model-v27.json');
-    this.eventFile=path.join(this.dir,'learning-v27.jsonl');
-    this.state=safeLoad(this.stateFile,freshState());
-    this.state.weights=normalizeWeights(this.state.weights);
-    if(!this.state.version) this.state.version=BRAIN_VERSION;
-    if(!this.state.positionBias) this.state.positionBias={POR:0,DEF:0,MED:0,DEL:0,UNK:0};
-    if(!this.state.pending) this.state.pending={};
-    if(!this.state.recentErrors) this.state.recentErrors=[];
-    if(!this.state.recentUpdates) this.state.recentUpdates=[];
-    if(this.state.accuratePredictions==null) this.state.accuratePredictions=0;
-    if(this.state.totalAbsoluteError==null) this.state.totalAbsoluteError=0;
-    if(this.state.meanAbsoluteError==null && this.state.labeledSamples>0) this.state.meanAbsoluteError=this.state.totalAbsoluteError/this.state.labeledSamples;
-    this.state.calibration=createCalibrationState(this.state.calibration);
-    this.learningRate=clamp(Number(options.learningRate ?? process.env.BRAIN_LEARNING_RATE ?? 0.035),0.001,0.2);
-  }
-
-  save(){ this.state.updatedAt=nowIso(); atomicWrite(this.stateFile,JSON.stringify(this.state,null,2)); }
-  log(event){ fs.appendFileSync(this.eventFile,`${JSON.stringify({at:nowIso(),...event})}\n`,'utf8'); }
-
-  predict(player,context={}){
-    const f=extractFeatures(player,context);
-    const base=f.performance*this.state.weights.performance + f.availability*this.state.weights.availability + f.context*this.state.weights.context + f.market*this.state.weights.market + f.risk*this.state.weights.risk;
-    const pb=this.state.positionBias[f.position] ?? 0;
-    const score=clamp(base + this.state.bias + pb);
-    const expectedPoints=Math.max(0,Math.round((score*20 + (f.media ?? 0)*0.7)*10)/10);
-    const recent=this.state.recentErrors.slice(-20);
-    const recentFailureRate=recent.length?recent.filter(x=>Math.abs(Number(x.error)||0)>3).length/recent.length:0;
-    const maePenalty=this.state.labeledSamples>=20 ? Math.min(0.18,(this.state.meanAbsoluteError||0)/20*0.18) : 0;
-    const failurePenalty=recentFailureRate*0.15;
-    const rawConfidence=Math.round(clamp(0.35 + this.state.labeledSamples/2000*0.45 + (this.state.drift.status==='stable'?0.10:0) - maePenalty - failurePenalty,0,1)*100);
-    const confidence=calibratedConfidence(rawConfidence,this.state.calibration);
-    return {score,expectedPoints,confidence,rawConfidence,features:f,weights:{...this.state.weights},modelVersion:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION};
-  }
-
-  learn(sample){
-    const expected=Number(sample.expected);
-    const actual=Number(sample.actual);
-    if(!Number.isFinite(expected)||!Number.isFinite(actual)) return {learned:false,reason:'invalid-label'};
-    if(sample.final!==true) return {learned:false,reason:'non-final-label'};
-    const error=actual-expected;
-    const normalizedError=Math.max(-1,Math.min(1,error/20));
-    const rate=this.learningRate;
-    const f=sample.features || {};
-    const map=['performance','availability','context','market','risk'];
-    const before={...this.state.weights};
-    for(const key of map){
-      const gradient=(Number(f[key])||0)*normalizedError;
-      this.state.weights[key]=Math.max(0.01,this.state.weights[key]+rate*gradient);
-    }
-    this.state.weights=normalizeWeights(this.state.weights);
-    this.state.bias=clamp(this.state.bias + rate*normalizedError*0.45,-0.35,0.35);
-    const pos=POSITIONS.includes(sample.position)?sample.position:'UNK';
-    this.state.positionBias[pos]=clamp((this.state.positionBias[pos]||0)+rate*normalizedError*0.25,-0.20,0.20);
-    this.state.labeledSamples+=1;
-    this.state.totalAbsoluteError+=Math.abs(error);
-    this.state.meanAbsoluteError=this.state.totalAbsoluteError/this.state.labeledSamples;
-    if(Math.abs(error)<=3) this.state.accuratePredictions+=1;
-    this.state.calibration=recordCalibration(this.state.calibration,Number(sample.confidence ?? sample.rawConfidence ?? 50),error);
-    const ratio=Math.min(1,Math.abs(error)/20);
-    this.state.drift.score=clamp(this.state.drift.score*0.94+ratio*0.06);
-    this.state.drift.status=this.state.drift.score>0.28?'high':this.state.drift.score>0.14?'watch':'stable';
-    const failure=Math.abs(error)>3;
-    this.state.recentErrors.push({at:nowIso(),error:Math.round(error*100)/100,expected,actual,outcome:failure?'failure':'success',position:pos});
-    this.state.recentErrors=this.state.recentErrors.slice(-250);
-    this.state.recentUpdates.push({at:nowIso(),position:pos,error:Math.round(error*100)/100,before,after:{...this.state.weights},outcome:failure?'failure':'success'});
-    this.state.recentUpdates=this.state.recentUpdates.slice(-100);
-    this.state.lastLearningAt=nowIso();
-    this.log({type:'learn',outcome:failure?'failure':'success',position:pos,error,confidence:Number(sample.confidence ?? sample.rawConfidence ?? 50),weights:this.state.weights,calibration:this.state.calibration});
-    this.save();
-    return {learned:true,error,weights:this.state.weights,calibration:calibrationSummary(this.state.calibration),outcome:failure?'failure':'success'};
-  }
-
-  observePlayers(players,context={}){
-    const list=Array.isArray(players)?players:[];
-    let learned=0, pending=0, observed=0;
-    const now=Date.now();
-    for(const [key,item] of Object.entries(this.state.pending)){
-      const age=now-new Date(item?.createdAt||0).getTime();
-      if(!Number.isFinite(age)||age>PENDING_MAX_AGE_MS) delete this.state.pending[key];
-    }
-    for(const raw of list){
-      const id=playerIdentity(raw);
-      if(!id.name) continue;
-      observed+=1;
-      const final=outcomeIsFinal(raw,context);
-      const prediction=this.predict(raw,context);
-      const week=text(context.week ?? context.matchday ?? 'unknown');
-      const key=crypto.createHash('sha1').update(`${id.key}|${week}`).digest('hex');
-      const weeklyPoints=prediction.features.weeklyPoints;
-      const prior=this.state.pending[key];
-      if(final && weeklyPoints!=null && prior){
-        const result=this.learn({expected:prior.expected,actual:weeklyPoints,features:prior.features,position:prior.position,confidence:prior.confidence,rawConfidence:prior.rawConfidence,final:true});
-        if(result.learned) learned+=1;
-        delete this.state.pending[key];
-      }else if(!final && !prior){
-        this.state.pending[key]={createdAt:nowIso(),player:id,week,expected:prediction.expectedPoints,confidence:prediction.confidence,rawConfidence:prediction.rawConfidence,features:prediction.features,position:prediction.features.position};
-        pending+=1;
-      }
-      this.state.observations+=1;
-    }
-    this.state.lastObservationAt=nowIso();
-    this.save();
-    return {observed,learned,pending,modelVersion:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION};
-  }
-
-  ingestDashboard(dashboard,meta={}){
-    const team=dashboard?.team?.data ?? dashboard?.team ?? {};
-    const players=Array.isArray(team?.players)?team.players:Array.isArray(team?.squad)?team.squad:Array.isArray(team?.roster)?team.roster:[];
-    const market=Array.isArray(dashboard?.market)?dashboard.market:Array.isArray(dashboard?.market?.data)?dashboard.market.data:[];
-    const week=dashboard?.week?.weekNumber ?? dashboard?.week?.number ?? dashboard?.week?.matchday ?? dashboard?.week?.currentWeek ?? meta.week;
-    const weekComplete=markerTrue(dashboard?.week?.completed,dashboard?.week?.isCompleted,dashboard?.week?.closed,dashboard?.week?.status,meta?.weekComplete);
-    const result=this.observePlayers(players,{week,source:'official',weekComplete,matchdayComplete:weekComplete});
-    this.log({type:'ingest-dashboard',week,players:players.length,market:market.length,result});
-    return result;
-  }
-
-  ingestAuxiliary(payload,meta={}){
-    const players=Array.isArray(payload?.players)?payload.players:[];
-    const injuries=Array.isArray(payload?.injuries)?payload.injuries:[];
-    const standings=Array.isArray(payload?.standings)?payload.standings:[];
-    this.log({type:'ingest-auxiliary',source:meta.source||'auxiliary',players:players.length,injuries:injuries.length,standings:standings.length,learned:0});
-    return {observed:players.length,learned:0,pending:0};
-  }
-
-  status(){
-    return {version:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION,observations:this.state.observations,labeledSamples:this.state.labeledSamples,accuracy:this.state.labeledSamples?Math.round(this.state.accuratePredictions/this.state.labeledSamples*100):0,meanAbsoluteError:this.state.meanAbsoluteError,drift:this.state.drift,pending:Object.keys(this.state.pending).length,weights:{...this.state.weights}};
-  }
+  constructor(options={}){this.dir=path.resolve(options.dir||'./.brain-data');fs.mkdirSync(this.dir,{recursive:true});this.learningRate=Number(options.learningRate||0.03);this.state=this.load()||this.emptyState();}
+  emptyState(){return{version:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION,weights:{...DEFAULT_WEIGHTS},positionBias:Object.fromEntries(POSITIONS.map(p=>[p,0])),observations:0,labeledSamples:0,accuratePredictions:0,meanAbsoluteError:null,recentErrors:[],drift:{status:'stable',score:0},pending:{},lastObservationAt:null,lastLearningAt:null,sourceReliability:{official:1,auxiliary:0.5},calibration:createCalibrationState()}}
+  load(){try{const raw=JSON.parse(fs.readFileSync(path.join(this.dir,'model-v27.json'),'utf8'));return{...this.emptyState(),...raw,weights:{...DEFAULT_WEIGHTS,...raw.weights},positionBias:{...this.emptyState().positionBias,...raw.positionBias},calibration:raw.calibration||createCalibrationState(),pending:raw.pending||{}}}catch{return null}}
+  save(){const file=path.join(this.dir,'model-v27.json'),tmp=`${file}.${process.pid}.tmp`;fs.writeFileSync(tmp,JSON.stringify(this.state,null,2),'utf8');fs.renameSync(tmp,file)}
+  features(player={},fixture={}){const points=num(player.points??player.weeklyPoints)??0,minutes=num(player.minutes)??0,starts=num(player.starts)??0;return{performance:clamp(points/20),availability:clamp(minutes/900)*0.7+clamp(starts/10)*0.3,context:clamp(num(fixture.context)??0.5),market:clamp(num(player.value??player.price)/20),risk:clamp(1-(num(player.injuryRisk)??0)),position:position(player.position),weeklyPoints:num(player.weeklyPoints??player.weekPoints)}}
+  predict(player={},context={}){const f=this.features(player,context.fixture||context),p=f.position,bias=num(this.state.positionBias[p])??0;const score=clamp(f.performance*this.state.weights.performance+f.availability*this.state.weights.availability+f.context*this.state.weights.context+f.market*this.state.weights.market+f.risk*this.state.weights.risk+bias);const expectedPoints=Math.round(score*20*10)/10;const recent=this.state.recentErrors.slice(-20),recentFailureRate=recent.length?recent.filter(x=>Math.abs(Number(x.error)||0)>3).length/recent.length:0;const maePenalty=this.state.labeledSamples>=20?Math.min(0.18,(this.state.meanAbsoluteError||0)/20*0.18):0;const failurePenalty=recentFailureRate*0.15;const rawConfidence=Math.round(clamp(0.35+this.state.labeledSamples/2000*0.45+(this.state.drift.status==='stable'?0.10:0)-maePenalty-failurePenalty,0,1)*100);const confidence=calibratedConfidence(rawConfidence,this.state.calibration);return{score,expectedPoints,confidence,rawConfidence,features:f,weights:{...this.state.weights},modelVersion:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION}}
+  learn(sample={}){const expected=Number(sample.expected),actual=Number(sample.actual);if(!Number.isFinite(expected)||!Number.isFinite(actual))return{learned:false,reason:'invalid-label'};if(sample.final!==true)return{learned:false,reason:'non-final-label'};const error=actual-expected,normalizedError=Math.max(-1,Math.min(1,error/20)),rate=this.learningRate;const f=sample.features||{},tot=Object.keys(this.state.weights).reduce((s,k)=>s+Math.abs(Number(f[k]??0)),0)||1;for(const k of Object.keys(this.state.weights)){const direction=Math.sign(normalizedError)*clamp(Number(f[k]??0));this.state.weights[k]=clamp(this.state.weights[k]+rate*direction/5,0.05,0.6)}const sum=Object.values(this.state.weights).reduce((a,b)=>a+b,0);for(const k of Object.keys(this.state.weights))this.state.weights[k]/=sum;const p=position(sample.position);this.state.positionBias[p]=clamp(this.state.positionBias[p]+rate*normalizedError,-0.2,0.2);this.state.labeledSamples+=1;this.state.meanAbsoluteError=this.state.meanAbsoluteError==null?Math.abs(error):((this.state.meanAbsoluteError*(this.state.labeledSamples-1))+Math.abs(error))/this.state.labeledSamples;this.state.accuratePredictions+=Math.abs(error)<=2?1:0;this.state.recentErrors.push({at:nowIso(),error});if(this.state.recentErrors.length>100)this.state.recentErrors=this.state.recentErrors.slice(-100);recordCalibration(this.state.calibration,sample.confidence??sample.rawConfidence??50,actual,expected);this.state.lastLearningAt=nowIso();this.save();return{learned:true,error,labeledSamples:this.state.labeledSamples}}
+  observePlayers(players,context={}){const list=Array.isArray(players)?players:[];let learned=0,pending=0,observed=0;const now=Date.now();for(const[key,item]of Object.entries(this.state.pending)){const age=now-new Date(item?.createdAt||0).getTime();if(!Number.isFinite(age)||age>PENDING_MAX_AGE_MS)delete this.state.pending[key]}for(const raw of list){const id=playerIdentity(raw);if(!id.name)continue;observed+=1;const final=outcomeIsFinal(raw,context);const prediction=this.predict(raw,context);const week=text(context.week??context.matchday??'unknown');const key=crypto.createHash('sha1').update(`${id.key}|${week}`).digest('hex');const weeklyPoints=prediction.features.weeklyPoints;const prior=this.state.pending[key];if(final&&weeklyPoints!=null&&prior){const result=this.learn({expected:prior.expected,actual:weeklyPoints,features:prior.features,position:prior.position,confidence:prior.confidence,rawConfidence:prior.rawConfidence,final:true});if(result.learned)learned+=1;delete this.state.pending[key]}else if(!final&&!prior){this.state.pending[key]={createdAt:nowIso(),player:id,week,expected:prediction.expectedPoints,confidence:prediction.confidence,rawConfidence:prediction.rawConfidence,features:prediction.features,position:prediction.features.position};pending+=1}this.state.observations+=1}this.state.lastObservationAt=nowIso();this.save();return{observed,learned,pending,modelVersion:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION}}
+  ingestDashboard(dashboard,meta={}){const team=dashboard?.team?.data??dashboard?.team??{};const players=Array.isArray(team?.players)?team.players:Array.isArray(team?.squad)?team.squad:Array.isArray(team?.roster)?team.roster:[];const market=Array.isArray(dashboard?.market)?dashboard.market:Array.isArray(dashboard?.market?.data)?dashboard.market.data:[];const week=dashboard?.week?.weekNumber??dashboard?.week?.number??dashboard?.week?.matchday??dashboard?.week?.currentWeek??meta.week;const weekComplete=markerTrue(dashboard?.week?.completed,dashboard?.week?.isCompleted,dashboard?.week?.closed,dashboard?.week?.status,meta?.weekComplete);const result=this.observePlayers(players,{week,source:'official',weekComplete,matchdayComplete:weekComplete});this.log({type:'ingest-dashboard',week,players:players.length,market:market.length,result});return result}
+  ingestAuxiliary(payload,meta={}){const players=Array.isArray(payload?.players)?payload.players:[],injuries=Array.isArray(payload?.injuries)?payload.injuries:[],standings=Array.isArray(payload?.standings)?payload.standings:[];this.log({type:'ingest-auxiliary',source:meta.source||'auxiliary',players:players.length,injuries:injuries.length,standings:standings.length,learned:0});return{observed:players.length,learned:0,pending:0}}
+  status(){const recent=this.state.recentErrors.slice(-20),recentFailureRate=recent.length?Math.round(recent.filter(x=>Math.abs(Number(x.error)||0)>3).length/recent.length*100):null;return{version:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION,observations:this.state.observations,labeledSamples:this.state.labeledSamples,meanAbsoluteError:this.state.meanAbsoluteError==null?null:Math.round(this.state.meanAbsoluteError*100)/100,accuracy:this.state.labeledSamples?Math.round(this.state.accuratePredictions/this.state.labeledSamples*100):null,recentFailureRate,recentFailures:recent.filter(x=>Math.abs(Number(x.error)||0)>3).slice(-5),weights:{...this.state.weights},positionBias:{...this.state.positionBias},confidence:this.predict({name:'__system__'}).confidence,rawConfidence:this.predict({name:'__system__'}).rawConfidence,drift:this.state.drift,calibration:calibrationSummary(this.state.calibration),pendingSamples:Object.keys(this.state.pending).length,lastObservationAt:this.state.lastObservationAt,lastLearningAt:this.state.lastLearningAt,persistencePath:this.dir,sourcePolicy:'LALIGA oficial para calendario + fuentes auxiliares solo como señales de entrenamiento'}}
+  log(entry){const file=path.join(this.dir,'learning-v27.jsonl');fs.appendFileSync(file,JSON.stringify(entry)+'\n','utf8')}
 }
-
-export function createBrain(options={}){ return new BrainV27(options); }
+export function createBrain(options={}){return new BrainV27(options)}
