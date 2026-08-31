@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-09-01T00:51:03+02:00",
+  "source": "grabación de pantalla aportada por el usuario",
+  "fileName": "ScreenRecording_09-01-2026 00-51-03_1.mp4",
+  "sha256": "3a296d51cb8b4abfb835dc2b499fab47ae8f93ef53290281785ac3ed84287ad2",
+  "durationSeconds": 394.5666666666667,
+  "fps": 30,
+  "frameCount": 11837,
+  "width": 512,
+  "height": 1112,
+  "orientation": "vertical",
+  "status": "evidence_reference_observed_no_live",
+  "note": "El vídeo queda referenciado como evidencia; los datos extraídos de la grabación no se convierten automáticamente en datos Fantasy vivos.",
+  "sampledSeconds": [0, 60, 120, 180, 240, 300, 390]
+}
