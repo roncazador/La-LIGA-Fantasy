@@ -15,7 +15,6 @@ const TEAM_ALIASES = new Map([
   ['real sociedad','Real Sociedad'],['sevilla','Sevilla'],['valencia','Valencia'],['villarreal','Villarreal']
 ]);
 const TEAM_SET = new Set(TEAM_ALIASES.values());
-const STATUS_WORDS = new Set(['baja','duda','tocado','disponible','alta','sancionado','molestias','lesionado','lesion','sancion','parte medico']);
 const GENERIC_LABELS = new Set(['image','más info','jugador','pts','rachas','pj','med','v/p','siguiente','anterior','ver todos']);
 
 export function normalizeText(value = '') {
@@ -161,7 +160,7 @@ export function extractInjuries(html) {
   const text = normalizeText(html);
   const out = [];
   const segments = text
-    .split(/(?=(?:0|[1-9]\d?|100)\s*%)/)
+    .split(/(?=(?:100|[1-9]\d|0)\s*%)/)
     .map(x => x.trim())
     .filter(Boolean);
 
@@ -169,7 +168,7 @@ export function extractInjuries(html) {
     const probability = parsePercent(segment);
     if (probability == null) continue;
     const team = [...TEAM_SET].find(t => segment.toLowerCase().includes(t.toLowerCase())) || null;
-    const withoutPercent = segment.replace(/(?:0|[1-9]\d?|100)\s*%/,' ');
+    const withoutPercent = segment.replace(/(?:100|[1-9]\d|0)\s*%/,' ');
     const withoutTeam = team ? withoutPercent.replace(new RegExp(`\\b${team.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,'i'),' ') : withoutPercent;
     const statusMatch = withoutTeam.match(/\b(Baja|Duda|Tocado|Disponible|Alta|Sancionado|Molestias|Lesionado|Lesión|Sanción|Parte médico)\b/i);
     const status = statusMatch ? statusMatch[1].toLowerCase() : null;
@@ -200,9 +199,7 @@ export function extractStats(html) {
 export function parsePublicPage(html, kind) {
   const checksum = sha256(html);
   const base = {kind,checksum,bytes:Buffer.byteLength(String(html),'utf8')};
-  if (kind === 'lineups' || kind === 'home') {
-    return {...base,matches:extractMatchups(html),players:extractDataPlayers(html)};
-  }
+  if (kind === 'lineups' || kind === 'home') return {...base,matches:extractMatchups(html),players:extractDataPlayers(html)};
   if (kind === 'injuries') return {...base,injuries:extractInjuries(html)};
   if (kind === 'stats') return {...base,stats:extractStats(html)};
   if (kind === 'points') return {...base,points:extractPlayerPoints(html),players:extractPlayerPoints(html)};
@@ -242,11 +239,7 @@ export function normalizeBundle(pages, {now = new Date()} = {}) {
   const stats = parsed.flatMap(x => x.stats || []);
   const points = parsed.flatMap(x => x.points || []);
   const players=[...new Map([...lineups.flatMap(x=>x.players||[]),...points].map(p=>[`${p.team||''}|${p.name}`,p])).values()];
-  return {
-    version:'3.3.1',retrievedAt:now.toISOString(),pages:normalizedPages,
-    references:lineups.map(({home,away,evidence,lineups})=>({home,away,evidence,lineups})),
-    matches:lineups,players,injuries,stats,points,sourcePolicy:'public-contrast-only',ok:normalizedPages.some(x => x.ok)
-  };
+  return {version:'3.3.1',retrievedAt:now.toISOString(),pages:normalizedPages,references:lineups.map(({home,away,evidence,lineups})=>({home,away,evidence,lineups})),matches:lineups,players,injuries,stats,points,sourcePolicy:'public-contrast-only',ok:normalizedPages.some(x => x.ok)};
 }
 
 export async function fetchPublicSources({signal,baseUrl='https://www.futbolfantasy.com'} = {}) {
