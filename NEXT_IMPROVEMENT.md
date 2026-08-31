@@ -1,5 +1,12 @@
 # Siguiente pasada: modelo Fantasy sobre datos normalizados
 
+## Orden de trabajo
+1. Corrección estructural del sistema existente antes de añadir nuevas capas.
+2. Validación completa de contratos y regresión.
+3. Aplicar el modelo de posibles puntos sobre datos observados ya normalizados.
+4. Validar las estimaciones sin contaminar el aprendizaje final-only.
+5. Integrar únicamente con todos los workflows verdes.
+
 ## Objetivo
 Aplicar predicción Fantasy únicamente sobre datos observados y normalizados, manteniendo separadas las estimaciones del aprendizaje final-only.
 
@@ -14,7 +21,6 @@ Aplicar predicción Fantasy únicamente sobre datos observados y normalizados, m
 - Validar cualquier nueva señal antes de incorporarla al cerebro.
 
 ## Calidad
-- Corrección estructural del sistema existente antes de añadir nuevas capas.
 - Ejecutar la batería completa antes de integrar.
 - No fusionar una versión con workflows fallidos.
 - Validar siempre el merge ref actualizado del PR.
