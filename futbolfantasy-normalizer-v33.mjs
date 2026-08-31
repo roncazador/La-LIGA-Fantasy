@@ -185,3 +185,21 @@ export function normalizeBundle(pages, {now = new Date()} = {}) {
     ok:normalizedPages.some(x => x.ok)
   };
 }
+
+export async function fetchPublicSources({signal} = {}) {
+  const pages = await Promise.all(FUTBOLFANTASY_PUBLIC_SOURCES.map(async source => {
+    try {
+      const response = await fetch(source.url, {
+        headers: {Accept:'text/html,application/xhtml+xml', 'User-Agent':'LALIGA-Fantasy-Manager/3.3.0'},
+        cache:'no-store',
+        signal: signal || AbortSignal.timeout(12000)
+      });
+      const html = await response.text();
+      return {kind:source.key,url:source.url,status:response.status,html};
+    } catch (error) {
+      return {kind:source.key,url:source.url,status:0,html:'',error:error?.message || 'FETCH_FAILED'};
+    }
+  }));
+  const bundle = normalizeBundle(pages);
+  return {...bundle, pages:bundle.pages.map((page,index) => ({...page,error:pages[index]?.error || null}))};
+}
