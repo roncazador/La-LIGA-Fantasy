@@ -6,7 +6,7 @@ const workflow=read('.github/workflows/maintenance-automation.yml');
 const governance=read('.github/workflows/ci-governance.yml');
 const governanceTest=read('ci-governance-v1.mjs');
 const pkg=JSON.parse(read('package.json'));
-const calendar=read('calendar-autonomous-v34.js');
+const calendar=read('calendar-autonomous-v35.js');
 const connection=read('connection-client.js');
 const sw=read('sw.js');
 const preflight=read('render-preflight.mjs');
@@ -31,8 +31,8 @@ const checks=[
   ['calendar refresh remains bounded',calendar.includes('REFRESH_MS=15000')],
   ['calendar jornada navigation remains present',calendar.includes('Jornada anterior')&&calendar.includes('Jornada siguiente')],
   ['calendar keeps live state',calendar.includes('EN DIRECTO')],
-  ['loader keeps single calendar owner',connection.includes("loadInline('/calendar-autonomous-v34.js','34')")],
-  ['service worker caches current calendar',sw.includes('./calendar-autonomous-v34.js')],
+  ['loader keeps single calendar owner',connection.includes("loadInline('/calendar-autonomous-v35.js','35')")],
+  ['service worker caches current calendar',sw.includes('./calendar-autonomous-v35.js')],
   ['render preflight remains available',preflight.includes('RENDER_PREFLIGHT_OK')]
 ];
 
