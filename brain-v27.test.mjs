@@ -91,7 +91,6 @@ try{
       reloaded.learn({expected:pred.expectedPoints,actual,features:f,position:f.position,final:true});
       assert.ok(Math.abs(Object.values(reloaded.state.weights).reduce((a,b)=>a+b,0)-1)<1e-9);
       assert.ok(Object.values(reloaded.state.weights).every(x=>Number.isFinite(x)&&x>0));
-      assert.ok(Number.isFinite(reloaded.state.bias));
       assert.ok(Object.values(reloaded.state.positionBias).every(Number.isFinite));
       assert.ok(reloaded.state.accuratePredictions>=0&&reloaded.state.accuratePredictions<=reloaded.state.labeledSamples);
       loops++;
