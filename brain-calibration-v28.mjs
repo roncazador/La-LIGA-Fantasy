@@ -22,6 +22,11 @@ export function recordCalibration(state,confidence,actualError,tolerance=3){
   next.samples+=1;
   next.buckets[bucket].samples+=1;
   if(Math.abs(Number(actualError))<=tolerance) next.buckets[bucket].successful+=1;
+  if(state && typeof state==='object'){
+    state.version=next.version;
+    state.samples=next.samples;
+    state.buckets=next.buckets;
+  }
   return next;
 }
 
