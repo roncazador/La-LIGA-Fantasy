@@ -164,7 +164,7 @@ export class BrainV27{
     const recentFailureRate=recent.length?recent.filter(x=>Math.abs(Number(x.error)||0)>3).length/recent.length:0;
     const maePenalty=this.state.labeledSamples>=20 ? Math.min(0.18,(this.state.meanAbsoluteError||0)/20*0.18) : 0;
     const failurePenalty=recentFailureRate*0.15;
-    const rawConfidence=Math.round(clamp(0.35 + this.state.labeledSamples/2000*0.45 + (f.weeklyPoints!=null?0.10:0) + (this.state.drift.status==='stable'?0.10:0) - maePenalty - failurePenalty,0,1)*100);
+    const rawConfidence=Math.round(clamp(0.35 + this.state.labeledSamples/2000*0.45 + (this.state.drift.status==='stable'?0.10:0) - maePenalty - failurePenalty,0,1)*100);
     const confidence=calibratedConfidence(rawConfidence,this.state.calibration);
     return {score,expectedPoints,confidence,rawConfidence,features:f,weights:{...this.state.weights},modelVersion:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION};
   }
@@ -173,7 +173,7 @@ export class BrainV27{
     const expected=Number(sample.expected);
     const actual=Number(sample.actual);
     if(!Number.isFinite(expected)||!Number.isFinite(actual)) return {learned:false,reason:'invalid-label'};
-    if(sample.final===false) return {learned:false,reason:'non-final-label'};
+    if(sample.final!==true) return {learned:false,reason:'non-final-label'};
     const error=actual-expected;
     const normalizedError=Math.max(-1,Math.min(1,error/20));
     const rate=this.learningRate;
@@ -247,47 +247,21 @@ export class BrainV27{
     const week=dashboard?.week?.weekNumber ?? dashboard?.week?.number ?? dashboard?.week?.matchday ?? dashboard?.week?.currentWeek ?? meta.week;
     const weekComplete=markerTrue(dashboard?.week?.completed,dashboard?.week?.isCompleted,dashboard?.week?.closed,dashboard?.week?.status,meta?.weekComplete);
     const result=this.observePlayers(players,{week,source:'official',weekComplete,matchdayComplete:weekComplete});
-    this.log({type:'ingest-dashboard',players:players.length,market:market.length,week,weekComplete,source:'official',result});
-    return {players:players.length,market:market.length,week,weekComplete,...result};
+    this.log({type:'ingest-dashboard',week,players:players.length,market:market.length,result});
+    return result;
   }
 
-  ingestAuxiliary(payload={}){
-    const count=Array.isArray(payload.players)?payload.players.length:0;
-    const injuries=Array.isArray(payload.injuries)?payload.injuries.length:0;
-    const standings=Array.isArray(payload.standings)?payload.standings.length:0;
-    if(count||injuries||standings){
-      this.state.sourceReliability.auxiliary=clamp(this.state.sourceReliability.auxiliary*0.98+0.02,0.1,0.95);
-      this.log({type:'ingest-auxiliary',players:count,injuries,standings});
-      this.save();
-    }
-    return {players:count,injuries,standings};
+  ingestAuxiliary(payload,meta={}){
+    const players=Array.isArray(payload?.players)?payload.players:[];
+    const injuries=Array.isArray(payload?.injuries)?payload.injuries:[];
+    const standings=Array.isArray(payload?.standings)?payload.standings:[];
+    this.log({type:'ingest-auxiliary',source:meta.source||'auxiliary',players:players.length,injuries:injuries.length,standings:standings.length,learned:0});
+    return {observed:players.length,learned:0,pending:0};
   }
 
   status(){
-    const recent=this.state.recentErrors.slice(-20);
-    const recentFailureRate=recent.length?Math.round(recent.filter(x=>Math.abs(Number(x.error)||0)>3).length/recent.length*100):null;
-    return {
-      version:BRAIN_VERSION,
-      calibrationVersion:CALIBRATION_VERSION,
-      observations:this.state.observations,
-      labeledSamples:this.state.labeledSamples,
-      meanAbsoluteError:this.state.meanAbsoluteError==null?null:Math.round(this.state.meanAbsoluteError*100)/100,
-      accuracy:this.state.labeledSamples?Math.round(this.state.accuratePredictions/this.state.labeledSamples*100):null,
-      recentFailureRate,
-      recentFailures:recent.filter(x=>Math.abs(Number(x.error)||0)>3).slice(-5),
-      weights:this.state.weights,
-      positionBias:this.state.positionBias,
-      confidence:this.predict({name:'__system__'}).confidence,
-      rawConfidence:this.predict({name:'__system__'}).rawConfidence,
-      drift:this.state.drift,
-      calibration:calibrationSummary(this.state.calibration),
-      pendingSamples:Object.keys(this.state.pending).length,
-      lastObservationAt:this.state.lastObservationAt,
-      lastLearningAt:this.state.lastLearningAt,
-      persistencePath:this.dir,
-      sourcePolicy:'LALIGA oficial para calendario + fuentes auxiliares solo como señales de entrenamiento'
-    };
+    return {version:BRAIN_VERSION,calibrationVersion:CALIBRATION_VERSION,observations:this.state.observations,labeledSamples:this.state.labeledSamples,accuracy:this.state.labeledSamples?Math.round(this.state.accuratePredictions/this.state.labeledSamples*100):0,meanAbsoluteError:this.state.meanAbsoluteError,drift:this.state.drift,pending:Object.keys(this.state.pending).length,weights:{...this.state.weights}};
   }
 }
 
-export const createBrain = options => new BrainV27(options);
+export function createBrain(options={}){ return new BrainV27(options); }

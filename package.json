@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node --import ./brain-history-hook-v28.mjs --import ./brain-reliability-hook-v29.mjs brain-host-v27.mjs",
     "render:verify": "node render-preflight.mjs",
-    "test": "node qa.test.mjs && node qa-100000.test.mjs && node brain-v27.test.mjs && node brain-runtime-v27.test.mjs && node brain-fuzz-v27.test.mjs && node brain-history-v28.test.mjs && node brain-calibration-v28.test.mjs && node brain-reliability-v29.test.mjs && node brain-hook-safety-v33.test.mjs && node calendar-v29.test.mjs && node calendar-autonomous-v30.test.mjs && node calendar-ui-v31.test.mjs && node render-preflight.test.mjs && node deployment-contract-v27.test.mjs && node scripts/self-heal-agent-v2.test.mjs && node scripts/self-heal-memory-v2.test.mjs"
+    "test": "node qa.test.mjs && node qa-100000.test.mjs && node brain-v27.test.mjs && node brain-runtime-v27.test.mjs && node brain-fuzz-v27.test.mjs && node brain-history-v28.test.mjs && node brain-calibration-v28.test.mjs && node brain-reliability-v29.test.mjs && node brain-hook-safety-v33.test.mjs && node calendar-v29.test.mjs && node calendar-autonomous-v30.test.mjs && node calendar-ui-v31.test.mjs && node structural-audit-v31.test.mjs && node render-preflight.test.mjs && node deployment-contract-v27.test.mjs && node scripts/self-heal-agent-v2.test.mjs && node scripts/self-heal-memory-v2.test.mjs"
   },
   "engines": {"node": "24.14.1"}
 }
