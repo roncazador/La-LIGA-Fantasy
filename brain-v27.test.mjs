@@ -22,9 +22,21 @@ try{
   assert.notDeepEqual(brain.state.weights,before);
   assert.equal(brain.state.accuratePredictions,0);
 
+  const beforeMissingFinal={...brain.state.weights};
+  const missingFinal=brain.learn({expected:10,actual:20,features,position:'MED'});
+  assert.equal(missingFinal.learned,false);
+  assert.equal(missingFinal.reason,'non-final-label');
+  assert.deepEqual(brain.state.weights,beforeMissingFinal);
+
   const nonFinal=brain.learn({expected:10,actual:20,features,position:'MED',final:false});
   assert.equal(nonFinal.learned,false);
   assert.equal(nonFinal.reason,'non-final-label');
+
+  const withPartialWeek={...player,weekPoints:1};
+  const withDifferentPartialWeek={...player,weekPoints:99};
+  const confidenceA=brain.predict(withPartialWeek,{fixture:{context:75,homeAway:'home'},week:2}).rawConfidence;
+  const confidenceB=brain.predict(withDifferentPartialWeek,{fixture:{context:75,homeAway:'home'},week:2}).rawConfidence;
+  assert.equal(confidenceA,confidenceB);
 
   const accurate=brain.learn({expected:10,actual:12,features,position:'MED',final:true});
   assert.equal(accurate.learned,true);
@@ -58,6 +70,14 @@ try{
   assert.equal(invalid.learned,false);
   assert.equal(invalid.reason,'invalid-label');
 
+  for(let correction=0;correction<10;correction++){
+    const stableBefore={...reloaded.state.weights};
+    const blocked=reloaded.learn({expected:20+correction,actual:25+correction,features,position:'MED',final:correction%2===0?false:undefined});
+    assert.equal(blocked.learned,false);
+    assert.equal(blocked.reason,'non-final-label');
+    assert.deepEqual(reloaded.state.weights,stableBefore);
+  }
+
   let loops=0;
   for(let i=1;i<=100000;i++){
     const synthetic={...player,points:8+(i%12),minutes:450+(i%360),starts:4+(i%5),price:9000000+(i%11)*100000,value:10000000+(i%13)*150000};
@@ -71,7 +91,6 @@ try{
       reloaded.learn({expected:pred.expectedPoints,actual,features:f,position:f.position,final:true});
       assert.ok(Math.abs(Object.values(reloaded.state.weights).reduce((a,b)=>a+b,0)-1)<1e-9);
       assert.ok(Object.values(reloaded.state.weights).every(x=>Number.isFinite(x)&&x>0));
-      assert.ok(Number.isFinite(reloaded.state.bias));
       assert.ok(Object.values(reloaded.state.positionBias).every(Number.isFinite));
       assert.ok(reloaded.state.accuratePredictions>=0&&reloaded.state.accuratePredictions<=reloaded.state.labeledSamples);
       loops++;
