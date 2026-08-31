@@ -81,6 +81,22 @@ function dedupePlayers(players) {
   return [...map.values()];
 }
 
+function dedupeInjuries(injuries) {
+  const map = new Map();
+  for (const item of injuries) {
+    if (!item?.player) continue;
+    const key=`${item.team||''}|${item.player.toLowerCase()}`;
+    const prev=map.get(key);
+    map.set(key,prev?{
+      ...prev,
+      ...Object.fromEntries(Object.entries(item).filter(([,v])=>v!=null&&v!=='')),
+      probability:item.probability??prev.probability,
+      status:item.status??prev.status
+    }:item);
+  }
+  return [...map.values()];
+}
+
 export function extractDataPlayers(html) {
   const players = [];
   for (const match of String(html ?? '').matchAll(/<[^>]*\b(?:data-player|data-player-name|data-name)\s*=\s*["'][^"']+["'][^>]*>/gi)) {
@@ -170,7 +186,7 @@ export function extractInjuries(html) {
     const player=cleanInjuryPlayer(row.cells.find(c=>!canonicalTeam(c)&&!/%/.test(c))||'');
     if(player&&player.length>=3&&!GENERIC_LABELS.has(player.toLowerCase())) out.push({player,team,probability,status:null,raw:joined.slice(0,300)});
   }
-  return dedupePlayers(out).slice(0,300);
+  return dedupeInjuries(out).slice(0,300);
 }
 
 export function extractStats(html) {
