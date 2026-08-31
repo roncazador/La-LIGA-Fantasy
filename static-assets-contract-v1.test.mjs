@@ -5,11 +5,11 @@ const config = fs.readFileSync('./config.mjs','utf8');
 const connection = fs.readFileSync('./connection-client.js','utf8');
 const seed = JSON.parse(fs.readFileSync('./official-fixtures-seed-2026-27.json','utf8'));
 
-for (const asset of ['/calendar-autonomous-v34.js','/match-detail-ui-v31.js','/focus-ui-v30.js','/futbolfantasy-ui-v30.js']) {
+for (const asset of ['/calendar-autonomous-v35.js','/match-detail-ui-v31.js','/focus-ui-v30.js','/futbolfantasy-ui-v30.js']) {
   assert.ok(config.includes(`'${asset}'`), `STATIC-${asset} must be publicly served`);
 }
 for (const pattern of [
-  "loadInline('/calendar-autonomous-v34.js','34')",
+  "loadInline('/calendar-autonomous-v35.js','35')",
   "loadInline('/focus-ui-v30.js','30')",
   "loadInline('/futbolfantasy-ui-v30.js','30')",
   "loadInline('/match-detail-ui-v31.js','33')"
@@ -21,7 +21,7 @@ assert.deepEqual(missing, [], `loader assets missing from publicStaticPath: ${mi
 assert.ok(connection.includes("laliga:layer-error"), 'loader must surface asset errors instead of swallowing them');
 
 assert.equal(seed.season, '2026/27');
-assert.equal(seed.currentMatchday, 4, 'fallback must point to the next available jornada');
+assert.equal(seed.currentMatchday, 4, 'fallback keeps next available jornada as metadata');
 assert.equal(seed.fixtures.filter(f => f.matchday === 3).length, 10, 'fallback must contain the complete jornada 3');
 assert.equal(seed.fixtures.filter(f => f.matchday === 4).length, 10, 'fallback must contain the complete jornada 4');
 assert.ok(seed.fixtures.filter(f => f.matchday === 3).every(f => f.status === 'FINISHED'), 'completed jornada 3 must be marked final');
