@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { createCultivos } from './cultivos-v1.mjs';
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cultivos-'));const c=createCultivos({dir});
+assert.equal(c.summary().score,0);
+c.observe({source:'test',outcome:'success',dimensions:{prediction:2,data:1},detail:'ok'});
+assert.equal(c.summary().dimensions.prediction,2);assert.equal(c.summary().dimensions.data,1);
+c.observe({source:'test',outcome:'failure',dimensions:{automation:-2},detail:'fail'});
+assert.equal(c.summary().dimensions.automation,-2);
+const persisted=createCultivos({dir}).summary();assert.equal(persisted.cycles,2);assert.equal(persisted.recentEvents.length,2);
+console.log('CULTIVOS v1: 5/5 checks passed');
