@@ -1,0 +1,31 @@
+name: CI governance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '47 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-governance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+      - name: Syntax check
+        run: node --check ci-governance-v1.mjs
+      - name: Audit workflow contracts
+        run: node ci-governance-v1.mjs
