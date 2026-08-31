@@ -6,9 +6,9 @@ let cache=null;
 function text(x){return String(x??'');}
 
 export async function fetchFutbolFantasyData(config={}){
-  if(cache&&Date.now()-cache.at<5*60*1000)return cache.data;
-
   const base=text(config.futbolFantasyUrl||'https://www.futbolfantasy.com').replace(/\/$/,'');
+  if(cache&&cache.base===base&&Date.now()-cache.at<5*60*1000)return cache.data;
+
   let normalized=null;
   try { normalized=await fetchPublicSources({baseUrl:base}); }
   catch { normalized=null; }
@@ -44,6 +44,6 @@ export async function fetchFutbolFantasyData(config={}){
     },
     checkedAt:normalized?.retrievedAt||new Date().toISOString()
   };
-  cache={at:Date.now(),data};
+  cache={at:Date.now(),base,data};
   return data;
 }
