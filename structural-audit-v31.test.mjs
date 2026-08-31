@@ -20,7 +20,7 @@ const checks=[
   ['brain confidence independent of weeklyPoints',!brain.includes("f.weeklyPoints!=null?0.10")],
   ['dashboard has one shared state declaration',((index.match(/let state=loadState\(\);/g)||[]).length===1)],
   ['calendar legacy client disabled',legacyCalendar.includes('LALIGA_CALENDAR_LEGACY_DISABLED')],
-  ['single autonomous calendar renderer',connection.includes("load('/calendar-autonomous-v30.js')")&&!connection.includes("load('/calendar-autonomous-v29.js')")],
+  ['single autonomous calendar renderer',connection.includes("load('/calendar-autonomous-v30.js',")&&!connection.includes("load('/calendar-autonomous-v29.js')")],
   ['calendar renderer does not clear parent host',!autonomous.includes("host.innerHTML=''")&&!autonomous.includes('host.innerHTML =')],
   ['calendar uses persistent DOM observer',autonomous.includes('MutationObserver')],
   ['calendar has one refresh controller',((autonomous.match(/setInterval\(/g)||[]).length===1)],
