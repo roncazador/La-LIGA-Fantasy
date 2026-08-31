@@ -10,7 +10,7 @@
     {"id":"laliga-2026-08-29-lev-bet","utcDate":"2026-08-29T15:00:00Z","home":"Levante UD","away":"Real Betis","status":"FINISHED","matchday":3,"officialMatchday":3,"homeScore":5,"awayScore":2},
     {"id":"laliga-2026-08-29-rso-esp","utcDate":"2026-08-29T17:00:00Z","home":"Real Sociedad","away":"RCD Espanyol de Barcelona","status":"FINISHED","matchday":3,"officialMatchday":3,"homeScore":2,"awayScore":1},
     {"id":"laliga-2026-08-29-sev-atm","utcDate":"2026-08-29T19:30:00Z","home":"Sevilla FC","away":"Atlético de Madrid","status":"FINISHED","matchday":3,"officialMatchday":3,"homeScore":1,"awayScore":3},
-    {"id":"laliga-2026-08-30-rma-mga","utcDate":"laliga-2026-08-30T15:00:00Z","home":"Real Madrid","away":"Málaga CF","status":"FINISHED","matchday":3,"officialMatchday":3,"homeScore":4,"awayScore":0},
+    {"id":"laliga-2026-08-30-rma-mga","utcDate":"2026-08-30T15:00:00Z","home":"Real Madrid","away":"Málaga CF","status":"FINISHED","matchday":3,"officialMatchday":3,"homeScore":4,"awayScore":0},
     {"id":"laliga-2026-08-30-dep-val","utcDate":"2026-08-30T17:30:00Z","home":"RC Deportivo","away":"Valencia CF","status":"FINISHED","matchday":3,"officialMatchday":3,"homeScore":3,"awayScore":1},
     {"id":"laliga-2026-08-30-cel-ath","utcDate":"2026-08-30T19:30:00Z","home":"RC Celta","away":"Athletic Club","status":"FINISHED","matchday":3,"officialMatchday":3,"homeScore":0,"awayScore":2},
     {"id":"laliga-2026-08-31-osa-get","utcDate":"2026-08-31T17:30:00Z","home":"CA Osasuna","away":"Getafe CF","status":"FINISHED","matchday":3,"officialMatchday":3,"homeScore":1,"awayScore":0},
