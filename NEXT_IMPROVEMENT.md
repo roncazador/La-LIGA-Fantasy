@@ -1,25 +1,18 @@
-# Siguiente pasada: corrección estructural del sistema existente
+# Siguiente pasada: modelo Fantasy sobre datos normalizados
 
 ## Objetivo
-Corregir errores de lógica y consistencia detectados al auditar ramas, cerebro, calendario, Render, memoria y la interfaz, sin introducir funcionalidades nuevas.
+Aplicar predicción Fantasy únicamente sobre datos observados y normalizados, manteniendo separadas las estimaciones del aprendizaje final-only.
 
-## Cerebro
-- Aprender únicamente de resultados finales observados.
-- Mantener predicción pendiente hasta disponer del resultado final.
-- Evitar fugas por datos parciales o por aprender del mismo snapshot que genera la predicción.
-- Reducir confianza cuando los errores recientes o el error medio indican sobreconfianza.
-- Conservar separadas confianza bruta, calibrada y mostrada.
+## Datos de contraste
+- Alinear equipos y jugadores con identidad canónica.
+- Mantener alineaciones probables, lesiones, estadísticas y puntos históricos como señales observadas.
+- Conservar trazabilidad mediante páginas y checksums.
 
-## Calendario
-- Mantener LALIGA oficial como identidad primaria.
-- Completar campos oficiales vacíos con contraste válido sin degradar estados finales.
-- Rechazar marcadores y jornadas fuera de rango.
-- Mantener deduplicación, caché y fallback existentes sin duplicar renderizadores.
+## Modelo
+- Las posibles puntuaciones son estimaciones y nunca puntos oficiales.
+- No aprender de predicciones pendientes.
+- Validar cualquier nueva señal antes de incorporarla al cerebro.
 
-## Memoria y calidad
-- Registrar correcciones estructurales conocidas para que el sistema de auto-reparación las use como evidencia previa.
-- Mantener contratos sincronizados con la versión real.
-- Preservar el modo solo lectura y la arquitectura actual.
-
-## Interfaz
-Refinar únicamente jerarquía visual, espaciado y legibilidad de la interfaz actual, especialmente en iPhone horizontal, sin añadir apartados o flujos nuevos.
+## Calidad
+- Ejecutar la batería completa antes de integrar.
+- No fusionar una versión con workflows fallidos.
