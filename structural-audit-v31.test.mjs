@@ -27,7 +27,7 @@ const checks=[
   ['calendar has one refresh controller',((autonomous.match(/setInterval\(/g)||[]).length===1)],
   ['calendar supports live state',autonomous.includes('EN DIRECTO')],
   ['calendar supports final state',autonomous.includes('FINALIZADO')&&autonomous.includes('FT')],
-  ['calendar rows are interactive',autonomous.includes('c31match')&&detail.includes("closest?.('.c31match')")],
+  ['calendar rows are interactive',autonomous.includes('c33match')&&autonomous.includes('openDetail(match)')&&!detail.includes("closest?.('.c31match')")],
   ['match detail uses existing FutbolFantasy endpoint',detail.includes("/api/futbolfantasy/data")],
   ['match detail reads optional lineups only',detail.includes('lineups')&&detail.includes('alineaciones')],
   ['match detail never fabricates missing player data',detail.includes("Alineación probable todavía no disponible")],
