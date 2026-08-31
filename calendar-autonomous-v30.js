@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 
-const VERSION='3.1.0';
+const VERSION='3.1.1';
 const API='/api/calendar/autonomous';
 const SEED='/official-fixtures-seed-2026-27.json';
 const LIVE=new Set(['1H','2H','HT','LIVE','IN_PLAY','PLAYING','EN DIRECTO','DESCANSO','PAUSED','HALFTIME']);
@@ -21,11 +21,8 @@ const score=value=>Number.isInteger(Number(value))&&Number(value)>=0&&Number(val
 
 function fmt(value){
   const d=date(value);
-  if(!validDate(value)) return {day:'N/D',time:'N/D'};
-  return {
-    day:new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'2-digit',month:'long',timeZone:'Europe/Madrid'}).format(d),
-    time:new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Madrid'}).format(d)
-  };
+  if(!validDate(value))return{day:'N/D',time:'N/D'};
+  return{day:new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'2-digit',month:'long',timeZone:'Europe/Madrid'}).format(d),time:new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Madrid'}).format(d)};
 }
 
 function normalize(raw,source){
@@ -35,24 +32,10 @@ function normalize(raw,source){
   const utcDate=raw.utcDate??raw.date??raw.startDate??raw.starting_at??raw.datetime??raw.kickoff;
   if(!home||!away||!validDate(utcDate))return null;
   const sources=Array.isArray(raw.sources)&&raw.sources.length?raw.sources:[source||raw.source||'LALIGA oficial'];
-  return {
-    ...raw,
-    id:String(raw.id??raw.fixtureId??raw.matchId??`${home}-${away}-${utcDate}`),
-    utcDate:date(utcDate).toISOString(),
-    home,
-    away,
-    status:status(raw.status),
-    matchday:raw.matchday??raw.officialMatchday??raw.gameweek?.week??null,
-    homeScore:score(raw.homeScore??raw.home_score??raw.goals?.home??raw.homeTeam?.score??raw.home_team?.score),
-    awayScore:score(raw.awayScore??raw.away_score??raw.goals?.away??raw.awayTeam?.score??raw.away_team?.score),
-    source:source||raw.source||'LALIGA oficial',
-    sources:[...new Set(sources.map(String))]
-  };
+  return{...raw,id:String(raw.id??raw.fixtureId??raw.matchId??`${home}-${away}-${utcDate}`),utcDate:date(utcDate).toISOString(),home,away,status:status(raw.status),matchday:raw.matchday??raw.officialMatchday??raw.gameweek?.week??null,homeScore:score(raw.homeScore??raw.home_score??raw.goals?.home??raw.homeTeam?.score??raw.home_team?.score),awayScore:score(raw.awayScore??raw.away_score??raw.goals?.away??raw.awayTeam?.score??raw.away_team?.score),source:source||raw.source||'LALIGA oficial',sources:[...new Set(sources.map(String))]};
 }
 
-function key(match){
-  return `${match.utcDate.slice(0,16)}|${match.home.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}|${match.away.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}`;
-}
+function key(match){return`${match.utcDate.slice(0,16)}|${match.home.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}|${match.away.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}`}
 
 function mergeMatches(input){
   const map=new Map();
@@ -70,7 +53,7 @@ function mergeMatches(input){
     merged.sources=[...new Set([...(old.sources||[]),...(m.sources||[]),m.source])];
     map.set(k,merged);
   }
-  return [...map.values()].sort((a,b)=>date(a.utcDate)-date(b.utcDate));
+  return[...map.values()].sort((a,b)=>date(a.utcDate)-date(b.utcDate));
 }
 
 async function json(url){
@@ -83,15 +66,15 @@ async function loadData(){
   try{
     const data=await json(API);
     const matches=mergeMatches(data?.matches);
-    if(matches.length||data?.fallback)return {version:VERSION,...data,matches,live:matches.filter(m=>isLive(m.status)).length};
+    if(matches.length||data?.fallback)return{version:VERSION,...data,matches,live:matches.filter(m=>isLive(m.status)).length};
     throw new Error('EMPTY_CALENDAR');
   }catch(error){
     try{
       const seed=await json(SEED);
       const matches=mergeMatches((seed?.fixtures||[]).map(m=>({...m,source:'LALIGA oficial · semilla protegida'})));
-      return {version:VERSION,sourcePolicy:'LALIGA oficial · respaldo automático',officialAvailable:false,officialMode:'protected-seed',futbolFantasyAvailable:false,fallback:'protected-seed',matches,live:matches.filter(m=>isLive(m.status)).length,updatedAt:new Date().toISOString(),warning:error.message};
+      return{version:VERSION,sourcePolicy:'LALIGA oficial · respaldo automático',officialAvailable:false,officialMode:'protected-seed',futbolFantasyAvailable:false,fallback:'protected-seed',matches,live:matches.filter(m=>isLive(m.status)).length,updatedAt:new Date().toISOString(),warning:error.message};
     }catch(seedError){
-      return {version:VERSION,matches:[],live:0,fallback:'empty',updatedAt:new Date().toISOString(),warning:`${error.message}; ${seedError.message}`};
+      return{version:VERSION,matches:[],live:0,fallback:'empty',updatedAt:new Date().toISOString(),warning:`${error.message}; ${seedError.message}`};
     }
   }
 }
@@ -107,9 +90,13 @@ function ensureStyles(){
 function removeLegacyControls(){
   document.getElementById('loadFixtures')?.remove();
   document.getElementById('loadSeed')?.remove();
-  document.getElementById('fixturesStatus')?.remove();
+  const legacyStatus=document.getElementById('fixturesStatus');
+  if(legacyStatus){legacyStatus.hidden=true;legacyStatus.setAttribute('aria-hidden','true');}
   const legacy=document.getElementById('fixtures');
-  if(legacy){legacy.innerHTML='';legacy.style.display='none';}
+  if(legacy){legacy.innerHTML='';legacy.hidden=true;legacy.setAttribute('aria-hidden','true');}
+  const card=legacy?.closest('.card');
+  const heading=card?.querySelector('h3');
+  if(heading)heading.textContent='Calendario automático';
 }
 
 function host(){return document.getElementById('partidos');}
@@ -140,15 +127,16 @@ function render(data){
   const grouped=new Map();
   for(const match of matches){const f=fmt(match.utcDate);if(!grouped.has(f.day))grouped.set(f.day,[]);grouped.get(f.day).push(match)}
   if(token!==renderToken)return false;
-  const warning=data?.warning?`<div class="c31foot">Sincronización: ${esc(data.warning)}. El calendario permanece visible con el último respaldo válido.</div>`:'';
-  box.innerHTML=`<div class="c31head"><div><div class="c31title">📅 Partidos · LIVE</div><div class="c31sub">Carga automática · resultados y estados en directo cuando están disponibles · actualización cada 15 s</div></div><div class="c31badge ${live.length?'live':'ok'}">${live.length?`● ${live.length} EN DIRECTO`:'● ACTIVO'}</div></div><div class="c31hero"><div class="c31pill"><span>Partidos</span><b>${matches.length}</b></div><div class="c31pill"><span>En directo</span><b class="${live.length?'live':''}">${live.length}</b></div><div class="c31pill"><span>Finalizados</span><b>${finished.length}</b></div><div class="c31pill"><span>Siguientes</span><b>${upcoming.length}</b></div></div>${[...grouped.entries()].map(([day,items])=>`<div class="c31day">${esc(day)}</div>${items.map(m=>{const f=fmt(m.utcDate),st=status(m.status),hasScore=m.homeScore!=null||m.awayScore!=null;const scoreText=hasScore?`${m.homeScore??0} - ${m.awayScore??0}`:f.time;const source=(m.sources||[m.source||'LALIGA oficial']).join(' · ');return `<div class="c31match"><div class="c31team">${esc(m.home)}</div><div class="c31mid"><div class="c31score">${esc(scoreText)}</div><div class="c31status ${isLive(st)?'live':'muted'}">${isLive(st)?'● EN DIRECTO':isFinal(st)?'FINALIZADO':esc(st)}</div><div class="c31meta">${esc(source)}</div></div><div class="c31team c31away">${esc(m.away)}</div></div>`}).join('')}`).join('')||'<div class="c31empty">Sin partidos disponibles en este momento. Se seguirá intentando automáticamente.</div>'}${warning||`<div class="c31foot"><b>Datos:</b> identidad oficial LALIGA cuando está disponible; contraste público y respaldo automático sin controles manuales.</div>`}`;
+  const warning=data?.warning?`<div class="c31foot">Sincronización: ${esc(data.warning)}. Se mantiene el respaldo automático.</div>`:'';
+  box.innerHTML=`<div class="c31head"><div><div class="c31title">📅 Partidos · LIVE</div><div class="c31sub">Carga automática · resultados y estados en directo cuando están disponibles · actualización cada 15 s</div></div><div class="c31badge ${live.length?'live':'ok'}">${live.length?`● ${live.length} EN DIRECTO`:'● ACTIVO'}</div></div><div class="c31hero"><div class="c31pill"><span>Partidos</span><b>${matches.length}</b></div><div class="c31pill"><span>En directo</span><b class="${live.length?'live':''}">${live.length}</b></div><div class="c31pill"><span>Finalizados</span><b>${finished.length}</b></div><div class="c31pill"><span>Siguientes</span><b>${upcoming.length}</b></div></div>${[...grouped.entries()].map(([day,items])=>`<div class="c31day">${esc(day)}</div>${items.map(m=>{const f=fmt(m.utcDate),st=status(m.status),hasScore=m.homeScore!=null||m.awayScore!=null;const scoreText=hasScore?`${m.homeScore??0} - ${m.awayScore??0}`:f.time;const source=(m.sources||[m.source||'LALIGA oficial']).join(' · ');return`<div class="c31match"><div class="c31team">${esc(m.home)}</div><div class="c31mid"><div class="c31score">${esc(scoreText)}</div><div class="c31status ${isLive(st)?'live':'muted'}">${isLive(st)?'● EN DIRECTO':isFinal(st)?'FINALIZADO':esc(st)}</div><div class="c31meta">${esc(source)}</div></div><div class="c31team c31away">${esc(m.away)}</div></div>`}).join('')}`).join('')||'<div class="c31empty">Sin partidos disponibles en este momento. Se seguirá intentando automáticamente.</div>'}${warning||`<div class="c31foot"><b>Datos:</b> LALIGA oficial primero; contraste público y respaldo automático, sin controles manuales.</div>`}`;
+  box.dataset.initialized='1';
   return true;
 }
 
 async function refresh(){
   const box=ensureBox();
   if(!box)return false;
-  if(!box.dataset.initialized)box.innerHTML='<div class="c31empty">⏳ Cargando calendario automáticamente…</div>';
+  if(box.dataset.initialized!=='1')box.innerHTML='<div class="c31empty">⏳ Cargando calendario automáticamente…</div>';
   try{return render(await loadData())}catch{return render({matches:[],warning:'No se pudo consultar el calendario'})}
 }
 
