@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {estimateFantasyPoints,scorePlayerSignal,scoreNormalizedPlayers} from './fantasy-points-model-v34.mjs';
 
+// Contract v34: observed inputs only; predictions never become learned state.
 assert.equal(estimateFantasyPoints({points:10,probability:100,probable:true}),10.4);
 assert.equal(estimateFantasyPoints({points:10,probability:0}),6.5);
 assert.equal(estimateFantasyPoints({points:10,probability:100,status:'lesionado'}),9.3);
