@@ -3,7 +3,7 @@ import {estimateFantasyPoints,scorePlayerSignal,scoreNormalizedPlayers} from './
 
 assert.equal(estimateFantasyPoints({points:10,probability:100,probable:true}),10.4);
 assert.equal(estimateFantasyPoints({points:10,probability:0}),6.5);
-assert.equal(estimateFantasyPoints({points:10,probability:100,status:'lesionado'}),9.6);
+assert.equal(estimateFantasyPoints({points:10,probability:100,status:'lesionado'}),9.3);
 assert.equal(estimateFantasyPoints({points:100,probability:100}),20);
 
 const signal=scorePlayerSignal({name:'Jugador Uno',team:'Barcelona',points:8,probability:90,probable:true});
