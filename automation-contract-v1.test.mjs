@@ -14,7 +14,7 @@ const sw=read('sw.js');
 const config=read('config.mjs');
 const handoff=read('scripts/automation-handoff-v1.mjs');
 const battery=read('scripts/automation-battery-v2.mjs');
-const heal=read('scripts/self-heal-agent.mjs');
+const heal=read('.github/workflows/self-healing-ai.yml');
 const preflight=read('render-preflight.mjs');
 
 const checks=[
