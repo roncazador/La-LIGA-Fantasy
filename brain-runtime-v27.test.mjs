@@ -13,10 +13,10 @@ let stdout='';let stderr='';
 child.stdout.on('data',chunk=>{stdout+=chunk.toString()});
 child.stderr.on('data',chunk=>{stderr+=chunk.toString()});
 
-async function waitForHealth(){
+async function waitForHost(){
   for(let i=0;i<300;i++){
     try{
-      const response=await fetch(`${base}/api/health`);
+      const response=await fetch(`${base}/api/brain/status`,{cache:'no-store'});
       if(response.ok)return;
     }catch{}
     await new Promise(resolve=>setTimeout(resolve,50));
@@ -25,7 +25,7 @@ async function waitForHealth(){
 }
 
 try{
-  await waitForHealth();
+  await waitForHost();
 
   const predict=await fetch(`${base}/api/brain/predict`,{
     method:'POST',headers:{'content-type':'application/json'},
