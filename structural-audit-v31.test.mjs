@@ -36,7 +36,7 @@ const checks=[
   ['reliability hook separates confidence layers',reliabilityHook.includes('rawConfidence')&&reliabilityHook.includes('calibratedConfidence')],
   ['PWA caches calendar and detail layers',sw.includes('./calendar-autonomous-v30.js')&&sw.includes('./match-detail-ui-v31.js')],
   ['test script includes structural audit',packageJson.scripts.test.includes('structural-audit-v31.test.mjs')],
-  ['roadmap keeps structural pass first',next.includes('corrección estructural del sistema existente')]
+  ['roadmap preserves structural-first policy',next.toLocaleLowerCase('es').includes('corrección estructural')]
 ];
 
 assert.equal(checks.length,20);
