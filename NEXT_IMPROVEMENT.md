@@ -16,3 +16,4 @@ Aplicar predicción Fantasy únicamente sobre datos observados y normalizados, m
 ## Calidad
 - Ejecutar la batería completa antes de integrar.
 - No fusionar una versión con workflows fallidos.
+- Validar siempre el merge ref actualizado del PR.
