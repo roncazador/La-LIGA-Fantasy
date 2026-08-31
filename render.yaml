@@ -23,7 +23,28 @@ services:
         value: "1"
       - key: SESSION_COOKIE_NAME
         value: fm_session
-      # Persist model/history/cache here when a Render persistent disk is attached.
+      - key: AUTOMATION_ENABLED
+        value: "true"
+      - key: CULTIVOS_ENABLED
+        value: "true"
+      - key: AI_FEEDBACK_ENABLED
+        value: "false"
+      - key: AI_FEEDBACK_MODEL
+        value: ""
+      # Secret credentials are deliberately not committed. Render requires their
+      # values to be supplied in the Dashboard; existing Blueprints ignore sync:false
+      # on later syncs, so add/rotate these values manually when a provider is enabled.
+      - key: FOOTBALL_DATA_TOKEN
+        sync: false
+      - key: SPORTMONKS_API_TOKEN
+        sync: false
+      - key: API_FOOTBALL_API_KEY
+        sync: false
+      - key: OPTA_API_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      # Persist model/history/calendar/cultivation state when a Render persistent disk is attached.
       # Without a persistent disk the service remains functional, but learned state is ephemeral.
       - key: BRAIN_STATE_DIR
         value: /var/data/brain
