@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const detail=fs.readFileSync('./match-detail-ui-v31.js','utf8');
+const connection=fs.readFileSync('./connection-client.js','utf8');
+const sw=fs.readFileSync('./sw.js','utf8');
+assert.ok(connection.includes("load('/match-detail-ui-v31.js'"),'match detail layer loaded once');
+assert.ok(detail.includes("/api/futbolfantasy/data"),'uses existing FutbolFantasy endpoint');
+assert.ok(detail.includes('lineups')&&detail.includes('alineaciones'),'supports lineup payloads');
+assert.ok(detail.includes('predictedPoints')&&detail.includes('possiblePoints')&&detail.includes('expectedPoints'),'supports possible-points fields');
+assert.ok(detail.includes('No se ha encontrado una referencia específica'),'no fabricated source data');
+assert.ok(detail.includes('Las posibles puntuaciones son estimaciones'),'estimates are labelled');
+assert.ok(sw.includes('./match-detail-ui-v31.js'),'PWA caches match detail layer');
+console.log('MATCH DETAIL v31: 7/7 checks passed');
