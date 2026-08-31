@@ -6,6 +6,7 @@ const index=read('index.html');
 const connection=read('connection-client.js');
 const legacyCalendar=read('calendar-client.js');
 const autonomous=read('calendar-autonomous-v30.js');
+const detail=read('match-detail-ui-v31.js');
 const packageJson=JSON.parse(read('package.json'));
 const projectState=read('PROJECT_STATE.md');
 const next=read('NEXT_IMPROVEMENT.md');
@@ -25,15 +26,19 @@ const checks=[
   ['calendar uses persistent DOM observer',autonomous.includes('MutationObserver')],
   ['calendar has one refresh controller',((autonomous.match(/setInterval\(/g)||[]).length===1)],
   ['calendar supports live state',autonomous.includes('EN DIRECTO')],
-  ['calendar supports final state',autonomous.includes("FT")&&autonomous.includes('FINISHED')],
+  ['calendar supports final state',autonomous.includes('FINALIZADO')&&autonomous.includes('FT')],
+  ['calendar rows are interactive',autonomous.includes('c31match')&&detail.includes("closest?.('.c31match')")],
+  ['match detail uses existing FutbolFantasy endpoint',detail.includes("/api/futbolfantasy/data")],
+  ['match detail reads optional lineups only',detail.includes('lineups')&&detail.includes('probableLineup')],
+  ['match detail never fabricates missing player data',detail.includes("Alineación probable todavía no disponible")],
   ['project preserves read-only mode',projectState.includes('solo lectura')],
   ['self-healing remains contractual',selfHealAgent.includes('npm test')&&selfHealMemory.includes('correcc')],
   ['reliability hook separates confidence layers',reliabilityHook.includes('rawConfidence')&&reliabilityHook.includes('calibratedConfidence')],
-  ['PWA caches autonomous calendar',sw.includes('./calendar-autonomous-v30.js')],
+  ['PWA caches calendar and detail layers',sw.includes('./calendar-autonomous-v30.js')&&sw.includes('./match-detail-ui-v31.js')],
   ['test script includes structural audit',packageJson.scripts.test.includes('structural-audit-v31.test.mjs')],
   ['roadmap keeps structural pass first',next.includes('corrección estructural del sistema existente')]
 ];
 
-assert.equal(checks.length,16);
+assert.equal(checks.length,20);
 for(const [name,ok] of checks) assert.ok(ok,name);
-console.log('STRUCTURAL AUDIT v31: 16/16 checks passed');
+console.log('STRUCTURAL AUDIT v31: 20/20 checks passed');
