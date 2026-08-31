@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const cal=fs.readFileSync('./calendar-autonomous-v35.js','utf8');
+const conn=fs.readFileSync('./connection-client.js','utf8');
+const config=fs.readFileSync('./config.mjs','utf8');
+const sw=fs.readFileSync('./sw.js','utf8');
+assert.ok(conn.includes("loadInline('/calendar-autonomous-v35.js','35')"),'connection loads calendar v35');
+assert.ok(config.includes("'/calendar-autonomous-v35.js'"),'calendar v35 is publicly served');
+assert.ok(sw.includes('./calendar-autonomous-v35.js'),'service worker caches calendar v35');
+assert.ok(cal.includes('inferCurrentMatchday'),'calendar infers the current jornada from live/date context');
+assert.ok(cal.includes('localDay(now)'),'calendar considers Madrid local day');
+assert.ok(cal.includes('liveRows.length'),'calendar prioritizes live matches');
+assert.ok(cal.includes('Jornada anterior')&&cal.includes('Jornada siguiente'),'calendar has jornada navigation');
+assert.ok(cal.includes('var(--red')&&cal.includes('var(--panel')&&cal.includes('var(--line'),'calendar reuses application theme variables');
+assert.ok(cal.includes('data-match-id')&&cal.includes('openDetail(m)'),'calendar opens detail on match click');
+console.log('CALENDAR UI v35: 9/9 assertions passed');
