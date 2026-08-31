@@ -14,6 +14,7 @@ Aplicar predicción Fantasy únicamente sobre datos observados y normalizados, m
 - Validar cualquier nueva señal antes de incorporarla al cerebro.
 
 ## Calidad
+- Corrección estructural del sistema existente antes de añadir nuevas capas.
 - Ejecutar la batería completa antes de integrar.
 - No fusionar una versión con workflows fallidos.
 - Validar siempre el merge ref actualizado del PR.
