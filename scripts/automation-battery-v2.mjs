@@ -27,10 +27,11 @@ const credentialPatterns=[
 const placeholder=/^(?:YOUR_API_KEY|YOUR_TOKEN|REPLACE_ME|CHANGE_ME|PROCESS\.ENV\.[A-Z0-9_]+|\$\{[^}]+\})$/i;
 function detectCredential(text){for(const re of credentialPatterns){const m=text.match(re);if(m&&m[1]&&!placeholder.test(m[1].trim()))return m[0]}return null}
 const scanFiles=walk(ROOT).filter(p=>/\.(js|mjs|json|yml|yaml|html|env|txt)$/.test(p)).filter(p=>!/^automation-(battery|handoff)-report\./.test(path.basename(p)));
-const productionScanFiles=scanFiles.filter(p=>{const base=path.basename(p);const normalized=p.replaceAll('\\','/');return !/(^|\/)test(?:\.[^/]*)?\.(?:js|mjs)$/.test(normalized)&&!/(^|\/)tests?(?:\.[^/]*)?\.(?:js|mjs)$/.test(normalized)&&!/(^|\/)__tests__\//.test(normalized)&&!/(?:\.test|\.spec)\.(?:js|mjs)$/.test(base)});
+const productionScanFiles=scanFiles.filter(p=>{const base=path.basename(p);const normalized=p.replaceAll('\\','/');return base!=='automation-battery-v2.mjs'&&!/(^|\/)test(?:\.[^/]*)?\.(?:js|mjs)$/.test(normalized)&&!/(^|\/)tests?(?:\.[^/]*)?\.(?:js|mjs)$/.test(normalized)&&!/(^|\/)__tests__\//.test(normalized)&&!/(?:\.test|\.spec)\.(?:js|mjs)$/.test(base)});
 for(const file of productionScanFiles){let text='';try{text=read(file)}catch{continue}push(`secret assignment scan: ${file}`,!detectCredential(text),'security',detectCredential(text)?'credential-shaped assignment detected':'')}
 push('secret detector ignores placeholders',!detectCredential('API_FOOTBALL_API_KEY="YOUR_API_KEY"'),'security');
 push('secret detector catches synthetic credential',Boolean(detectCredential('API_FOOTBALL_API_KEY="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"')),'security');
+push('credential scan excludes its own detector source',!productionScanFiles.some(p=>path.basename(p)==='automation-battery-v2.mjs'),'security');
 
 const hub=exists('automation-hub-v1.js')?read('automation-hub-v1.js'):'';
 const dyn=exists('app-dynamics-v37.js')?read('app-dynamics-v37.js'):'';
