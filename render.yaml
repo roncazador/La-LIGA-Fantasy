@@ -8,6 +8,10 @@ services:
     startCommand: npm start
     healthCheckPath: /api/health
     maxShutdownDelaySeconds: 60
+    disk:
+      name: fantasy-brain-data
+      mountPath: /var/data/brain
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -44,7 +48,5 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      # Persist model/history/calendar/cultivation state when a Render persistent disk is attached.
-      # Without a persistent disk the service remains functional, but learned state is ephemeral.
       - key: BRAIN_STATE_DIR
         value: /var/data/brain
