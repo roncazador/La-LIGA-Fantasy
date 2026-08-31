@@ -24,13 +24,16 @@ La pantalla **Partidos** se carga automáticamente, sin botones manuales. `calen
 Durante la fusión de fuentes, LALIGA oficial conserva la identidad primaria, pero una fuente de contraste puede **completar campos que falten** (marcador, jornada) y aportar un estado más avanzado como LIVE, sin degradar un estado final ni sustituir la identidad oficial. Marcadores y jornadas fuera de rango se descartan.
 
 ## FutbolFantasy.com
-El sistema obtiene y normaliza datos públicos cuando están disponibles. La capa de datos inspecciona inicio, LaLiga, alineaciones probables, lesionados y estadísticas y los presenta internamente como contraste público, sin convertirlos silenciosamente en fuente oficial. El detalle de cada partido puede consumir las estructuras `lineups`/`alineaciones` y campos de posibles puntos cuando el backend ya los haya normalizado; no inventa datos cuando no están disponibles.
+`futbolfantasy-normalizer-v33.mjs` centraliza la extracción y normalización de fuentes públicas: página de LaLiga, alineaciones probables, lesionados, estadísticas y puntos de jugadores. Normaliza nombres de equipos, probabilidades de titularidad, estados físicos, filas tabulares, puntos históricos, emparejamientos y evidencia por fuente, con deduplicación por jugador/equipo y checksum de página.
+
+`futbolfantasy-data-v30.mjs` expone esa salida mediante `/api/futbolfantasy/data` con caché de 5 minutos y separación explícita entre datos observados y futuras predicciones del cerebro. El detalle de partido consume `lineups`, lesiones y puntos normalizados; cuando una fuente no aporta un dato no se inventa.
 
 ## Ramas preparadas
-Se han preparado ramas independientes desde `main` para no mezclar futuras funcionalidades:
+Se mantienen ramas independientes desde `main` para no mezclar futuras funcionalidades:
 - `feat/match-detail-futbolfantasy-v32`: detalle de partido, alineaciones y datos de contraste.
 - `feat/fantasy-points-model-v32`: evolución del modelo de posibles puntos Fantasy.
 - `feat/live-market-v32`: mercado LIVE y sus contratos de datos.
+- `feat/futbolfantasy-normalization-v33`: normalización y extracción pública actualmente en validación.
 
 Estas ramas son puntos de partida; no se integrarán cambios funcionales hasta que la línea estable haya superado su regresión.
 
@@ -53,6 +56,7 @@ La interfaz mantiene las mismas secciones y flujos. El ajuste visual actual refi
 - ausencia de duplicados y botones heredados;
 - caché móvil/service worker;
 - UI y datos públicos FutbolFantasy;
+- normalizador público y puntos históricos;
 - detalle interactivo de partido;
 - self-healing y memoria de correcciones.
 
