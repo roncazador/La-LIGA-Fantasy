@@ -71,12 +71,13 @@ const checks=[
  ['battery emits markdown report',battery.includes('automation-battery-report.md')],
  ['battery continues after individual test failure',battery.includes('for(const file of commands)')],
  ['battery performs syntax checks',battery.includes("['--check'")],
- ['battery scans secret-like patterns',battery.includes('const secret=')],
+ ['battery scans credential assignments',battery.includes('credentialPatterns')&&battery.includes('detectCredential')],
+ ['battery ignores test fixtures in production credential scan',battery.includes('productionScanFiles')&&battery.includes('test(?:\\.[^/]*)?')],
  ['battery recursively scans repository',battery.includes('function walk(dir)')],
  ['self-heal agent remains present',heal.includes('self-heal-agent')||heal.includes('SELF_HEAL_SUCCESS')],
  ['render preflight remains available',preflight.includes('RENDER_PREFLIGHT_OK')]
 ];
 
-assert.equal(checks.length,57,`Se esperaban 57 comprobaciones y hay ${checks.length}`);
+assert.equal(checks.length,58,`Se esperaban 58 comprobaciones y hay ${checks.length}`);
 for(const [i,[name,ok]] of checks.entries()) assert.ok(ok,`AUTOMATION-${String(i+1).padStart(3,'0')}: ${name}`);
-console.log('AUTOMATION CONTRACT v1: 57/57 checks passed');
+console.log('AUTOMATION CONTRACT v1: 58/58 checks passed');
