@@ -1,8 +1,0 @@
-name: Project Node 24
-runs:
-  using: composite
-  steps:
-    - name: Setup Node.js 24.14.1
-      uses: actions/setup-node@v4
-      with:
-        node-version: 24.14.1
