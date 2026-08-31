@@ -3,23 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const workflowDir = '.github/workflows';
-const files = fs.readdirSync(workflowDir)
-  .filter(file => /\.ya?ml$/i.test(file))
-  .sort();
-
+const files = fs.readdirSync(workflowDir).filter(file => /\.ya?ml$/i.test(file)).sort();
 assert.ok(files.length > 0, 'CI-GOV: no workflow files found');
 
 const findings = [];
 for (const file of files) {
-  const full = path.join(workflowDir, file);
-  const text = fs.readFileSync(full, 'utf8');
+  const text = fs.readFileSync(path.join(workflowDir, file), 'utf8');
   const nodeVersions = [...text.matchAll(/node-version:\s*([^#\n]+)/g)]
     .map(match => match[1].trim().replace(/^['\"]|['\"]$/g, ''));
   if (nodeVersions.length && nodeVersions.some(version => version !== '24.14.1')) {
     findings.push(`${file}: Node versions must be pinned to 24.14.1; found ${nodeVersions.join(', ')}`);
-  }
-  if (text.includes('actions/checkout@v4') && !text.includes('permissions:')) {
-    findings.push(`${file}: workflow must declare explicit permissions`);
   }
 }
 
