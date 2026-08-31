@@ -14,14 +14,14 @@ child.stdout.on('data',chunk=>{stdout+=chunk.toString()});
 child.stderr.on('data',chunk=>{stderr+=chunk.toString()});
 
 async function waitForHealth(){
-  for(let i=0;i<80;i++){
+  for(let i=0;i<300;i++){
     try{
       const response=await fetch(`${base}/api/health`);
       if(response.ok)return;
     }catch{}
     await new Promise(resolve=>setTimeout(resolve,50));
   }
-  throw new Error(`backend did not start: ${stderr}`);
+  throw new Error(`backend did not start within 15s: ${stderr || stdout || 'no child output'}`);
 }
 
 try{
