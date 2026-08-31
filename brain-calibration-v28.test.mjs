@@ -30,7 +30,7 @@ try{
   const prediction=brain.predict(player,{week:1});
   assert.ok(Number.isInteger(prediction.confidence));
   assert.equal(prediction.calibrationVersion,'2.8.0');
-  brain.learn({expected:prediction.expectedPoints,actual:prediction.expectedPoints,features:prediction.features,position:'MED',confidence:prediction.confidence});
+  brain.learn({expected:prediction.expectedPoints,actual:prediction.expectedPoints,features:prediction.features,position:'MED',confidence:prediction.confidence,final:true});
   const status=brain.status();
   assert.equal(status.calibrationVersion,'2.8.0');
   assert.equal(status.calibration.samples,1);
