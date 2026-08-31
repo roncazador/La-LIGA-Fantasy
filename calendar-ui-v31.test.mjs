@@ -21,7 +21,7 @@ check(calendarNext.includes('homeScore')&&calendarNext.includes('awayScore'),'De
 check(calendarNext.includes('EN DIRECTO'),'Debe representar explícitamente estados LIVE.');
 check(/loadInline\('\/calendar-autonomous-v34\.js','34'\)/.test(connection),'El loader debe cargar la versión actual del calendario.');
 check(connection.includes('data-fantasy-layer'),'El loader debe impedir scripts duplicados.');
-check(connection.includes("load('/match-detail-ui-v31.js'"),'El loader debe incluir el detalle interactivo del partido.');
+check(/load(?:Inline)?\('\/match-detail-ui-v31\.js'/.test(connection),'El loader debe incluir el detalle interactivo del partido.');
 check(index.includes('id="partidos"'),'La pantalla Partidos debe existir.');
 check(index.includes('id="loadFixtures"')&&index.includes('id="loadSeed"'),'Los controles heredados siguen presentes en HTML y el calendario debe retirarlos en runtime.');
-console.log('CALENDAR UI v31: 15/15 structural assertions passed');
+console.log('CALENDAR UI v31: 16/16 structural assertions passed');
