@@ -29,7 +29,7 @@ const checks=[
   ['calendar supports final state',autonomous.includes('FINALIZADO')&&autonomous.includes('FT')],
   ['calendar rows are interactive',autonomous.includes('c31match')&&detail.includes("closest?.('.c31match')")],
   ['match detail uses existing FutbolFantasy endpoint',detail.includes("/api/futbolfantasy/data")],
-  ['match detail reads optional lineups only',detail.includes('lineups')&&detail.includes('probableLineup')],
+  ['match detail reads optional lineups only',detail.includes('lineups')&&detail.includes('alineaciones')],
   ['match detail never fabricates missing player data',detail.includes("Alineación probable todavía no disponible")],
   ['project preserves read-only mode',projectState.includes('solo lectura')],
   ['self-healing remains contractual',selfHealAgent.includes('npm test')&&selfHealMemory.includes('correcc')],
