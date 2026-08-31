@@ -22,9 +22,21 @@ try{
   assert.notDeepEqual(brain.state.weights,before);
   assert.equal(brain.state.accuratePredictions,0);
 
+  const beforeMissingFinal={...brain.state.weights};
+  const missingFinal=brain.learn({expected:10,actual:20,features,position:'MED'});
+  assert.equal(missingFinal.learned,false);
+  assert.equal(missingFinal.reason,'non-final-label');
+  assert.deepEqual(brain.state.weights,beforeMissingFinal);
+
   const nonFinal=brain.learn({expected:10,actual:20,features,position:'MED',final:false});
   assert.equal(nonFinal.learned,false);
   assert.equal(nonFinal.reason,'non-final-label');
+
+  const withPartialWeek={...player,weekPoints:1};
+  const withDifferentPartialWeek={...player,weekPoints:99};
+  const confidenceA=brain.predict(withPartialWeek,{fixture:{context:75,homeAway:'home'},week:2}).rawConfidence;
+  const confidenceB=brain.predict(withDifferentPartialWeek,{fixture:{context:75,homeAway:'home'},week:2}).rawConfidence;
+  assert.equal(confidenceA,confidenceB);
 
   const accurate=brain.learn({expected:10,actual:12,features,position:'MED',final:true});
   assert.equal(accurate.learned,true);
@@ -57,6 +69,14 @@ try{
   const invalid=reloaded.learn({expected:'bad',actual:4,features,position:'MED',final:true});
   assert.equal(invalid.learned,false);
   assert.equal(invalid.reason,'invalid-label');
+
+  for(let correction=0;correction<10;correction++){
+    const stableBefore={...reloaded.state.weights};
+    const blocked=reloaded.learn({expected:20+correction,actual:25+correction,features,position:'MED',final:correction%2===0?false:undefined});
+    assert.equal(blocked.learned,false);
+    assert.equal(blocked.reason,'non-final-label');
+    assert.deepEqual(reloaded.state.weights,stableBefore);
+  }
 
   let loops=0;
   for(let i=1;i<=100000;i++){
