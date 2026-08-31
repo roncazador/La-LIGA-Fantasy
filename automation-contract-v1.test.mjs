@@ -39,6 +39,7 @@ const checks=[
  ['automation battery command is exposed',pkg.scripts['test:automation']==='node scripts/automation-battery-v2.mjs'],
  ['hub exposes versioned state schema',hub.includes('laliga-automation-state/v1')],
  ['hub exposes ChatGPT handoff schema',hub.includes('laliga-automation-handoff/v1')],
+ ['hub handoff is explicitly read-only',hub.includes('readOnly:true')],
  ['hub records bounded errors',hub.includes('MAX_ERRORS=40')&&hub.includes('recentErrors')],
  ['hub records bounded events',hub.includes('MAX_EVENTS=200')&&hub.includes('recentEvents')],
  ['hub listens to calendar updates',hub.includes('laliga:calendar-updated')],
@@ -65,15 +66,17 @@ const checks=[
  ['handoff samples critical workflow runs',handoff.includes('/actions/runs?per_page=40')],
  ['handoff includes failed job logs',handoff.includes('/actions/jobs/${job.id}/logs')],
  ['handoff carries recommendations',handoff.includes('recommendations')],
- ['battery emits machine-readable JSON',battery.includes('automation-battery/v2')&&battery.includes('automation-battery-report.json')],
+ ['handoff limits failure records',handoff.includes('slice(0,10)')&&handoff.includes('slice(0,8)')],
+ ['battery emits machine-readable JSON',battery.includes('laliga-automation-battery/v2')&&battery.includes('automation-battery-report.json')],
  ['battery emits markdown report',battery.includes('automation-battery-report.md')],
  ['battery continues after individual test failure',battery.includes('for(const file of commands)')],
  ['battery performs syntax checks',battery.includes("['--check'")],
  ['battery scans secret-like patterns',battery.includes('const secret=')],
+ ['battery recursively scans repository',battery.includes('function walk(dir)')],
  ['self-heal agent remains present',heal.includes('self-heal-agent')||heal.includes('SELF_HEAL_SUCCESS')],
  ['render preflight remains available',preflight.includes('RENDER_PREFLIGHT_OK')]
 ];
 
-assert.equal(checks.length,56,`Se esperaban 56 comprobaciones y hay ${checks.length}`);
+assert.equal(checks.length,58,`Se esperaban 58 comprobaciones y hay ${checks.length}`);
 for(const [i,[name,ok]] of checks.entries()) assert.ok(ok,`AUTOMATION-${String(i+1).padStart(3,'0')}: ${name}`);
-console.log('AUTOMATION CONTRACT v1: 56/56 checks passed');
+console.log('AUTOMATION CONTRACT v1: 58/58 checks passed');
