@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'laliga-brain-runtime-v27-'));
 const port=Number(process.env.TEST_PORT||18727)+(process.pid%1000);
 const base=`http://127.0.0.1:${port}`;
-const env={...process.env,PORT:String(port),HOST:'127.0.0.1',BRAIN_STATE_DIR:dir,BRAIN_ADMIN_TOKEN:'runtime-test-secret'};
+const env={...process.env,PORT:String(port),HOST:'127.0.0.1',BRAIN_STATE_DIR:dir,BRAIN_ADMIN_TOKEN:'runtime-test-secret',API_FOOTBALL_API_KEY:'runtime-test-placeholder'};
 const child=spawn(process.execPath,['brain-host-v27.mjs'],{cwd:process.cwd(),env,stdio:['ignore','pipe','pipe']});
 let stdout='';let stderr='';
 child.stdout.on('data',chunk=>{stdout+=chunk.toString()});
