@@ -1,12 +1,56 @@
 import { fetchFutbolFantasy } from './calendar-service-v29.mjs';
-const text=x=>String(x??'');
+import { fetchPublicSources, FUTBOLFANTASY_PUBLIC_SOURCES } from './futbolfantasy-normalizer-v33.mjs';
+
 let cache=null;
+
+function text(x){return String(x??'');}
+
 export async function fetchFutbolFantasyData(config={}){
   if(cache&&Date.now()-cache.at<5*60*1000)return cache.data;
+
   const base=text(config.futbolFantasyUrl||'https://www.futbolfantasy.com').replace(/\/$/,'');
-  const paths=['/','/laliga','/laliga/alineaciones-probables','/laliga/lesionados','/laliga/estadisticas'];
-  const pages=(await Promise.all(paths.map(async suffix=>{try{const r=await fetch(`${base}${suffix}`,{headers:{Accept:'text/html,application/xhtml+xml','User-Agent':'LALIGA-Fantasy-Manager/3.0.0 (read-only)'},cache:'no-store',signal:AbortSignal.timeout(7000)});if(!r.ok)return null;const html=await r.text();if(html.length>5000000)return null;const links=[...html.matchAll(/href=["']([^"']+)["']/gi)].map(m=>m[1]).filter(Boolean).slice(0,250);const headings=[...html.matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/gi)].map(m=>m[1].replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean).slice(0,100);return{path:suffix,status:r.status,bytes:html.length,links,headings,hasStructuredData:/application\/ld\+json|__NEXT_DATA__|__INITIAL_STATE__|__PRELOADED_STATE__/i.test(html)}}catch{return null}}))).filter(Boolean);
-  let calendar=[];try{const ff=await fetchFutbolFantasy(config);calendar=Array.isArray(ff.matches)?ff.matches:[]}catch{}
-  const data={source:'futbolfantasy.com',readOnly:true,calendar,pages,availablePages:pages.map(p=>p.path),counts:{calendar:calendar.length,pages:pages.length,links:pages.reduce((n,p)=>n+p.links.length,0),headings:pages.reduce((n,p)=>n+p.headings.length,0)},checkedAt:new Date().toISOString()};
-  cache={at:Date.now(),data};return data;
+  let normalized=null;
+  try {
+    if(base==='https://www.futbolfantasy.com') normalized=await fetchPublicSources();
+    else normalized=await fetchPublicSources();
+  } catch {
+    normalized=null;
+  }
+
+  let calendar=[];
+  try {
+    const ff=await fetchFutbolFantasy({futbolFantasyUrl:base});
+    calendar=Array.isArray(ff.matches)?ff.matches:[];
+  } catch {}
+
+  const data={
+    version:'3.3.0',
+    source:'public-fantasy-contrast',
+    readOnly:true,
+    sourcePolicy:'public-contrast-only',
+    calendar,
+    matches:normalized?.matches||[],
+    players:normalized?.players||[],
+    injuries:normalized?.injuries||[],
+    stats:normalized?.stats||[],
+    pages:normalized?.pages||[],
+    references:(normalized?.matches||[]).map(match=>({
+      home:match.home,
+      away:match.away,
+      evidence:match.evidence||[],
+      playerCount:Array.isArray(match.players)?match.players.length:0
+    })),
+    availableSources:FUTBOLFANTASY_PUBLIC_SOURCES.map(({key,url})=>({key,url})),
+    counts:{
+      calendar:calendar.length,
+      matches:normalized?.matches?.length||0,
+      players:normalized?.players?.length||0,
+      injuries:normalized?.injuries?.length||0,
+      stats:normalized?.stats?.length||0,
+      pages:normalized?.pages?.length||0
+    },
+    checkedAt:normalized?.retrievedAt||new Date().toISOString()
+  };
+  cache={at:Date.now(),data};
+  return data;
 }
