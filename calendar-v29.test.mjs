@@ -14,7 +14,9 @@ assert.ok(service.includes('laliga-easports-2026'));
 assert.ok(host.includes('fetchLaligaOfficialSeed'));
 assert.ok(host.includes("officialMode:sessionRaw.length?'authenticated':'auto-refreshed-seed'"));
 assert.ok(client.includes('/api/calendar/autonomous'));
-assert.ok(client.includes('setInterval(()=>get().then(render).catch(()=>{}),30000)'));
+assert.ok(client.includes('15000'));
+assert.ok(client.includes('MutationObserver'));
+assert.ok(!client.includes("host.innerHTML=''"));
 
 const official={source:'LALIGA oficial',matches:[{id:'1',utcDate:'2026-09-01T19:00:00Z',home:'Real Madrid',away:'Barcelona',status:'TIMED',matchday:4}]};
 const ff={source:'futbolfantasy.com',matches:[{id:'ff1',utcDate:'2026-09-01T19:00:00Z',home:'Real Madrid',away:'Barcelona',status:'LIVE',matchday:4,homeScore:2,awayScore:1}]};

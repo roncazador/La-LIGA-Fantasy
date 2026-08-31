@@ -1,4 +1,4 @@
-const CACHE_NAME='fm-v302';
+const CACHE_NAME='fm-v303';
 const STATIC_ASSETS=['./index.html','./manifest.json','./sw.js','./dashboard-client.js','./calendar-client.js','./calendar-autonomous-v30.js','./focus-ui-v30.js','./futbolfantasy-ui-v30.js','./data-client.js','./recording-client.js','./official-fixtures-seed-2026-27.json','./video-reference-snapshot-2026-08-27.json','./recording-data-2026-08-27.json'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(STATIC_ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
