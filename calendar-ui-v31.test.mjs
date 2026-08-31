@@ -19,7 +19,7 @@ check(!calendarNext.includes('setTimeout(run,250)'),'No debe existir el timeout 
 check(calendarNext.includes("box.setAttribute('aria-live','polite')"),'El calendario debe anunciar actualizaciones accesibles.');
 check(calendarNext.includes('homeScore')&&calendarNext.includes('awayScore'),'Debe renderizar marcadores cuando existen.');
 check(calendarNext.includes('EN DIRECTO'),'Debe representar explícitamente estados LIVE.');
-check(/load\('\/calendar-autonomous-v34\.js','34'\)/.test(connection),'El loader debe cargar la versión actual del calendario.');
+check(/loadInline\('\/calendar-autonomous-v34\.js','34'\)/.test(connection),'El loader debe cargar la versión actual del calendario.');
 check(connection.includes('data-fantasy-layer'),'El loader debe impedir scripts duplicados.');
 check(connection.includes("load('/match-detail-ui-v31.js'"),'El loader debe incluir el detalle interactivo del partido.');
 check(index.includes('id="partidos"'),'La pantalla Partidos debe existir.');
