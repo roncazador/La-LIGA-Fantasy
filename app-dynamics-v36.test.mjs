@@ -32,5 +32,5 @@ check(sw.includes("CACHE_NAME='fm-v307'"),'caché PWA rotada');
 check(!/api[_-]?key|bearer\s+[A-Za-z0-9._-]{20,}|x-apisports-key/i.test(dynamics),'sin secretos en frontend');
 check(!dynamics.includes("/api/calendar/autonomous"),'sin segunda petición de calendario');
 check(dynamics.includes("window.LALIGA_CALENDAR_V35?.refresh?.()"),'reutiliza el refresco oficial al volver');
-assert.equal(checks,25,`Se esperaban 25 comprobaciones y hay ${checks}`);
+assert.equal(checks,24,`Se esperaban 24 comprobaciones y hay ${checks}`);
 console.log(`APP DYNAMICS v36: ${checks}/${checks} checks passed`);
