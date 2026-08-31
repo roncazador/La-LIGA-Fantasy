@@ -15,7 +15,7 @@ const TEAM_ALIASES = new Map([
   ['real sociedad','Real Sociedad'],['sevilla','Sevilla'],['valencia','Valencia'],['villarreal','Villarreal']
 ]);
 const TEAM_SET = new Set(TEAM_ALIASES.values());
-const STATUS_WORDS = new Set(['baja','duda','tocado','disponible','alta','sancionado']);
+const STATUS_WORDS = new Set(['baja','duda','tocado','disponible','alta','sancionado','molestias','lesionado','lesion','sancion','parte medico']);
 const GENERIC_LABELS = new Set(['image','más info','jugador','pts','rachas','pj','med','v/p','siguiente','anterior','ver todos']);
 
 export function normalizeText(value = '') {
@@ -133,20 +133,42 @@ export function extractMatchups(html) {
   return out;
 }
 
+function cleanInjuryPlayer(value='') {
+  return canonicalPlayer(String(value)
+    .replace(/^(?:image|icon|foto)\s+/i,'')
+    .replace(/\b(?:lesionado|lesion|molestias|sancion|sanción|parte médico|duda|baja|tocado|disponible)\b.*$/i,'')
+    .replace(/\b(?:para la jornada|para el partido).*/i,'')
+    .trim());
+}
+
 export function extractInjuries(html) {
   const text = normalizeText(html);
-  const lines = text.split(/(?=(?:0|[1-9]\d?|100)\s*%)/).map(x => x.trim()).filter(Boolean);
   const out = [];
-  for (const line of lines) {
-    const probability = parsePercent(line);
+  const segments = text
+    .split(/(?=(?:0|[1-9]\d?|100)\s*%)/)
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  for (const segment of segments) {
+    const probability = parsePercent(segment);
     if (probability == null) continue;
-    const team = [...TEAM_SET].find(t => line.toLowerCase().includes(t.toLowerCase())) || null;
-    const cleaned = line.replace(/(?:0|[1-9]\d?|100)\s*%/,' ').replace(team || '',' ').trim();
-    const match = cleaned.match(/^([^\d]{2,80}?)(?:\s+(Lesión|Molestias|Sanción|Parte médico|Disponible|Duda|Baja|Tocado)\b)?/i);
-    const player = canonicalPlayer(match?.[1] || '');
-    if (!player || player.length < 3) continue;
-    const status = STATUS_WORDS.has(String(match?.[2] || '').toLowerCase()) ? String(match[2]).toLowerCase() : null;
-    out.push({player,team,probability,status,raw:line.slice(0,300)});
+    const team = [...TEAM_SET].find(t => segment.toLowerCase().includes(t.toLowerCase())) || null;
+    const withoutPercent = segment.replace(/(?:0|[1-9]\d?|100)\s*%/,' ');
+    const withoutTeam = team ? withoutPercent.replace(new RegExp(`\\b${team.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,'i'),' ') : withoutPercent;
+    const statusMatch = withoutTeam.match(/\b(Baja|Duda|Tocado|Disponible|Alta|Sancionado|Molestias|Lesionado|Lesión|Sanción|Parte médico)\b/i);
+    const status = statusMatch ? statusMatch[1].toLowerCase() : null;
+    const player = cleanInjuryPlayer(withoutTeam);
+    if (!player || player.length < 3 || GENERIC_LABELS.has(player.toLowerCase())) continue;
+    out.push({player,team,probability,status,raw:segment.slice(0,300)});
+  }
+
+  for (const row of extractTableRows(html)) {
+    const joined=row.cells.join(' ');
+    const probability=parsePercent(joined);
+    if(probability==null) continue;
+    const team=row.cells.map(c=>canonicalTeam(c)).find(Boolean)||null;
+    const player=cleanInjuryPlayer(row.cells.find(c=>!canonicalTeam(c)&&!/%/.test(c))||'');
+    if(player&&player.length>=3&&!GENERIC_LABELS.has(player.toLowerCase())) out.push({player,team,probability,status:null,raw:joined.slice(0,300)});
   }
   return dedupePlayers(out).slice(0,300);
 }
@@ -205,17 +227,9 @@ export function normalizeBundle(pages, {now = new Date()} = {}) {
   const points = parsed.flatMap(x => x.points || []);
   const players=[...new Map([...lineups.flatMap(x=>x.players||[]),...points].map(p=>[`${p.team||''}|${p.name}`,p])).values()];
   return {
-    version:'3.3.1',
-    retrievedAt:now.toISOString(),
-    pages:normalizedPages,
+    version:'3.3.1',retrievedAt:now.toISOString(),pages:normalizedPages,
     references:lineups.map(({home,away,evidence,lineups})=>({home,away,evidence,lineups})),
-    matches:lineups,
-    players,
-    injuries,
-    stats,
-    points,
-    sourcePolicy:'public-contrast-only',
-    ok:normalizedPages.some(x => x.ok)
+    matches:lineups,players,injuries,stats,points,sourcePolicy:'public-contrast-only',ok:normalizedPages.some(x => x.ok)
   };
 }
 
@@ -224,16 +238,10 @@ export async function fetchPublicSources({signal,baseUrl='https://www.futbolfant
   const pages = await Promise.all(FUTBOLFANTASY_PUBLIC_SOURCES.map(async source => {
     const url=`${base}${source.path}`;
     try {
-      const response = await fetch(url, {
-        headers: {Accept:'text/html,application/xhtml+xml', 'User-Agent':'LALIGA-Fantasy-Manager/3.3.1 read-only'},
-        cache:'no-store',
-        signal: signal || AbortSignal.timeout(12000)
-      });
+      const response = await fetch(url,{headers:{Accept:'text/html,application/xhtml+xml','User-Agent':'LALIGA-Fantasy-Manager/3.3.1 read-only'},cache:'no-store',signal:signal || AbortSignal.timeout(12000)});
       const html = await response.text();
       return {kind:source.key,url,status:response.status,html};
-    } catch (error) {
-      return {kind:source.key,url,status:0,html:'',error:error?.message || 'FETCH_FAILED'};
-    }
+    } catch (error) { return {kind:source.key,url,status:0,html:'',error:error?.message || 'FETCH_FAILED'}; }
   }));
   const bundle=normalizeBundle(pages);
   return {...bundle,pages:bundle.pages.map((page,index)=>({...page,error:pages[index]?.error||null}))};
