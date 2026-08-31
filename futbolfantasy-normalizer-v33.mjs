@@ -1,10 +1,11 @@
 import crypto from 'node:crypto';
 
 export const FUTBOLFANTASY_PUBLIC_SOURCES = Object.freeze([
-  { key: 'home', url: 'https://www.futbolfantasy.com/laliga/home' },
-  { key: 'lineups', url: 'https://www.futbolfantasy.com/laliga/posibles-alineaciones' },
-  { key: 'injuries', url: 'https://www.futbolfantasy.com/laliga/lesionados' },
-  { key: 'stats', url: 'https://www.futbolfantasy.com/laliga/estadisticas-puntos' }
+  { key: 'home', path: '/laliga/home' },
+  { key: 'lineups', path: '/laliga/posibles-alineaciones' },
+  { key: 'injuries', path: '/laliga/lesionados' },
+  { key: 'stats', path: '/laliga/estadisticas' },
+  { key: 'points', path: '/analytics/laliga-fantasy/puntos' }
 ]);
 
 const TEAM_ALIASES = new Map([
@@ -15,6 +16,7 @@ const TEAM_ALIASES = new Map([
 ]);
 const TEAM_SET = new Set(TEAM_ALIASES.values());
 const STATUS_WORDS = new Set(['baja','duda','tocado','disponible','alta','sancionado']);
+const GENERIC_LABELS = new Set(['image','más info','jugador','pts','rachas','pj','med','v/p','siguiente','anterior','ver todos']);
 
 export function normalizeText(value = '') {
   return String(value)
@@ -23,9 +25,14 @@ export function normalizeText(value = '') {
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;|&#160;/gi, ' ')
     .replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
-    .replace(/&aacute;|á/gi,'á').replace(/&eacute;|é/gi,'é').replace(/&iacute;|í/gi,'í').replace(/&oacute;|ó/gi,'ó').replace(/&uacute;|ú/gi,'ú')
+    .replace(/&aacute;/gi,'á').replace(/&eacute;/gi,'é').replace(/&iacute;/gi,'í').replace(/&oacute;/gi,'ó').replace(/&uacute;/gi,'ú')
     .replace(/&#x([0-9a-f]+);/gi, (_,h) => String.fromCodePoint(parseInt(h,16)))
     .replace(/\s+/g, ' ').trim();
+}
+
+function plainCell(value='') {
+  const text=normalizeText(value).replace(/^Image:\s*/i,'').trim();
+  return GENERIC_LABELS.has(text.toLowerCase())?'':text;
 }
 
 export function canonicalTeam(value) {
@@ -59,6 +66,21 @@ function attrs(tag = '') {
   return out;
 }
 
+function dedupePlayers(players) {
+  const map = new Map();
+  for (const p of players) {
+    if (!p?.name) continue;
+    const key = `${p.team || ''}|${p.name.toLowerCase()}`;
+    const prev = map.get(key);
+    map.set(key, prev ? {
+      ...prev, ...Object.fromEntries(Object.entries(p).filter(([,v]) => v != null && v !== '')),
+      probability: p.probability ?? prev.probability,
+      status: p.status ?? prev.status
+    } : p);
+  }
+  return [...map.values()];
+}
+
 export function extractDataPlayers(html) {
   const players = [];
   for (const match of String(html ?? '').matchAll(/<[^>]*\b(?:data-player|data-player-name|data-name)\s*=\s*["'][^"']+["'][^>]*>/gi)) {
@@ -77,17 +99,24 @@ export function extractDataPlayers(html) {
   return dedupePlayers(players);
 }
 
-function dedupePlayers(players) {
-  const map = new Map();
-  for (const p of players) {
-    const key = `${p.team || ''}|${p.name.toLowerCase()}`;
-    const prev = map.get(key);
-    map.set(key, prev ? {
-      ...prev, ...Object.fromEntries(Object.entries(p).filter(([,v]) => v != null && v !== '')),
-      probability: p.probability ?? prev.probability
-    } : p);
+function extractTableRows(html) {
+  const rows=[];
+  for(const rowMatch of String(html??'').matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)){
+    const cells=[...rowMatch[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(m=>plainCell(m[1])).filter(Boolean);
+    if(cells.length<2) continue;
+    const nums=cells.slice(1).flatMap(value=>[...value.matchAll(/-?\d+(?:[.,]\d+)?/g)].map(m=>Number(m[0].replace(',','.'))));
+    if(!nums.length) continue;
+    rows.push({cells,values:nums});
   }
-  return [...map.values()];
+  return rows;
+}
+
+export function extractPlayerPoints(html) {
+  return extractTableRows(html).map(row=>{
+    const player=canonicalPlayer(row.cells[0]);
+    const team=row.cells.map(c=>canonicalTeam(c)).find(Boolean) || null;
+    return {name:player,team,points:row.values[0] ?? null,values:row.values.slice(0,8)};
+  }).filter(x=>x.name&&x.name.length>2&&x.name.toLowerCase()!=='jugador').slice(0,500);
 }
 
 export function extractMatchups(html) {
@@ -123,17 +152,11 @@ export function extractInjuries(html) {
 }
 
 export function extractStats(html) {
-  const text = normalizeText(html);
-  const rows = [];
-  for (const line of text.split(/\n+/)) {
-    const clean = line.trim();
-    const team = canonicalTeam(clean.split(/\s{2,}|\|/)[0]);
-    if (!team) continue;
-    const nums = [...clean.matchAll(/\d+(?:[.,]\d+)?/g)].map(m => Number(m[0].replace(',','.')));
-    if (!nums.length) continue;
-    rows.push({team,values:nums.slice(0,24)});
-  }
-  return rows;
+  return extractTableRows(html).map(row=>({
+    team:row.cells.map(c=>canonicalTeam(c)).find(Boolean)||null,
+    values:row.values.slice(0,24),
+    cells:row.cells.slice(0,25)
+  })).filter(x=>x.team);
 }
 
 export function parsePublicPage(html, kind) {
@@ -144,18 +167,24 @@ export function parsePublicPage(html, kind) {
   }
   if (kind === 'injuries') return {...base,injuries:extractInjuries(html)};
   if (kind === 'stats') return {...base,stats:extractStats(html)};
+  if (kind === 'points') return {...base,points:extractPlayerPoints(html),players:extractPlayerPoints(html)};
   return base;
 }
+
+function mergePlayers(left,right){ return dedupePlayers([...(left||[]),...(right||[])]); }
 
 export function mergeMatchContrast(parts) {
   const map = new Map();
   for (const part of Array.isArray(parts) ? parts : []) {
     for (const match of part?.matches || []) {
       const key = `${match.home}|${match.away}`;
-      const existing = map.get(key) || {home:match.home,away:match.away,players:[],evidence:[]};
+      const existing = map.get(key) || {home:match.home,away:match.away,players:[],lineups:{home:[],away:[]},evidence:[]};
       existing.evidence.push({kind:part.kind,checksum:part.checksum});
-      if (Array.isArray(part.players)) existing.players.push(...part.players.filter(p => !p.team || p.team === match.home || p.team === match.away));
-      map.set(key, {...existing,players:dedupePlayers(existing.players)});
+      const players=Array.isArray(part.players)?part.players.filter(p=>!p.team||p.team===match.home||p.team===match.away):[];
+      existing.players=mergePlayers(existing.players,players);
+      existing.lineups.home=dedupePlayers(existing.players.filter(p=>p.team===match.home));
+      existing.lineups.away=dedupePlayers(existing.players.filter(p=>p.team===match.away));
+      map.set(key,existing);
     }
   }
   return [...map.values()];
@@ -167,39 +196,45 @@ export function normalizeBundle(pages, {now = new Date()} = {}) {
   for (const page of Array.isArray(pages) ? pages : []) {
     if (!page?.url || typeof page.html !== 'string') continue;
     const item = parsePublicPage(page.html,page.kind);
-    normalizedPages.push({kind:page.kind,url:page.url,status:Number(page.status || 0),bytes:item.bytes,checksum:item.checksum,ok:Boolean(page.status >= 200 && page.status < 300)});
+    normalizedPages.push({kind:page.kind,url:page.url,status:Number(page.status || 0),bytes:item.bytes,checksum:item.checksum,ok:Boolean(page.status >= 200 && page.status < 300),matches:item.matches?.length||0,players:item.players?.length||0,injuries:item.injuries?.length||0,points:item.points?.length||0});
     parsed.push(item);
   }
   const lineups = mergeMatchContrast(parsed);
   const injuries = parsed.flatMap(x => x.injuries || []);
   const stats = parsed.flatMap(x => x.stats || []);
+  const points = parsed.flatMap(x => x.points || []);
+  const players=[...new Map([...lineups.flatMap(x=>x.players||[]),...points].map(p=>[`${p.team||''}|${p.name}`,p])).values()];
   return {
-    version:'3.3.0',
+    version:'3.3.1',
     retrievedAt:now.toISOString(),
     pages:normalizedPages,
+    references:lineups.map(({home,away,evidence,lineups})=>({home,away,evidence,lineups})),
     matches:lineups,
-    players:[...new Map(lineups.flatMap(x => x.players || []).map(p => [`${p.team || ''}|${p.name}`,p])).values()],
+    players,
     injuries,
     stats,
+    points,
     sourcePolicy:'public-contrast-only',
     ok:normalizedPages.some(x => x.ok)
   };
 }
 
-export async function fetchPublicSources({signal} = {}) {
+export async function fetchPublicSources({signal,baseUrl='https://www.futbolfantasy.com'} = {}) {
+  const base=String(baseUrl||'https://www.futbolfantasy.com').replace(/\/$/,'');
   const pages = await Promise.all(FUTBOLFANTASY_PUBLIC_SOURCES.map(async source => {
+    const url=`${base}${source.path}`;
     try {
-      const response = await fetch(source.url, {
-        headers: {Accept:'text/html,application/xhtml+xml', 'User-Agent':'LALIGA-Fantasy-Manager/3.3.0'},
+      const response = await fetch(url, {
+        headers: {Accept:'text/html,application/xhtml+xml', 'User-Agent':'LALIGA-Fantasy-Manager/3.3.1 read-only'},
         cache:'no-store',
         signal: signal || AbortSignal.timeout(12000)
       });
       const html = await response.text();
-      return {kind:source.key,url:source.url,status:response.status,html};
+      return {kind:source.key,url,status:response.status,html};
     } catch (error) {
-      return {kind:source.key,url:source.url,status:0,html:'',error:error?.message || 'FETCH_FAILED'};
+      return {kind:source.key,url,status:0,html:'',error:error?.message || 'FETCH_FAILED'};
     }
   }));
-  const bundle = normalizeBundle(pages);
-  return {...bundle, pages:bundle.pages.map((page,index) => ({...page,error:pages[index]?.error || null}))};
+  const bundle=normalizeBundle(pages);
+  return {...bundle,pages:bundle.pages.map((page,index)=>({...page,error:pages[index]?.error||null}))};
 }
