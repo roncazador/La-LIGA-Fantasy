@@ -35,6 +35,28 @@ services:
         value: "false"
       - key: AI_FEEDBACK_MODEL
         value: ""
+      - key: FOOTBALL_DATA_COMPETITION
+        value: PD
+      - key: FOOTBALL_DATA_DAYS
+        value: "30"
+      - key: SPORTMONKS_API_BASE_URL
+        value: https://api.sportmonks.com/v3/football
+      - key: SPORTMONKS_LALIGA_LEAGUE_ID
+        value: ""
+      - key: SPORTMONKS_LALIGA_SEASON_ID
+        value: ""
+      - key: API_FOOTBALL_API_BASE_URL
+        value: https://v3.football.api-sports.io
+      - key: API_FOOTBALL_LALIGA_LEAGUE_ID
+        value: "140"
+      - key: API_FOOTBALL_LALIGA_SEASON
+        value: "2026"
+      - key: OPTA_API_BASE_URL
+        value: ""
+      - key: OPTA_FIXTURES_PATH
+        value: ""
+      - key: OPTA_LALIGA_COMPETITION_ID
+        value: ""
       # Secret credentials are deliberately not committed. Render requires their
       # values to be supplied in the Dashboard; existing Blueprints ignore sync:false
       # on later syncs, so add/rotate these values manually when a provider is enabled.
