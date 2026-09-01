@@ -1,15 +1,46 @@
 {
+  "schema": "laliga-fantasy-video-evidence/v1",
   "capturedAt": "2026-09-01T00:51:03+02:00",
   "source": "grabación de pantalla aportada por el usuario",
   "fileName": "ScreenRecording_09-01-2026 00-51-03_1.mp4",
   "sha256": "3a296d51cb8b4abfb835dc2b499fab47ae8f93ef53290281785ac3ed84287ad2",
-  "durationSeconds": 394.5666666666667,
+  "sizeBytes": 235563956,
+  "container": "mp4",
+  "durationSeconds": 394.61059,
+  "videoDurationSeconds": 394.5666666666667,
   "fps": 30,
   "frameCount": 11837,
   "width": 512,
   "height": 1112,
   "orientation": "vertical",
+  "videoCodec": "h264",
+  "videoProfile": "High",
+  "pixelFormat": "yuv420p",
+  "audioCodec": "aac",
+  "sampleRateHz": 44100,
+  "audioChannels": 2,
+  "audioLayout": "stereo",
   "status": "evidence_reference_observed_no_live",
-  "note": "El vídeo queda referenciado como evidencia; los datos extraídos de la grabación no se convierten automáticamente en datos Fantasy vivos.",
-  "sampledSeconds": [0, 60, 120, 180, 240, 300, 390]
+  "note": "El vídeo queda referenciado como evidencia; los datos observados de la grabación no se convierten automáticamente en datos Fantasy vivos ni en muestras de aprendizaje.",
+  "isolation": {
+    "domain": "evidence",
+    "feedsFantasyLearningDirectly": false,
+    "feedsAutomationTelemetryDirectly": false,
+    "requiresHumanConfirmationBeforeTraining": true
+  },
+  "observations": {
+    "sampledSeconds": [0, 60, 120, 180, 240, 300, 390],
+    "start": [
+      "Aplicación LaLiga Fantasy visible",
+      "Tarjeta de FC Barcelona vs Rayo Vallecano",
+      "Resumen de una liga Fantasy con clasificación y saldo visibles"
+    ],
+    "around120s": [
+      "Pestaña Plantilla visible",
+      "Contexto de inicio de Jornada 3",
+      "Jugadores con PFSY y valores de mercado visibles",
+      "Valor de equipo visible: 323.853.067"
+    ],
+    "interpretationPolicy": "Las observaciones son evidencia visual externa y no sustituyen datos LIVE ni deben alimentar automáticamente el cerebro."
+  }
 }
