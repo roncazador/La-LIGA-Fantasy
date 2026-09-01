@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const CULTIVOS_VERSION='1.1.0';
+export const CULTIVOS_VERSION='1.2.0';
 const MAX_EVENTS=200;
 const KEYS=['data','prediction','reliability','automation','coverage'];
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -37,6 +37,13 @@ export function createCultivos({dir='./.brain-data'}={}){
     const dimensions={coverage:clamp((Number.isFinite(captures)?Math.min(captures,2):0)+(Number.isFinite(recordings)?Math.min(recordings,2):0),0,4)};
     return observe({source:'evidence-sync',outcome:'neutral',dimensions,detail:'Cobertura de evidencias aisladas para corrección supervisada'});
   }
+  function syncFromVideoEvidence(video={}){
+    const confirmed=video.humanConfirmed===true;
+    const observations=Number(video.observationCount??video.observationsCount??0);
+    const hasHash=typeof video.sha256==='string'&&/^[a-f0-9]{64}$/i.test(video.sha256);
+    const dimensions={coverage:clamp((hasHash?1:0)+(observations>0?1:0),0,2),data:confirmed?1:0};
+    return observe({source:'video-evidence-sync',outcome:confirmed?'success':'neutral',dimensions,detail:confirmed?'Evidencia de vídeo confirmada por humano':'Evidencia de vídeo registrada sin alimentar automáticamente el aprendizaje'});
+  }
   function summary(){return {version:state.version,cycles:state.cycles,score:Number(state.score.toFixed(2)),dimensions:{...state.dimensions},lastAt:state.lastAt,recentEvents:state.events.slice(-12)}}
-  return {observe,syncFromBrain,syncFromAutomation,syncFromEvidence,summary,file};
+  return {observe,syncFromBrain,syncFromAutomation,syncFromEvidence,syncFromVideoEvidence,summary,file};
 }
