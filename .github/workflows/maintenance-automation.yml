@@ -34,8 +34,11 @@ jobs:
           node --check connection-client.js
           node --check scripts/automation-battery-v2.mjs
           node --check scripts/automation-handoff-v1.mjs
+          node --check scripts/assimilation-gate-v1.mjs
       - name: Expanded automation battery
         run: npm run test:automation
+      - name: Assimilation gate
+        run: npm run test:assimilation
       - name: Render preflight
         run: npm run render:verify
       - name: Generate ChatGPT handoff report
@@ -60,5 +63,6 @@ jobs:
             automation-battery-report.md
             automation-handoff.json
             automation-handoff.md
+            assimilation-report.json
           if-no-files-found: error
           retention-days: 14
