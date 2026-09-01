@@ -69,6 +69,26 @@ jobs:
         with:
           node-version: 24.14.1
 
+      - name: Generate ChatGPT handoff
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_SHA: ${{ steps.branch.outputs.sha }}
+        run: node scripts/automation-handoff-v1.mjs
+
+      - name: Upload ChatGPT handoff
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-healing-chatgpt-handoff
+          path: |
+            automation-handoff.json
+            automation-handoff.md
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Run self-healing agent
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -106,6 +126,7 @@ jobs:
 
           **Source workflow:** $WORKFLOW_NAME
           **Repair branch:** $REPAIR_BRANCH
+          **Diagnostic handoff:** attached as workflow artifact \`self-healing-chatgpt-handoff\`.
 
           The agent validates patches against repository policy, rejects secret-like changes, runs the full \`npm test\` suite before committing, and stores successful repair signatures in \`.github/self-healing/memory.json\` for future diagnosis.
           EOF

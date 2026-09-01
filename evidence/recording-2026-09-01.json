@@ -1,0 +1,16 @@
+{
+  "schema": "laliga-recording-evidence/v1",
+  "capturedAt": "2026-09-01T00:51:03+02:00",
+  "sourceFile": "ScreenRecording_09-01-2026 00-51-03_1.mp4",
+  "sha256": "3a296d51cb8b4abfb835dc2b499fab47ae8f93ef53290281785ac3ed84287ad2",
+  "durationSeconds": 394.61,
+  "classification": "observed-evidence",
+  "learnable": false,
+  "notes": [
+    "Pantalla de Clasificación: roncazador aparece 2º con 59 PFSY y saldo 323.853.067 €.",
+    "La vista Equipo muestra 22/24 fichas y valor de equipo 323.853.067 €.",
+    "Se observan jugadores con sus medias, PFSY, precios, estado alineable/bloqueado y resultados por jornada.",
+    "La evidencia debe alimentar cultivo como observación, no aprendizaje del cerebro, hasta existir resultado final verificable.",
+    "La captura confirma que las pantallas de Clasificación, Equipo y detalle de jugador son fuentes útiles para contraste futuro."
+  ]
+}

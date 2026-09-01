@@ -9,6 +9,7 @@ on:
     - cron: '17 3 * * *'
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -27,11 +28,37 @@ jobs:
           node-version: 24.14.1
       - name: Syntax checks
         run: |
-          node --check calendar-autonomous-v34.js
+          node --check automation-hub-v1.js
+          node --check calendar-autonomous-v35.js
+          node --check app-dynamics-v37.js
           node --check connection-client.js
-          node --check match-detail-ui-v31.js
-          node --check automation-contract-v1.test.mjs
-      - name: Automation contract
-        run: node automation-contract-v1.test.mjs
+          node --check scripts/automation-battery-v2.mjs
+          node --check scripts/automation-handoff-v1.mjs
+      - name: Expanded automation battery
+        run: npm run test:automation
       - name: Render preflight
         run: npm run render:verify
+      - name: Generate ChatGPT handoff report
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/automation-handoff-v1.mjs
+      - name: Publish handoff summary
+        if: always()
+        run: |
+          cat automation-handoff.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload automation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-reports
+          path: |
+            automation-battery-report.json
+            automation-battery-report.md
+            automation-handoff.json
+            automation-handoff.md
+          if-no-files-found: error
+          retention-days: 14

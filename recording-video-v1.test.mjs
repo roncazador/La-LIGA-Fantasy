@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const meta=JSON.parse(fs.readFileSync('./recording-video-2026-09-01.json','utf8'));
+assert.equal(meta.source,'grabación de pantalla aportada por el usuario');
+assert.match(meta.sha256,/^[a-f0-9]{64}$/);
+assert.ok(meta.durationSeconds>0);
+assert.ok(meta.frameCount>0&&meta.fps>0);
+assert.equal(meta.width,512);assert.equal(meta.height,1112);
+assert.equal(meta.orientation,'vertical');
+assert.equal(meta.status,'evidence_reference_observed_no_live');
+assert.ok(Array.isArray(meta.sampledSeconds)&&meta.sampledSeconds.length>=5);
+console.log('RECORDING VIDEO v1: 8/8 checks passed');
