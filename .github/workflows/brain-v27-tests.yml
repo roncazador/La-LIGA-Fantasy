@@ -37,7 +37,9 @@ jobs:
           node --check render-preflight.test.mjs
           node --check calendar-v29.test.mjs
           node --check calendar-autonomous-v30.test.mjs
-          node --check deployment-contract-v27.test.mjs
+          node --check deployment-contract-v28.test.mjs
+          node --check cultivos-v1.mjs
+          node --check recording-video-v1.test.mjs
       - name: Deep brain regression
         run: node brain-v27.test.mjs
       - name: Runtime integration regression
@@ -56,5 +58,9 @@ jobs:
         run: node calendar-v29.test.mjs
       - name: Autonomous calendar 10000-case regression
         run: node calendar-autonomous-v30.test.mjs
+      - name: Cultivation regression
+        run: node cultivos-v1.test.mjs
+      - name: Video evidence regression
+        run: node recording-video-v1.test.mjs
       - name: Deployment contract regression
-        run: node deployment-contract-v27.test.mjs
+        run: node deployment-contract-v28.test.mjs

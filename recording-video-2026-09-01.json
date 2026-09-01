@@ -26,10 +26,13 @@
     "domain": "evidence",
     "feedsFantasyLearningDirectly": false,
     "feedsAutomationTelemetryDirectly": false,
-    "requiresHumanConfirmationBeforeTraining": true
+    "requiresHumanConfirmationBeforeTraining": true,
+    "humanConfirmed": false,
+    "cultivosEligible": false
   },
   "observations": {
     "sampledSeconds": [0, 60, 120, 180, 240, 300, 390],
+    "observationCount": 7,
     "start": [
       "Aplicación LaLiga Fantasy visible",
       "Tarjeta de FC Barcelona vs Rayo Vallecano",
