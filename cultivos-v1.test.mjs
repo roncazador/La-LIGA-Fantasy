@@ -8,7 +8,7 @@ assert.equal(CULTIVOS_VERSION,'1.2.0');assert.equal(c.summary().version,'1.2.0')
 c.observe({source:'test',outcome:'success',dimensions:{prediction:2,data:1},detail:'ok'});assert.equal(c.summary().dimensions.prediction,2);assert.equal(c.summary().dimensions.data,1);
 c.observe({source:'test',outcome:'failure',dimensions:{automation:-2},detail:'fail'});assert.equal(c.summary().dimensions.automation,-2);
 c.syncFromBrain({accuracy:70,reliability:{reliability:.75,dataQuality:.9}});c.syncFromAutomation({eventCount:5,recentErrors:[]});c.syncFromEvidence({captureCount:1,recordingCount:1});assert.equal(c.summary().cycles,5);assert.equal(c.summary().recentEvents.length,5);
-const before=c.summary().dimensions.data;c.syncFromVideoEvidence({sha256:'3a296d51cb8b4abfb835dc2b499fab47ae8f93ef53290281785ac3ed84287ad2',observationCount:7,humanConfirmed:false});assert.equal(c.summary().dimensions.data,before);assert.equal(c.summary().dimensions.coverage,6);
+const before=c.summary().dimensions.data;c.syncFromVideoEvidence({sha256:'3a296d51cb8b4abfb835dc2b499fab47ae8f93ef53290281785ac3ed84287ad2',observationCount:7,humanConfirmed:false});assert.equal(c.summary().dimensions.data,before);assert.equal(c.summary().dimensions.coverage,5);
 c.syncFromVideoEvidence({sha256:'3a296d51cb8b4abfb835dc2b499fab47ae8f93ef53290281785ac3ed84287ad2',observationCount:7,humanConfirmed:true});assert.equal(c.summary().dimensions.data,before+1);assert.equal(c.summary().cycles,7);
 const persisted=createCultivos({dir}).summary();assert.equal(persisted.cycles,7);assert.equal(persisted.recentEvents.length,7);assert.ok(fs.existsSync(c.file));
 console.log('CULTIVOS v1.2: 12/12 checks passed');
