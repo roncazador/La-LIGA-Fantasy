@@ -35,12 +35,16 @@ jobs:
           node --check scripts/automation-battery-v2.mjs
           node --check scripts/automation-handoff-v1.mjs
           node --check scripts/assimilation-gate-v1.mjs
+          node --check cultivos-v1.mjs
+          node --check brain-host-v27.mjs
       - name: Expanded automation battery
         run: npm run test:automation
       - name: Assimilation gate
         run: npm run test:assimilation
       - name: Render preflight
         run: npm run render:verify
+      - name: Full project battery
+        run: npm test
       - name: Generate ChatGPT handoff report
         if: always()
         env:
@@ -53,16 +57,20 @@ jobs:
         if: always()
         run: |
           cat automation-handoff.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload automation reports
+      - name: Package repository source
+        if: always()
+        run: git archive --format=zip --output=La-LIGA-Fantasy-${GITHUB_SHA}.zip HEAD
+      - name: Upload automation reports and source archive
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: automation-reports
+          name: automation-reports-${{ github.sha }}
           path: |
             automation-battery-report.json
             automation-battery-report.md
             automation-handoff.json
             automation-handoff.md
             assimilation-report.json
+            La-LIGA-Fantasy-${{ github.sha }}.zip
           if-no-files-found: error
           retention-days: 14
