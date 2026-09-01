@@ -13,7 +13,9 @@ const checks=[
   ['orientation',meta.orientation==='vertical'],
   ['codec',meta.videoCodec==='h264'&&meta.audioCodec==='aac'],
   ['sampled evidence',Array.isArray(meta.observations?.sampledSeconds)&&meta.observations.sampledSeconds.length>=5],
+  ['observation count',meta.observations?.observationCount===meta.observations?.sampledSeconds?.length],
   ['isolated from live learning',meta.isolation?.feedsFantasyLearningDirectly===false&&meta.isolation?.requiresHumanConfirmationBeforeTraining===true],
+  ['cultivos gated',meta.isolation?.humanConfirmed===false&&meta.isolation?.cultivosEligible===false],
   ['observed state note',meta.status==='evidence_reference_observed_no_live']
 ];
 for(const[name,ok]of checks)assert.ok(ok,`VIDEO-V1: ${name}`);
