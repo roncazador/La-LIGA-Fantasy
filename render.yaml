@@ -46,7 +46,7 @@ services:
       - key: SPORTMONKS_LALIGA_SEASON_ID
         value: ""
       - key: API_FOOTBALL_API_BASE_URL
-        value: https://v3.football-api.com
+        value: https://v3.football.api-sports.io
       - key: API_FOOTBALL_LALIGA_LEAGUE_ID
         value: "140"
       - key: API_FOOTBALL_LALIGA_SEASON
