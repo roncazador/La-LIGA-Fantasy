@@ -15,12 +15,12 @@ const checks=[
  ['visual asset correction',source.includes('visual-compact-v1.css')],
  ['semantic ready guard',source.includes('rule.ready')&&source.includes('ready:before=>before.includes')],
  ['idle scheduling correction',source.includes('requestIdleCallback')],
- ['service worker correction',source.includes("fm-v310")],
+ ['service worker correction',source.includes("fm-v314")],
  ['check is read-only',source.includes("mode==='--write'")&&source.includes("mode==='--check'&&needed.length")],
  ['no network dependency',!source.includes('fetch(')&&!source.includes('http://')&&!source.includes('https://')],
  ['current config exposes CSS',config.includes("'/visual-compact-v1.css'")],
  ['current loader uses idle',connection.includes('requestIdleCallback')],
- ['current SW preserves cache contract',sw.includes("const CACHE_NAME='fm-v310'")],
+ ['current SW preserves cache contract',sw.includes("const CACHE_NAME='fm-v314'")],
  ['repo currently needs no correction',result.status===0]
 ];
 for(const[name,ok]of checks)assert.ok(ok,`AUTO-CORRECT-${name}${diagnostics?` · diagnostics=${diagnostics}`:''}`);
