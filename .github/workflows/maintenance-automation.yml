@@ -42,6 +42,8 @@ jobs:
       - name: Deterministic auto-correction check
         run: npm run test:auto-correct
       - name: Performance budget
+        env:
+          PERF_REPORT: '1'
         run: npm run test:performance
       - name: Expanded automation battery
         run: npm run test:automation
