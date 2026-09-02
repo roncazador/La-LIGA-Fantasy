@@ -1,0 +1,16 @@
+{
+  "schema": "laliga-evidence/v1",
+  "type": "screen-recording",
+  "capturedAt": "2026-09-01T00:51:03+02:00",
+  "filename": "ScreenRecording_09-01-2026 00-51-03_1.mp4",
+  "sha256": "3a296d51cb8b4abfb835dc2b499fab47ae8f93ef53290281785ac3ed84287ad2",
+  "sizeBytes": 235563956,
+  "durationSeconds": 394.61059,
+  "storage": "external-conversation-attachment",
+  "binaryCommitted": false,
+  "observations": [
+    "Evidencia visual aportada por el usuario para contrastar el estado real de la aplicación.",
+    "Debe permanecer aislada de los datos de producción y no alimentar aprendizaje por sí sola.",
+    "Puede alimentar cultivo/diagnóstico únicamente como evidencia etiquetada y revisable."
+  ]
+}
