@@ -19,14 +19,14 @@ compileSamples.sort((a,b)=>a-b);
 measurements.compileP95Ms=Number(compileSamples[Math.min(compileSamples.length-1,Math.ceil(compileSamples.length*.95)-1)].toFixed(3));
 const budgets={htmlBytes:90000,cssBytes:4000,initialScriptBytes:40000,initialLayerCount:4,compileP95Ms:100};
 const checks=[
- ['HTML stays compact',measurements.htmlBytes<=budgets.htmlBytes],
- ['visual CSS stays bounded',measurements.cssBytes<=budgets.cssBytes],
- ['initial JavaScript stays bounded',measurements.initialScriptBytes<=budgets.initialScriptBytes],
- ['critical layer count stays bounded',measurements.initialLayerCount<=budgets.initialLayerCount],
- ['secondary layers are deferred to idle',measurements.secondaryLayersIdle],
- ['critical script compile p95 stays bounded',measurements.compileP95Ms<=budgets.compileP95Ms]
+  ['HTML stays compact',measurements.htmlBytes<=budgets.htmlBytes],
+  ['visual CSS stays bounded',measurements.cssBytes<=budgets.cssBytes],
+  ['initial JavaScript stays bounded',measurements.initialScriptBytes<=budgets.initialScriptBytes],
+  ['critical layer count stays bounded',measurements.initialLayerCount<=budgets.initialLayerCount],
+  ['secondary layers are deferred to idle',measurements.secondaryLayersIdle],
+  ['critical script compile p95 stays bounded',measurements.compileP95Ms<=budgets.compileP95Ms]
 ];
 const report={version:'laliga-performance-budget/v1',generatedAt:new Date().toISOString(),measurements,budgets,checks};
-fs.writeFileSync(path.join(root,'performance-budget-report.json'),JSON.stringify(report,null,2)+'\n','utf8');
+if(process.env.PERF_REPORT==='1')fs.writeFileSync(path.join(root,'performance-budget-report.json'),JSON.stringify(report,null,2)+'\n','utf8');
 for(const[name,ok]of checks)if(!ok)throw new Error(`PERFORMANCE-${name}`);
 console.log(`PERFORMANCE BUDGET v1: ${checks.length}/${checks.length} passed · HTML=${measurements.htmlBytes}B · CSS=${measurements.cssBytes}B · initialJS=${measurements.initialScriptBytes}B · compileP95=${measurements.compileP95Ms}ms`);
