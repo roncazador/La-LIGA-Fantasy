@@ -73,7 +73,7 @@ const checks=[
  ['hub is publicly served',config.includes("'/automation-hub-v1.js'")],
  ['executive layer is publicly served',host.includes("'/executive-dashboard-v1.js'")],
  ['evidence layer is publicly served',host.includes("'/evidence-isolation-v1.js'")],
- ['service worker contract is stable',sw.includes('fm-v310')],
+ ['service worker contract is stable',sw.includes('fm-v314')],
  ['visual CSS is in service worker cache',sw.includes('./visual-compact-v1.css')],
  ['handoff uses recent workflow runs',handoff.includes('/actions/runs?per_page=40')],
  ['handoff captures failed job logs',handoff.includes('/actions/jobs/${job.id}/logs')],
