@@ -18,15 +18,32 @@ child.stderr.on('data',d=>{output+=d.toString()});
 const deadline=Date.now()+15000;
 try{
   let last='';
+  let brainReady=false;
   while(Date.now()<deadline){
     try{
-      const response=await fetch(`http://127.0.0.1:${port}/api/brain/status`,{cache:'no-store',signal:AbortSignal.timeout(1000)});
-      last=`HTTP_${response.status}`;
-      if(response.ok){const body=await response.json();assert.equal(body.readOnly,true,'brain status remains read-only');assert.equal(body.cultivosVersion,'1.4.0','canonical Cultivos remains active');console.log(`RENDER RUNTIME SMOKE v1: OK · port=${port} · cultivos=${body.cultivosVersion}`);break}
+      const response=await fetch(`http://127.0.0.1:${port}/api/health`,{cache:'no-store',signal:AbortSignal.timeout(1000)});
+      last=`HEALTH_HTTP_${response.status}`;
+      if(response.ok){
+        const body=await response.json();
+        assert.equal(body.ok,true,'direct health endpoint is live');
+        assert.equal(body.readOnly,true,'health endpoint remains read-only');
+        assert.equal(body.competition,'1','competition is configured');
+        if(body.backendReady)brainReady=true;
+      }
+      if(brainReady){
+        const brainResponse=await fetch(`http://127.0.0.1:${port}/api/brain/status`,{cache:'no-store',signal:AbortSignal.timeout(1000)});
+        last=`BRAIN_HTTP_${brainResponse.status}`;
+        assert.equal(brainResponse.ok,true,'brain status is reachable');
+        const brainBody=await brainResponse.json();
+        assert.equal(brainBody.readOnly,true,'brain status remains read-only');
+        assert.equal(brainBody.cultivosVersion,'1.4.0','canonical Cultivos remains active');
+        console.log(`RENDER RUNTIME SMOKE v2: OK · port=${port} · backendReady=${brainReady} · cultivos=${brainBody.cultivosVersion}`);
+        break;
+      }
     }catch(error){last=String(error?.message||error)}
     await new Promise(resolve=>setTimeout(resolve,250));
   }
-  if(Date.now()>=deadline)throw new Error(`RENDER_RUNTIME_TIMEOUT:${last}`);
+  if(!brainReady || Date.now()>=deadline)throw new Error(`RENDER_RUNTIME_TIMEOUT:${last}`);
 }finally{
   child.kill('SIGTERM');
   await new Promise(resolve=>{const timer=setTimeout(()=>resolve(),2000);child.once('exit',()=>{clearTimeout(timer);resolve()})});
