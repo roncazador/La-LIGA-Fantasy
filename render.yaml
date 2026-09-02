@@ -4,9 +4,9 @@ services:
     runtime: node
     region: frankfurt
     autoDeployTrigger: checksPass
-    buildCommand: npm install --no-audit --no-fund && npm run render:verify
+    buildCommand: npm install --no-audit --no-fund && npm run render:verify && npm run test:render-runtime
     startCommand: npm start
-    healthCheckPath: /api/health
+    healthCheckPath: /api/brain/status
     maxShutdownDelaySeconds: 60
     disk:
       name: fantasy-brain-data
@@ -46,7 +46,7 @@ services:
       - key: SPORTMONKS_LALIGA_SEASON_ID
         value: ""
       - key: API_FOOTBALL_API_BASE_URL
-        value: https://v3.football.api-sports.io
+        value: https://v3.football-api.com
       - key: API_FOOTBALL_LALIGA_LEAGUE_ID
         value: "140"
       - key: API_FOOTBALL_LALIGA_SEASON
