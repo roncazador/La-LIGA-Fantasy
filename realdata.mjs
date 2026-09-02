@@ -4,6 +4,29 @@ function dataError(message, status = 502){
   return Object.assign(new Error(message), { status });
 }
 
+const STATIC_LALIGA_TEAMS = [
+  'Athletic Club','Atlético de Madrid','CA Osasuna','Celta','Deportivo Alavés',
+  'Elche CF','FC Barcelona','Getafe CF','Levante UD','Málaga CF',
+  'R. Racing Club','Rayo Vallecano','RC Deportivo','RCD Espanyol de Barcelona',
+  'Real Betis','Real Madrid','Real Sociedad','Sevilla FC','Valencia CF','Villarreal CF'
+];
+
+function staticTeamFallback(){
+  return STATIC_LALIGA_TEAMS.map((name,index)=>({
+    id:null,
+    name,
+    code:null,
+    country:'Spain',
+    logo:null,
+    venue:null,
+    city:null,
+    capacity:null,
+    source:'static-identity-fallback',
+    fallback:true,
+    fallbackIndex:index+1
+  }));
+}
+
 async function getJson(name, url, headers = {}){
   let response;
   try {
@@ -39,7 +62,9 @@ export function normalizeTeams(data){
     logo: row?.team?.logo ?? null,
     venue: row?.venue?.name ?? null,
     city: row?.venue?.city ?? null,
-    capacity: row?.venue?.capacity ?? null
+    capacity: row?.venue?.capacity ?? null,
+    source:'api-football',
+    fallback:false
   })).filter(x => x.id != null && x.name);
 }
 
@@ -128,7 +153,8 @@ async function apiFootball(config, path, params = {}){
 }
 
 export async function fetchTeams(config){
-  return normalizeTeams(await apiFootball(config, '/teams', { league: config.apiFootballLeagueId, season: config.apiFootballSeason }));
+  const normalized = normalizeTeams(await apiFootball(config, '/teams', { league: config.apiFootballLeagueId, season: config.apiFootballSeason }));
+  return normalized.length ? normalized : staticTeamFallback();
 }
 
 export async function fetchStandings(config){
