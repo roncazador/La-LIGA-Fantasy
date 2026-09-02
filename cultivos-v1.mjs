@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const CULTIVOS_VERSION='1.2.0';
+export const CULTIVOS_VERSION='1.3.0';
 const MAX_EVENTS=200;
 const KEYS=['data','prediction','reliability','automation','coverage'];
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -44,6 +44,17 @@ export function createCultivos({dir='./.brain-data'}={}){
     const dimensions={coverage:clamp((hasHash?1:0)+(observations>0?1:0),0,2),data:confirmed?1:0};
     return observe({source:'video-evidence-sync',outcome:confirmed?'success':'neutral',dimensions,detail:confirmed?'Evidencia de vídeo confirmada por humano':'Evidencia de vídeo registrada sin alimentar automáticamente el aprendizaje'});
   }
+  function syncFromHandoff(handoff={}){
+    const failures=Array.isArray(handoff.failures)?handoff.failures.length:Number(handoff.failureCount??0);
+    const recommendations=Array.isArray(handoff.recommendations)?handoff.recommendations.length:0;
+    const actionable=handoff.status==='success'||handoff.summary?.failed===0;
+    const dimensions={
+      automation:clamp(actionable?1:failures? -Math.min(failures,3):0,-3,1),
+      coverage:clamp(recommendations>0?1:0,-1,1),
+      reliability:clamp(actionable?1:0,-1,1)
+    };
+    return observe({source:'handoff-sync',outcome:actionable?'success':failures?'failure':'neutral',dimensions,detail:'Retroalimentación estructurada de batería/handoff; no escribe en el cerebro'});
+  }
   function summary(){return {version:state.version,cycles:state.cycles,score:Number(state.score.toFixed(2)),dimensions:{...state.dimensions},lastAt:state.lastAt,recentEvents:state.events.slice(-12)}}
-  return {observe,syncFromBrain,syncFromAutomation,syncFromEvidence,syncFromVideoEvidence,summary,file};
+  return {observe,syncFromBrain,syncFromAutomation,syncFromEvidence,syncFromVideoEvidence,syncFromHandoff,summary,file};
 }

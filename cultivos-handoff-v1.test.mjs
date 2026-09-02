@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { createCultivos, CULTIVOS_VERSION } from './cultivos-v1.mjs';
+
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cultivos-handoff-'));
+const c=createCultivos({dir});
+assert.equal(CULTIVOS_VERSION,'1.3.0');
+const before=c.summary();
+const hold=c.syncFromHandoff({status:'failure',failures:[{domain:'calendar'},{domain:'brain'}],failureCount:2,recommendations:['corregir calendario','revisar calibración']});
+assert.equal(hold.dimensions.automation,-2);
+assert.equal(hold.dimensions.coverage,1);
+assert.equal(hold.cycles,before.cycles+1);
+const accepted=c.syncFromHandoff({status:'success',failures:[],failureCount:0,recommendations:[]});
+assert.equal(accepted.dimensions.automation,-1);
+assert.equal(accepted.dimensions.reliability,1);
+assert.equal(accepted.cycles,2);
+const persisted=createCultivos({dir}).summary();
+assert.equal(persisted.cycles,2);
+assert.equal(persisted.recentEvents.length,2);
+assert.ok(fs.existsSync(c.file));
+assert.ok(persisted.recentEvents.every(e=>e.detail.includes('no escribe en el cerebro')));
+console.log('CULTIVOS HANDOFF v1.3: 8/8 checks passed');
