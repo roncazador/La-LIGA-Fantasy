@@ -1,0 +1,3 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const ui=fs.readFileSync('teams-detail-v1.js','utf8');
+assert.match(ui,/\/api\/data\/teams/);assert.match(ui,/\/api\/data\/standings/);assert.match(ui,/\/api\/data\/players\?page=1/);assert.match(ui,/\/api\/fixtures/);assert.match(ui,/Clasificación/);assert.match(ui,/Puntos/);assert.match(ui,/Plantilla cargada/);assert.match(ui,/Calendario del equipo/);assert.match(ui,/Jugadores cargados/);assert.match(ui,/role="dialog"/);assert.match(ui,/Datos reales/);console.log('teams-detail-v1: 11 checks OK');
