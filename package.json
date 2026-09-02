@@ -1,6 +1,7 @@
 {
   "name": "laliga-fantasy-manager",
   "version": "2.18.0",
+  "description": "LALIGA Fantasy manager with autonomous calendar, brain, Cultivos and safe automation feedback",
   "private": true,
   "type": "module",
   "scripts": {
