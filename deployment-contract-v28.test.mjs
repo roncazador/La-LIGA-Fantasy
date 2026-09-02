@@ -32,7 +32,7 @@ const checks=[
  ['Calendar v35 live state',calendar.includes('EN DIRECTO')&&calendar.includes('inferCurrentMatchday')],
  ['Calendar retry bounded',dynamics.includes('RETRY_DELAYS=[5000,15000,30000]')],
  ['Calendar retry scoped',dynamics.includes('if(!isCalendarFailure(e))')],
- ['Automation contract current',automation.includes('AUTOMATION CONTRACT v2: 82/82')],
+ ['Automation contract current',automation.includes('AUTOMATION CONTRACT v2: 89/89')],
  ['Cultivos v1.4',cultivos.includes("CULTIVOS_VERSION='1.4.0'")],
  ['Cultivos video sync',cultivos.includes('syncFromVideoEvidence')],
  ['Cultivos handoff sync',cultivos.includes('syncFromHandoff')],
