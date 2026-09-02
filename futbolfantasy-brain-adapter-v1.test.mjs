@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { normalizeContrastForBrain } from './futbolfantasy-brain-adapter-v1.mjs';
+const out=normalizeContrastForBrain({players:[{id:7,name:'Jugador Á',team:{name:'Betis'},position:'MED',points:'12',weeklyPoints:'5',minutes:'900',starts:'10',price:'100',value:'120',status:'available'}],injuries:[{name:'X'}],stats:[{playerId:7}],points:[{playerId:7}],checkedAt:'2026-09-02T12:00:00Z'});
+assert.equal(out.schema,'laliga-futbolfantasy-brain/v1');
+assert.equal(out.readOnly,true);
+assert.equal(out.players.length,1);
+assert.equal(out.players[0].id,'7');
+assert.equal(out.players[0].name,'Jugador Á');
+assert.equal(out.players[0].team,'Betis');
+assert.equal(out.players[0].points,12);
+assert.equal(out.players[0].weeklyPoints,5);
+assert.equal(out.players[0].minutes,900);
+assert.equal(out.players[0].price,100);
+assert.equal(out.injuries.length,1);
+assert.equal(out.stats.length,1);
+assert.equal(out.points.length,1);
+console.log('FUTBOLFANTASY BRAIN ADAPTER v1: 12/12 checks passed');
