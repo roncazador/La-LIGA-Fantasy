@@ -118,6 +118,6 @@ const checks=[
  ['full npm test includes performance',pkg.scripts.test.includes('scripts/performance-budget-v1.mjs')],
  ['full npm test includes render smoke',pkg.scripts.test.includes('scripts/render-runtime-smoke-v1.mjs')]
 ];
-assert.equal(checks.length,82,`Se esperaban 82 comprobaciones y hay ${checks.length}`);
+assert.equal(checks.length,89,`Se esperaban 89 comprobaciones y hay ${checks.length}`);
 for(const[i,[name,ok]]of checks.entries())assert.ok(ok,`AUTOMATION-${String(i+1).padStart(3,'0')}: ${name}`);
-console.log('AUTOMATION CONTRACT v2: 82/82 checks passed');
+console.log('AUTOMATION CONTRACT v2: 89/89 checks passed');
