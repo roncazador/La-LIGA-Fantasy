@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { syncFutbolFantasyToBrain } from './scripts/brain-futbolfantasy-sync-v1.mjs';
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'laliga-ff-sync-'));
+const result=await syncFutbolFantasyToBrain({brainDir:dir,fetcher:async()=>({source:'futbolfantasy-public-contrast',checkedAt:new Date().toISOString(),players:[{id:1,name:'Test',teamName:'Test FC',position:'MED',points:10}],injuries:[],stats:[],points:[]})});
+assert.equal(result.schema,'laliga-futbolfantasy-brain-sync/v1');
+assert.equal(result.observed,1);
+assert.equal(result.learned,0);
+assert.equal(result.pending,1);
+assert.equal(result.counts.players,1);
+assert.equal(result.cultivation.version,'1.2.0');
+const model=JSON.parse(fs.readFileSync(path.join(dir,'model-v27.json'),'utf8'));
+assert.equal(model.labeledSamples,0);
+assert.ok(fs.existsSync(path.join(dir,'learning-v27.jsonl')));
+console.log('FUTBOLFANTASY BRAIN SYNC v1: 7/7 checks passed');
