@@ -37,6 +37,7 @@ jobs:
           node --check scripts/assimilation-gate-v1.mjs
           node --check scripts/auto-correct-v1.mjs
           node --check scripts/performance-budget-v1.mjs
+          node --check scripts/render-runtime-smoke-v1.mjs
           node --check cultivos-v1.mjs
           node --check brain-host-v27.mjs
       - name: Deterministic auto-correction check
@@ -47,12 +48,14 @@ jobs:
         run: npm run test:performance
       - name: Expanded automation battery
         run: npm run test:automation
-      - name: Assimilation gate
-        run: npm run test:assimilation
       - name: Render preflight
         run: npm run render:verify
+      - name: Render runtime smoke
+        run: npm run test:render-runtime
       - name: Full project battery
         run: npm test
+      - name: Assimilation gate
+        run: npm run test:assimilation
       - name: Generate ChatGPT handoff report
         if: always()
         env:
