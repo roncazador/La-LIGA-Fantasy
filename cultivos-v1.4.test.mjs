@@ -1,0 +1,3 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {createCultivos,CULTIVOS_VERSION} from './cultivos-v1.4.mjs';
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cultivos-'));const c=createCultivos({dir});const a=c.observe({source:'qa',outcome:'success',dimensions:{prediction:2,ux:1},evidence:true});assert.equal(a.version,CULTIVOS_VERSION);assert.equal(a.cycles,1);assert.ok(a.score>0);const b=createCultivos({dir});assert.equal(b.summary().cycles,1);assert.equal(b.summary().dimensions.prediction,2);assert.equal(b.summary().dimensions.ux,1);console.log('CULTIVOS v1.4: 5/5');
