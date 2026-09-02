@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createBrain, BRAIN_VERSION } from './brain-core-v27.mjs';
 import { createPlayerHistory, HISTORY_VERSION } from './brain-history-v28.mjs';
-import { createCultivos, CULTIVOS_VERSION } from './cultivos-v1.mjs';
+import { createCultivos, CULTIVOS_VERSION } from './cultivos-v1.4.mjs';
 import { fetchFutbolFantasy, fetchLaligaOfficialSeed, mergeCalendarSources } from './calendar-service-v29.mjs';
 import { fetchFutbolFantasyData } from './futbolfantasy-data-v30.mjs';
 
