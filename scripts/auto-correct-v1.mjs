@@ -7,7 +7,7 @@ const RULES=[
   {file:'config.mjs',find:"'/teams-futbolfantasy-v1.js'",replace:"'/visual-compact-v1.css'",reason:'public visual asset',ready:before=>before.includes("'/visual-compact-v1.css'")},
   {file:'connection-client.js',find:"setTimeout(()=>{loadInline('/app-dynamics-v37.js','37');loadInline('/calendar-autonomous-v35.js','35');loadInline('/focus-ui-v30.js','30');loadInline('/futbolfantasy-ui-v30.js','30');loadInline('/match-detail-ui-v31.js','33')},0)",replace:"idle(()=>{loadInline('/app-dynamics-v37.js','37');loadInline('/calendar-autonomous-v35.js','35');loadInline('/focus-ui-v30.js','30');loadInline('/futbolfantasy-ui-v30.js','30');loadInline('/match-detail-ui-v31.js','33')})",reason:'defer secondary UI work'},
   {file:'connection-client.js',find:"function loadCss(src,version){",replace:"function idle(fn){if('requestIdleCallback' in window)return window.requestIdleCallback(fn,{timeout:1500});return setTimeout(fn,250)}function loadCss(src,version){",reason:'bounded idle scheduler'},
-  {file:'sw.js',find:"const CACHE_NAME='fm-v311'",replace:"const CACHE_NAME='fm-v310'",reason:'service worker contract'},
+  {file:'sw.js',find:"const CACHE_NAME='fm-v313'",replace:"const CACHE_NAME='fm-v314'",reason:'service worker contract'},
 ];
 const allowed=new Set(RULES.map(r=>r.file));
 const mode=process.argv[2]||'--check';
