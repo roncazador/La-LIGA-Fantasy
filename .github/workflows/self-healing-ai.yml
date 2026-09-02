@@ -147,7 +147,7 @@ jobs:
           **Repair branch:** $REPAIR_BRANCH
           **Diagnostic handoff:** attached as workflow artifact `self-healing-chatgpt-handoff`.
 
-          Deterministic safe corrections run before AI repair. Any committed repair must pass the full `npm test` suite and repository policy checks. Automatic self-merge remains disabled.
+          Deterministic safe corrections run before AI repair. Any committed repair must pass the full `npm test` suite and repository policy checks. automatic self-merge remains disabled.
           EOF
           )
           if [[ -n "$EXISTING" ]]; then
