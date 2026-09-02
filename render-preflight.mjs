@@ -6,6 +6,7 @@ const required = [
   'brain-history-v28.mjs','brain-history-hook-v28.mjs','brain-calibration-v28.mjs',
   'brain-reliability-v29.mjs','brain-reliability-hook-v29.mjs',
   'calendar-service-v29.mjs','calendar-autonomous-v30.js','futbolfantasy-data-v30.mjs',
+  'futbolfantasy-brain-adapter-v1.mjs','scripts/brain-futbolfantasy-sync-v1.mjs','scripts/brain-battery-feedback-v1.mjs','scripts/futbolfantasy-brain-autosync-v1.mjs',
   'index.html','connection-client.js','sw.js'
 ];
 for (const file of required) {
@@ -23,7 +24,5 @@ if (String(process.env.RENDER ?? '').toLowerCase() === 'true') {
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('RENDER_PREFLIGHT_INVALID_PORT');
 }
 const syntax = required.filter(file=>/\.(mjs|js)$/.test(file));
-for (const file of syntax) {
-  execFileSync(process.execPath,['--check',file],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
-}
+for (const file of syntax) execFileSync(process.execPath,['--check',file],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
 console.log(`RENDER_PREFLIGHT_OK node=${process.versions.node} port=${process.env.PORT || '10000'} files=${required.length}`);
