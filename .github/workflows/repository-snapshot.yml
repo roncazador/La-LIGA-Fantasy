@@ -1,0 +1,24 @@
+name: Repository snapshot
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Create repository archive
+        run: |
+          rm -rf .git
+          zip -qr "laliga-fantasy-${GITHUB_SHA}.zip" . -x "node_modules/*" ".github/workflows/repository-snapshot.yml"
+      - name: Upload repository archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: laliga-fantasy-repository-${{ github.sha }}
+          path: "laliga-fantasy-${{ github.sha }}.zip"
+          retention-days: 14

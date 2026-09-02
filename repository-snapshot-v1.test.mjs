@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const workflow=fs.readFileSync('.github/workflows/repository-snapshot.yml','utf8');
+assert.ok(workflow.includes('workflow_dispatch:'));
+assert.ok(workflow.includes('branches: [main]'));
+assert.ok(workflow.includes('actions/checkout@v4'));
+assert.ok(workflow.includes('zip -qr'));
+assert.ok(workflow.includes('actions/upload-artifact@v4'));
+assert.ok(workflow.includes('contents: read'));
+assert.ok(!workflow.includes('contents: write'));
+console.log('REPOSITORY SNAPSHOT v1: 7/7 checks passed');
