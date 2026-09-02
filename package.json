@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --import ./brain-history-hook-v28.mjs --import ./brain-reliability-hook-v29.mjs brain-host-v27.mjs",
+    "start": "node --import ./brain-history-hook-v28.mjs --import ./brain-reliability-hook-v29.mjs --import ./scripts/futbolfantasy-brain-autosync-v1.mjs brain-host-v27.mjs",
     "render:verify": "node render-preflight.mjs",
     "test:automation": "node scripts/automation-battery-v2.mjs",
     "test:assimilation": "node scripts/assimilation-gate-v1.mjs",
