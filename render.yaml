@@ -35,6 +35,10 @@ services:
         value: "false"
       - key: AI_FEEDBACK_MODEL
         value: ""
+      - key: FUTBOLFANTASY_BRAIN_AUTOSYNC
+        value: "true"
+      - key: FUTBOLFANTASY_BRAIN_SYNC_INTERVAL_MS
+        value: "1200000"
       - key: FOOTBALL_DATA_COMPETITION
         value: PD
       - key: FOOTBALL_DATA_DAYS
