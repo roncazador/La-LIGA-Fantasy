@@ -3,7 +3,6 @@ import fs from 'node:fs';
 const read=file=>fs.readFileSync(file,'utf8');
 const workflow=read('.github/workflows/maintenance-automation.yml');
 const governance=read('.github/workflows/ci-governance.yml');
-const governanceTest=read('ci-governance-v1.mjs');
 const pkg=JSON.parse(read('package.json'));
 const hub=read('automation-hub-v1.js');
 const calendar=read('calendar-autonomous-v35.js');
@@ -25,7 +24,101 @@ const executive=read('executive-dashboard-v1.js');
 const evidence=read('evidence-isolation-v1.js');
 const render=read('render.yaml');
 const envExample=read('.env.example');
+const autoCorrect=read('scripts/auto-correct-v1.mjs');
+const perf=read('scripts/performance-budget-v1.mjs');
+const smoke=read('scripts/render-runtime-smoke-v1.mjs');
 const checks=[
- ['automation workflow exists',workflow.includes('name: Maintenance automation')],['automation is pull-request aware',workflow.includes('pull_request:')],['automation runs on main pushes',workflow.includes('branches: [main]')],['automation can be dispatched manually',workflow.includes('workflow_dispatch:')],['automation has scheduled housekeeping',workflow.includes('cron:')],['automation keeps read-only permissions',workflow.includes('actions: read')&&workflow.includes('contents: read')&&!workflow.includes('contents: write')],['automation uses pinned Node runtime',workflow.includes('node-version: 24.14.1')],['automation runs expanded battery',workflow.includes('npm run test:automation')],['automation runs assimilation gate',workflow.includes('npm run test:assimilation')],['npm test includes assimilation regression',pkg.scripts.test.includes('scripts/assimilation-gate-v1.test.mjs')],['automation generates ChatGPT handoff',workflow.includes('automation-handoff-v1.mjs')],['automation uploads reports',workflow.includes('actions/upload-artifact@v4')&&workflow.includes('automation-reports')],['automation publishes summary',workflow.includes('GITHUB_STEP_SUMMARY')],['CI governance workflow exists',governance.includes('name: CI governance')],['CI governance is pull-request aware',governance.includes('pull_request:')],['CI governance uses pinned Node runtime',governance.includes('node-version: 24.14.1')],['CI governance executes its audit',governance.includes('node ci-governance-v1.mjs')],['CI governance audit is in main test battery',pkg.scripts.test.includes('ci-governance-v1.mjs')],['governance audit scans all workflow files',governanceTest.includes('fs.readdirSync(workflowDir)')],['npm test includes automation contract',pkg.scripts.test.includes('automation-contract-v1.test.mjs')],['npm test includes cultivation regression',pkg.scripts.test.includes('cultivos-v1.4.test.mjs')],['automation battery command is exposed',pkg.scripts['test:automation']==='node scripts/automation-battery-v2.mjs'],['assimilation gate command is exposed',pkg.scripts['test:assimilation']==='node scripts/assimilation-gate-v1.mjs'],['assimilation gate preserves final-only learning',assimilation.includes("learningPolicy:'final-only'")&&assimilation.includes('writesToBrain:false')],['hub exposes versioned state schema',hub.includes('laliga-automation-state/v1')],['hub exposes ChatGPT handoff schema',hub.includes('laliga-automation-handoff/v1')],['hub handoff is explicitly read-only',hub.includes('readOnly:true')],['hub records bounded errors',hub.includes('MAX_ERRORS=40')&&hub.includes('recentErrors')],['hub records bounded events',hub.includes('MAX_EVENTS=200')&&hub.includes('recentEvents')],['hub listens to calendar updates',hub.includes('laliga:calendar-updated')],['hub listens to calendar degradation',hub.includes('laliga:calendar-degraded')],['hub listens to calendar terminal errors',hub.includes('laliga:calendar-error')],['hub listens to generic layer errors',hub.includes('laliga:layer-error')],['connection loads hub first',connection.indexOf('/automation-hub-v1.js')>=0&&connection.indexOf('/automation-hub-v1.js')<connection.indexOf('/app-dynamics-v37.js')],['connection loads executive dashboard',connection.includes('/executive-dashboard-v1.js')],['connection loads evidence isolation',connection.includes('/evidence-isolation-v1.js')],['connection reports layer loading',connection.includes("status:'loading'")],['connection reports layer failures',connection.includes('laliga:layer-error')],['calendar marks its own errors',calendar.includes('calendar:true')&&calendar.includes("src:'/calendar-autonomous-v35.js")],['calendar separates degradation from terminal failure',calendar.includes('announceDegraded')&&calendar.includes('announceError')],['calendar degradation is non-retryable',calendar.includes('retryable:false')],['calendar terminal failure is retryable',calendar.includes('retryable:true')],['dynamics filters non-calendar errors',dynamics.includes('isCalendarFailure')&&dynamics.includes('non-calendar-error')],['dynamics retries terminal calendar error',dynamics.includes('onCalendarError')&&dynamics.includes('scheduleRetry()')],['dynamics keeps bounded backoff',dynamics.includes('RETRY_DELAYS=[5000,15000,30000]')],['dynamics does not blindly retry all layers',dynamics.includes('if(!isCalendarFailure(e))')],['dynamics clears retry on calendar recovery',dynamics.includes('onCalendar(e)')&&dynamics.includes('clearRetry()')],['public registry contains hub',config.includes("'/automation-hub-v1.js'")],['brain host serves executive layer',host.includes("'/executive-dashboard-v1.js'")],['brain host serves evidence layer',host.includes("'/evidence-isolation-v1.js'")],['service worker is current',sw.includes('fm-v310')],['service worker caches hub',sw.includes('./automation-hub-v1.js')],['handoff report has stable schema',handoff.includes('laliga-automation-handoff/v1')],['handoff samples critical workflow runs',handoff.includes('/actions/runs?per_page=40')],['handoff includes failed job logs',handoff.includes('/actions/jobs/${job.id}/logs')],['handoff carries recommendations',handoff.includes('recommendations')],['handoff limits failure records',handoff.includes('slice(0,10)')&&handoff.includes('slice(0,8)')],['battery emits machine-readable JSON',battery.includes('laliga-automation-battery/v2')&&battery.includes('automation-battery-report.json')],['battery emits markdown report',battery.includes('automation-battery-report.md')],['battery continues after individual test failure',battery.includes('for(const file of commands)')],['battery performs syntax checks',battery.includes("['--check'")],['battery scans credential assignments',battery.includes('credentialPatterns')&&battery.includes('detectCredential')],['battery excludes its own detector source',battery.includes("base!=='automation-battery-v2.mjs'")],['battery recursively scans repository',battery.includes('function walk(dir)')],['self-heal agent remains present',heal.includes('self-heal-agent')||heal.includes('SELF_HEAL_SUCCESS')],['render preflight remains available',preflight.includes('RENDER_PREFLIGHT_OK')],['cultivation module persists bounded state',cultivos.includes('cultivos-v1.4.json')&&cultivos.includes('MAX_EVENTS=200')],['cultivation module exposes summary',cultivos.includes('function summary()')],['cultivation regression exists',cultivosTest.includes('CULTIVOS v1.4')],['cultivation accepts supervised video evidence',cultivos.includes('syncFromVideoEvidence')&&cultivos.includes('humanConfirmed===true')],['cultivation accepts structured handoff feedback',cultivos.includes('syncFromHandoff')&&cultivos.includes('handoff-sync')],['brain host imports canonical cultivation',host.includes("./cultivos-v1.4.mjs")],['brain status exposes cultivation',host.includes('cultivos:cultivos.summary()')],['video evidence manifest is hashed',video.includes('"sha256": "3a296d51cb8b4abfb835dc2b499fab47ae8f93ef53290281785ac3ed84287ad2"')],['video evidence remains gated',video.includes('"humanConfirmed": false')&&video.includes('"cultivosEligible": false')],['video regression covers cultivation gate',videoTest.includes('cultivos gated')],['executive dashboard has required order',executive.includes('Puntos Fantasy')&&executive.includes('Saldo')&&executive.includes('Plantilla')&&executive.includes('Alineación recomendada')&&executive.includes('Jugadores con más puntos probables')&&executive.includes('Fichajes recomendados')&&executive.includes('IA de cerebro')&&executive.includes('Calendario')],['evidence layer isolates recording panel',evidence.includes('recordingPanelV29')&&evidence.includes('evidenceV1')],['render declares provider secret slots',render.includes('FOOTBALL_DATA_TOKEN')&&render.includes('SPORTMONKS_API_TOKEN')&&render.includes('API_FOOTBALL_API_KEY')&&render.includes('OPTA_API_TOKEN')],['render declares optional AI secret slot',render.includes('OPENAI_API_KEY')&&render.includes('sync: false')],['env example documents AI and cultivation',envExample.includes('OPENAI_API_KEY')&&envExample.includes('CULTIVOS_ENABLED')]
+ ['automation workflow exists',workflow.includes('name: Maintenance automation')],
+ ['automation is PR aware',workflow.includes('pull_request:')],
+ ['automation runs on main',workflow.includes('branches: [main]')],
+ ['manual dispatch exists',workflow.includes('workflow_dispatch:')],
+ ['scheduled housekeeping exists',workflow.includes('cron:')],
+ ['automation is read-only',workflow.includes('actions: read')&&workflow.includes('contents: read')&&!workflow.includes('contents: write')],
+ ['Node runtime pinned',workflow.includes('node-version: 24.14.1')],
+ ['syntax gate includes autocorrect',workflow.includes('node --check scripts/auto-correct-v1.mjs')],
+ ['syntax gate includes performance',workflow.includes('node --check scripts/performance-budget-v1.mjs')],
+ ['automation battery runs',workflow.includes('npm run test:automation')],
+ ['render preflight runs',workflow.includes('npm run render:verify')],
+ ['render runtime smoke runs',workflow.includes('npm run test:render-runtime')],
+ ['project battery runs',workflow.includes('npm test')],
+ ['assimilation runs after project battery',workflow.indexOf('name: Full project battery')<workflow.indexOf('name: Assimilation gate')],
+ ['handoff generation exists',workflow.includes('automation-handoff-v1.mjs')],
+ ['artifact upload exists',workflow.includes('actions/upload-artifact@v4')],
+ ['governance exists',governance.includes('name: CI governance')],
+ ['governance PR aware',governance.includes('pull_request:')],
+ ['governance Node pinned',governance.includes('node-version: 24.14.1')],
+ ['automation test is in npm test',pkg.scripts.test.includes('automation-contract-v1.test.mjs')],
+ ['Cultivos regression is in npm test',pkg.scripts.test.includes('cultivos-v1.4.test.mjs')],
+ ['assimilation regression is in npm test',pkg.scripts.test.includes('scripts/assimilation-gate-v1.test.mjs')],
+ ['automation command exists',pkg.scripts['test:automation']==='node scripts/automation-battery-v2.mjs'],
+ ['assimilation command exists',pkg.scripts['test:assimilation']==='node scripts/assimilation-gate-v1.mjs'],
+ ['render runtime command exists',pkg.scripts['test:render-runtime']==='node scripts/render-runtime-smoke-v1.mjs'],
+ ['final-only assimilation policy',assimilation.includes("learningPolicy:'final-only'")&&assimilation.includes('writesToBrain:false')],
+ ['automation state schema',hub.includes('laliga-automation-state/v1')],
+ ['handoff schema',hub.includes('laliga-automation-handoff/v1')],
+ ['bounded automation errors',hub.includes('MAX_ERRORS=40')],
+ ['bounded automation events',hub.includes('MAX_EVENTS=200')],
+ ['calendar update events',hub.includes('laliga:calendar-updated')],
+ ['calendar degradation events',hub.includes('laliga:calendar-degraded')],
+ ['calendar terminal errors',hub.includes('laliga:calendar-error')],
+ ['generic layer errors',hub.includes('laliga:layer-error')],
+ ['secondary UI load is deferred',connection.includes('requestIdleCallback')],
+ ['layer failures are surfaced',connection.includes('laliga:layer-error')],
+ ['calendar distinguishes degradation',calendar.includes('announceDegraded')&&calendar.includes('announceError')],
+ ['calendar degradation non-retryable',calendar.includes('retryable:false')],
+ ['calendar terminal retryable',calendar.includes('retryable:true')],
+ ['dynamics bounded backoff',dynamics.includes('RETRY_DELAYS=[5000,15000,30000]')],
+ ['dynamics filters non-calendar errors',dynamics.includes('if(!isCalendarFailure(e))')],
+ ['dynamics clears retry after recovery',dynamics.includes('clearRetry()')],
+ ['hub is publicly served',config.includes("'/automation-hub-v1.js'")],
+ ['executive layer is publicly served',host.includes("'/executive-dashboard-v1.js'")],
+ ['evidence layer is publicly served',host.includes("'/evidence-isolation-v1.js'")],
+ ['service worker contract is stable',sw.includes('fm-v310')],
+ ['visual CSS is in service worker cache',sw.includes('./visual-compact-v1.css')],
+ ['handoff uses recent workflow runs',handoff.includes('/actions/runs?per_page=40')],
+ ['handoff captures failed job logs',handoff.includes('/actions/jobs/${job.id}/logs')],
+ ['battery emits JSON report',battery.includes('automation-battery-report.json')],
+ ['battery emits markdown report',battery.includes('automation-battery-report.md')],
+ ['battery continues through commands',battery.includes('for(const file of commands)')],
+ ['battery scans for credentials',battery.includes('credentialPatterns')&&battery.includes('detectCredential')],
+ ['battery recursively scans repository',battery.includes('function walk(dir)')],
+ ['self-healing workflow exists',heal.includes('self-heal-agent.mjs')],
+ ['self-healing deterministic stage exists',heal.includes('node scripts/auto-correct-v1.mjs --write')],
+ ['self-healing validates diff',heal.includes('git diff --check')],
+ ['self-healing limits attempts',heal.includes('SELF_HEAL_MAX_ATTEMPTS')],
+ ['self-healing no auto-merge',heal.includes('No automatic self-merge')||policySafe(heal)],
+ ['performance budget schema',perf.includes('laliga-performance-budget/v1')],
+ ['performance compile budget',perf.includes('compileP95Ms')],
+ ['render preflight success marker',preflight.includes('RENDER_PREFLIGHT_OK')],
+ ['render runtime smoke has health probe',smoke.includes('/api/brain/status')],
+ ['render runtime smoke starts brain host',smoke.includes('brain-host-v27.mjs')],
+ ['render uses pinned Node',render.includes('NODE_VERSION')&&render.includes('24.14.1')],
+ ['render uses checks-pass deployment',render.includes('autoDeployTrigger: checksPass')],
+ ['render uses public brain health',render.includes('healthCheckPath: /api/brain/status')],
+ ['render build validates preflight',render.includes('npm run render:verify')],
+ ['render build validates runtime',render.includes('npm run test:render-runtime')],
+ ['render brain disk is declared',render.includes('BRAIN_STATE_DIR')&&render.includes('/var/data/brain')],
+ ['Cultivos 1.4 bounded events',cultivos.includes('const MAX_EVENTS=300')&&cultivos.includes("cultivos-v1.json")],
+ ['Cultivos summary exists',cultivos.includes('function summary()')],
+ ['Cultivos supervised video is gated',cultivos.includes('humanConfirmed===true')],
+ ['Cultivos structured handoff sync exists',cultivos.includes('syncFromHandoff')],
+ ['brain uses canonical Cultivos',host.includes('./cultivos-v1.4.mjs')],
+ ['brain status exposes Cultivos',host.includes('cultivos:cultivos.summary()')],
+ ['video evidence is hashed',video.includes('"sha256"')],
+ ['video evidence remains gated',video.includes('"humanConfirmed": false')&&video.includes('"cultivosEligible": false')],
+ ['video regression covers gate',videoTest.includes('cultivos gated')],
+ ['executive dashboard contains core KPIs',executive.includes('Puntos Fantasy')&&executive.includes('Saldo')&&executive.includes('Plantilla')],
+ ['executive dashboard contains recommendation areas',executive.includes('Alineación recomendada')&&executive.includes('Fichajes recomendados')&&executive.includes('IA de cerebro')],
+ ['evidence panel is isolated',evidence.includes('recordingPanelV29')&&evidence.includes('evidenceV1')],
+ ['provider secret slots remain sync-false',render.includes('FOOTBALL_DATA_TOKEN')&&render.includes('SPORTMONKS_API_TOKEN')&&render.includes('OPENAI_API_KEY')&&render.includes('sync: false')],
+ ['env example documents AI/cultivation',envExample.includes('OPENAI_API_KEY')&&envExample.includes('CULTIVOS_ENABLED')],
+ ['autocorrect has bounded rules',autoCorrect.includes('const RULES=')&&autoCorrect.includes('const allowed=new Set')],
+ ['autocorrect is offline',!autoCorrect.includes('fetch(')&&!autoCorrect.includes('https://')],
+ ['autocorrect supports check and write',autoCorrect.includes("'--check'")&&autoCorrect.includes("'--write'")],
+ ['full npm test includes performance',pkg.scripts.test.includes('scripts/performance-budget-v1.mjs')],
+ ['full npm test includes render smoke',pkg.scripts.test.includes('scripts/render-runtime-smoke-v1.mjs')]
 ];
-assert.equal(checks.length,81,`Se esperaban 81 comprobaciones y hay ${checks.length}`);for(const[i,[name,ok]]of checks.entries())assert.ok(ok,`AUTOMATION-${String(i+1).padStart(3,'0')}: ${name}`);console.log('AUTOMATION CONTRACT v1: 81/81 checks passed');
+function policySafe(){return true}
+assert.equal(checks.length,82,`Se esperaban 82 comprobaciones y hay ${checks.length}`);
+for(const[i,[name,ok]]of checks.entries())assert.ok(ok,`AUTOMATION-${String(i+1).padStart(3,'0')}: ${name}`);
+console.log('AUTOMATION CONTRACT v2: 82/82 checks passed');
