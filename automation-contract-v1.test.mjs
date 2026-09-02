@@ -86,7 +86,7 @@ const checks=[
  ['self-healing deterministic stage exists',heal.includes('node scripts/auto-correct-v1.mjs --write')],
  ['self-healing validates diff',heal.includes('git diff --check')],
  ['self-healing limits attempts',heal.includes('SELF_HEAL_MAX_ATTEMPTS')],
- ['self-healing no auto-merge',heal.includes('No automatic self-merge')||policySafe(heal)],
+ ['self-healing no auto-merge',heal.includes('automatic self-merge remains disabled')],
  ['performance budget schema',perf.includes('laliga-performance-budget/v1')],
  ['performance compile budget',perf.includes('compileP95Ms')],
  ['render preflight success marker',preflight.includes('RENDER_PREFLIGHT_OK')],
@@ -118,7 +118,6 @@ const checks=[
  ['full npm test includes performance',pkg.scripts.test.includes('scripts/performance-budget-v1.mjs')],
  ['full npm test includes render smoke',pkg.scripts.test.includes('scripts/render-runtime-smoke-v1.mjs')]
 ];
-function policySafe(){return true}
 assert.equal(checks.length,82,`Se esperaban 82 comprobaciones y hay ${checks.length}`);
 for(const[i,[name,ok]]of checks.entries())assert.ok(ok,`AUTOMATION-${String(i+1).padStart(3,'0')}: ${name}`);
 console.log('AUTOMATION CONTRACT v2: 82/82 checks passed');
