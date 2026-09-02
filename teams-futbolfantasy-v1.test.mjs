@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const ui=fs.readFileSync('./teams-futbolfantasy-v1.js','utf8');
+const config=fs.readFileSync('./config.mjs','utf8');
+const connection=fs.readFileSync('./connection-client.js','utf8');
+const host=fs.readFileSync('./brain-host-v27.mjs','utf8');
+const sw=fs.readFileSync('./sw.js','utf8');
+const teams=['Athletic Club','Atlético de Madrid','CA Osasuna','Celta','Deportivo Alavés','Elche CF','FC Barcelona','Getafe CF','Levante UD','Málaga CF','Racing','Rayo Vallecano','RC Deportivo','RCD Espanyol','Real Betis','Real Madrid','Real Sociedad','Sevilla FC','Valencia CF','Villarreal CF'];
+assert.equal((ui.match(/\['[^']+','[^']+'\]/g)||[]).length>=20,true);
+for(const team of teams)assert.ok(ui.includes(team),`missing ${team}`);
+assert.ok(config.includes("'/teams-futbolfantasy-v1.js'"));
+assert.ok(connection.includes("loadInline('/teams-futbolfantasy-v1.js','1')"));
+assert.ok(host.includes("'/teams-futbolfantasy-v1.js':['teams-futbolfantasy-v1.js'"));
+assert.ok(sw.includes("'./teams-futbolfantasy-v1.js'"));
+assert.ok(ui.includes('/api/futbolfantasy/data'));
+assert.ok(ui.includes('Fuente: FutbolFantasy'));
+assert.ok(ui.includes('#execV1 .ebar .ekpi:nth-child(4),#execV1 .ebar .ekpi:nth-child(5)'));
+console.log('TEAMS + FUTBOLFANTASY UI v1: 20 teams · wired · compact dashboard');

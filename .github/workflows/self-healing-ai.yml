@@ -89,7 +89,23 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Deterministic auto-correction
+        id: autocorrect
+        run: |
+          set -euo pipefail
+          node scripts/auto-correct-v1.mjs --write
+          if [[ -n "$(git status --porcelain)" ]]; then
+            npm test
+            git diff --check
+            git add automation-contract-v1.test.mjs config.mjs connection-client.js sw.js
+            git commit -m "fix(self-heal): apply deterministic corrections"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run self-healing agent
+        if: steps.autocorrect.outputs.changed != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -103,7 +119,10 @@ jobs:
           REPAIR_BRANCH: ${{ steps.branch.outputs.branch }}
         run: |
           set -euo pipefail
-          if [[ -z "$(git status --porcelain)" ]]; then
+          git fetch origin "$REPAIR_BRANCH":"refs/remotes/origin/$REPAIR_BRANCH" --depth=1 || true
+          LOCAL_SHA=$(git rev-parse HEAD)
+          REMOTE_SHA=$(git rev-parse "refs/remotes/origin/$REPAIR_BRANCH" 2>/dev/null || true)
+          if [[ -n "$REMOTE_SHA" && "$LOCAL_SHA" == "$REMOTE_SHA" ]]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -122,13 +141,13 @@ jobs:
           BODY=$(cat <<EOF
           ## Self-healing AI repair
 
-          This PR was generated from a failed GitHub Actions run and contains a bounded repair proposed by the repository's self-healing agent.
+          This PR was generated from a failed GitHub Actions run and contains a bounded repair proposed by the repository's self-healing system.
 
           **Source workflow:** $WORKFLOW_NAME
           **Repair branch:** $REPAIR_BRANCH
-          **Diagnostic handoff:** attached as workflow artifact \`self-healing-chatgpt-handoff\`.
+          **Diagnostic handoff:** attached as workflow artifact `self-healing-chatgpt-handoff`.
 
-          The agent validates patches against repository policy, rejects secret-like changes, runs the full \`npm test\` suite before committing, and stores successful repair signatures in \`.github/self-healing/memory.json\` for future diagnosis.
+          Deterministic safe corrections run before AI repair. Any committed repair must pass the full `npm test` suite and repository policy checks. Automatic self-merge remains disabled.
           EOF
           )
           if [[ -n "$EXISTING" ]]; then
@@ -139,4 +158,4 @@ jobs:
 
       - name: Report no repair
         if: steps.push.outputs.changed != 'true'
-        run: echo "Self-healing agent produced no validated code change. No PR created."
+        run: echo "Self-healing system produced no new validated repair."

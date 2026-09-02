@@ -35,16 +35,27 @@ jobs:
           node --check scripts/automation-battery-v2.mjs
           node --check scripts/automation-handoff-v1.mjs
           node --check scripts/assimilation-gate-v1.mjs
+          node --check scripts/auto-correct-v1.mjs
+          node --check scripts/performance-budget-v1.mjs
+          node --check scripts/render-runtime-smoke-v1.mjs
           node --check cultivos-v1.mjs
           node --check brain-host-v27.mjs
+      - name: Deterministic auto-correction check
+        run: npm run test:auto-correct
+      - name: Performance budget
+        env:
+          PERF_REPORT: '1'
+        run: npm run test:performance
       - name: Expanded automation battery
         run: npm run test:automation
-      - name: Assimilation gate
-        run: npm run test:assimilation
       - name: Render preflight
         run: npm run render:verify
+      - name: Render runtime smoke
+        run: npm run test:render-runtime
       - name: Full project battery
         run: npm test
+      - name: Assimilation gate
+        run: npm run test:assimilation
       - name: Generate ChatGPT handoff report
         if: always()
         env:
@@ -57,6 +68,7 @@ jobs:
         if: always()
         run: |
           cat automation-handoff.md >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f performance-budget-report.json ]]; then cat performance-budget-report.json >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Package repository source
         if: always()
         run: git archive --format=zip --output=La-LIGA-Fantasy-${GITHUB_SHA}.zip HEAD
@@ -70,6 +82,7 @@ jobs:
             automation-battery-report.md
             automation-handoff.json
             automation-handoff.md
+            performance-budget-report.json
             assimilation-report.json
             La-LIGA-Fantasy-${{ github.sha }}.zip
           if-no-files-found: error
