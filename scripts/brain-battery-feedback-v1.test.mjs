@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { writeBatteryFeedback } from './brain-battery-feedback-v1.mjs';
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'laliga-brain-feedback-'));
+const report=path.join(dir,'battery.json');
+fs.writeFileSync(report,JSON.stringify({summary:{total:10,passed:10,failed:0,successRate:100}}));
+const out=writeBatteryFeedback({reportPath:report,brainDir:dir});
+assert.equal(out.learned,false);
+assert.equal(out.battery.passed,10);
+assert.equal(out.cultivation.version,'1.2.0');
+const log=fs.readFileSync(path.join(dir,'learning-v27.jsonl'),'utf8');
+assert.match(log,/automation-battery-feedback/);
+const model=JSON.parse(fs.readFileSync(path.join(dir,'model-v27.json'),'utf8'));
+assert.equal(model.labeledSamples,0);
+console.log('BRAIN BATTERY FEEDBACK v1: 5/5 checks passed');
