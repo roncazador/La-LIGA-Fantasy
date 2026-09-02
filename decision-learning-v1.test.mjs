@@ -1,0 +1,4 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const ui=fs.readFileSync('decision-learning-v1.js','utf8');
+assert.match(ui,/laliga_decision_learning_v1/);assert.match(ui,/La seguí/);assert.match(ui,/No la seguí/);assert.match(ui,/Decisión tomada/);assert.match(ui,/Motivo/);assert.match(ui,/Puntos obtenidos/);assert.match(ui,/Cerrar jornada y aprender/);assert.match(ui,/status==='pending-final'/);assert.match(ui,/status='final'/);assert.match(ui,/function learn\(/);assert.match(ui,/followRate/);assert.match(ui,/goodRate/);assert.match(ui,/trust/);assert.match(ui,/no modifica por sí sola los pesos del Cerebro/);console.log('decision-learning-v1: 12 checks OK');
