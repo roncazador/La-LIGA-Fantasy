@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { createCultivos, CULTIVOS_VERSION } from './cultivos-v1.4.mjs';
+
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cultivos-v14-'));
+const c=createCultivos({dir});
+assert.equal(CULTIVOS_VERSION,'1.4.0');
+for(const method of ['observe','sync','syncFromBrain','syncFromAutomation','syncFromEvidence','syncFromVideoEvidence','syncFromHandoff','summary']) assert.equal(typeof c[method],'function');
+c.syncFromBrain({accuracy:70,reliability:{reliability:.75,dataQuality:.9}});
+c.syncFromAutomation({eventCount:5,recentErrors:[]});
+c.syncFromEvidence({captureCount:1,recordingCount:1});
+c.syncFromHandoff({status:'success',failures:[],recommendations:['ok'],summary:{failed:0}});
+assert.equal(c.summary().version,'1.4.0');
+assert.ok(c.summary().cycles>=4);
+const persisted=createCultivos({dir}).summary();
+assert.equal(persisted.cycles,c.summary().cycles);
+assert.equal(persisted.dimensions.prediction,c.summary().dimensions.prediction);
+console.log('CULTIVOS v1.4 compatibility: 10/10 checks passed');
