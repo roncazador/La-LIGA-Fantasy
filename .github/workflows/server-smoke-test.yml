@@ -3,6 +3,7 @@ name: Server smoke test
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -21,14 +22,19 @@ jobs:
           PORT=10000 HOST=0.0.0.0 NODE_ENV=test SECURE_COOKIE=false npm start > server.log 2>&1 &
           echo $! > server.pid
           for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:10000/api/health > health.json; then exit 0; fi
+            if curl -fsS http://127.0.0.1:10000/api/health > health.json; then break; fi
             sleep 1
           done
-          cat server.log
-          exit 1
+          test -s health.json || { cat server.log; exit 1; }
+          for i in {1..30}; do
+            if node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('health.json','utf8')); process.exit(x.backendReady ? 0 : 1)"; then break; fi
+            sleep 1
+            curl -fsS http://127.0.0.1:10000/api/health > health.json
+          done
+          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('health.json','utf8')); if(!x.backendReady){console.error(x);process.exit(1)}; console.log(x)"
       - name: Validate health response
         run: |
-          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('health.json','utf8')); if(!x.ok || !x.readOnly || x.competition !== '1') process.exit(1); console.log(x)"
+          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('health.json','utf8')); if(!x.ok || !x.readOnly || x.competition !== '1' || !x.backendReady) process.exit(1); console.log(x)"
       - name: Stop server
         if: always()
         run: kill $(cat server.pid) 2>/dev/null || true

@@ -20,7 +20,7 @@ const checks=[
  ['Node pinned',pkg.engines.node==='24.14.1'],
  ['Brain host start',pkg.scripts.start.includes('brain-host-v27.mjs')],
  ['Render checksPass',render.includes('autoDeployTrigger: checksPass')],
- ['Render health',render.includes('healthCheckPath: /api/brain/status')],
+ ['Render health',render.includes('healthCheckPath: /api/health')],
  ['Render brain state',render.includes('BRAIN_STATE_DIR')],
  ['Render AI secret slot',render.includes('OPENAI_API_KEY')&&render.includes('sync: false')],
  ['Cultivos enabled',render.includes('CULTIVOS_ENABLED')],

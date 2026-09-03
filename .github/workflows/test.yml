@@ -26,5 +26,8 @@ jobs:
           node --check data-client.js
           node --check connection-client.js
           node --check auth-client.js
+          node --check teams-data-v5.js
+          node --check decision-learning-v1.js
+          node --check teams-detail-v1.js
       - name: Run deterministic QA suite
         run: npm test

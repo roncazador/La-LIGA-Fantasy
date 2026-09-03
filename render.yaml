@@ -6,7 +6,7 @@ services:
     autoDeployTrigger: checksPass
     buildCommand: npm install --no-audit --no-fund && npm run render:verify && npm run test:render-runtime
     startCommand: npm start
-    healthCheckPath: /api/brain/status
+    healthCheckPath: /api/health
     maxShutdownDelaySeconds: 60
     disk:
       name: fantasy-brain-data
