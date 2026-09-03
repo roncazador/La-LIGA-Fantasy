@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { detectFixtureConflicts, conflictKey } from './fixture-conflicts-v1.mjs';
+const base={home:'Real Madrid',away:'FC Barcelona',utcDate:'2026-09-05T18:00:00Z'};
+const clean=detectFixtureConflicts({a:{matches:[{...base,status:'FT',homeScore:2,awayScore:1}]},b:{matches:[{...base,utcDate:'2026-09-05T18:07:00Z',status:'FINISHED',homeScore:2,awayScore:1}]}});
+assert.equal(clean.length,0);
+const score=detectFixtureConflicts({a:{matches:[{...base,status:'FT',homeScore:2,awayScore:1}]},b:{matches:[{...base,status:'FT',homeScore:3,awayScore:1}]}});
+assert.equal(score.length,1);assert.equal(score[0].scoreConflict,true);assert.equal(score[0].severity,'score');
+const lifecycle=detectFixtureConflicts({a:{matches:[{...base,status:'FT',homeScore:2,awayScore:1}]},b:{matches:[{...base,status:'LIVE',homeScore:2,awayScore:1}]}});
+assert.equal(lifecycle.length,1);assert.equal(lifecycle[0].lifecycleConflict,true);assert.equal(lifecycle[0].severity,'status');
+assert.equal(conflictKey(base),conflictKey({...base,utcDate:'2026-09-05T18:59:00Z'}));
+console.log('fixture-conflicts-v1: explicit score/status conflict detection OK');
