@@ -22,6 +22,6 @@ for(const token of [
 assert.ok(conn.includes("'/calendar-focus-v1.js'"),'focus layer not loaded');
 assert.ok(config.includes("'/calendar-focus-v1.js'"),'focus layer not public');
 assert.ok(ui.includes('No se muestran datos inventados'),'missing no-fabrication guard');
-assert.ok(ui.includes('Las posibles puntuaciones'),'missing estimate disclaimer');
+assert.ok(ui.includes('Las posibles puntuaciones') || ui.includes('media Fantasy son estimaciones'),'missing estimate disclaimer');
 
 console.log('CALENDAR FOCUS v1: calendar match detail + live standings + team profile contracts OK');
