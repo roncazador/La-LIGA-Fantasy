@@ -1,14 +1,14 @@
 const TEAMS = Object.freeze([
   'Alavés','Athletic','Atlético','Barcelona','Betis','Celta','Elche','Espanyol','Getafe',
-  'Girona','Levante','Mallorca','Málaga','Osasuna','Rayo','R. Racing Club','RC Deportivo',
-  'Real Betis','Real Madrid','Real Oviedo','Real Sociedad','Sevilla','Valencia','Villarreal'
+  'Levante','Málaga','Osasuna','Rayo','R. Racing Club','RC Deportivo','Real Madrid',
+  'Real Sociedad','Sevilla','Valencia','Villarreal'
 ]);
 
 // FutbolFantasy uses compact names while LALIGA/providers can use official names.
-// Keep this table deliberately small and deterministic; unknown names are rejected instead of guessed.
+// Keep this table deterministic; unknown names are rejected instead of guessed.
 const ALIASES = new Map([
   ['alaves','Alavés'],['deportivoalaves','Alavés'],
-  ['athletic','Athletic'],['athleticclub','Athletic'],
+  ['athletic','Athletic'],['athleticclub','Athletic'],['athleticbilbao','Athletic'],
   ['atletico','Atlético'],['atleticodemadrid','Atlético'],
   ['barcelona','Barcelona'],['fcbarcelona','Barcelona'],
   ['betis','Betis'],['realbetis','Betis'],['realbetisbalompie','Betis'],
@@ -16,16 +16,13 @@ const ALIASES = new Map([
   ['elche','Elche'],['elchecf','Elche'],
   ['espanyol','Espanyol'],['rcdespanyoldabarcelona','Espanyol'],['rcdespanyoldebarcelona','Espanyol'],
   ['getafe','Getafe'],['getafecf','Getafe'],
-  ['girona','Girona'],['gironafc','Girona'],
   ['levante','Levante'],['levanteud','Levante'],
-  ['mallorca','Mallorca'],['rcdmallorca','Mallorca'],
   ['malaga','Málaga'],['malagacf','Málaga'],
   ['osasuna','Osasuna'],['caosasuna','Osasuna'],
   ['rayo','Rayo'],['rayovallecano','Rayo'],
   ['rracingclub','R. Racing Club'],['racing','R. Racing Club'],['racingdesantander','R. Racing Club'],['racingclub','R. Racing Club'],
   ['rcdeportivo','RC Deportivo'],['deportivo','RC Deportivo'],['deportivoalacoruna','RC Deportivo'],
   ['realmadrid','Real Madrid'],
-  ['realoviedo','Real Oviedo'],['realoviedocf','Real Oviedo'],
   ['realsociedad','Real Sociedad'],
   ['sevilla','Sevilla'],['sevillafc','Sevilla'],
   ['valencia','Valencia'],['valenciacf','Valencia'],
@@ -45,9 +42,10 @@ function nameOf(player) {
 }
 
 function dedupePlayers(players) {
+  const input = Array.isArray(players) ? players : [];
   const map = new Map();
   let dropped = 0;
-  for (const raw of Array.isArray(players) ? players : []) {
+  for (const raw of input) {
     const name = nameOf(raw);
     const team = canonicalTeamName(raw?.team?.name ?? raw?.teamName ?? raw?.team ?? raw?.clubName);
     if (!name || !team) { dropped += 1; continue; }
@@ -59,14 +57,19 @@ function dedupePlayers(players) {
       ...Object.fromEntries(Object.entries(item).filter(([,v]) => v != null && v !== ''))
     } : item);
   }
-  return {rows:[...map.values()],dropped,deduped:Math.max(0,(players?.length||0)-dropped-map.size)};
+  return {
+    rows:[...map.values()],
+    dropped,
+    deduped:Math.max(0,input.length-dropped-map.size)
+  };
 }
 
 function sanitizeLineup(players, matchTeam) {
   const wanted = canonicalTeamName(matchTeam);
+  if (!wanted) return [];
   return dedupePlayers((Array.isArray(players) ? players : [])
     .map(p => ({...p,team:canonicalTeamName(p?.team?.name ?? p?.teamName ?? p?.team ?? p?.clubName)}))
-    .filter(p => p.team && p.team === wanted)).rows;
+    .filter(p => p.team === wanted)).rows;
 }
 
 function sanitizeMatches(matches) {
@@ -106,11 +109,15 @@ function sanitizeMatches(matches) {
 
 export function sanitizeFutbolFantasyBundle(bundle={}) {
   const matches = sanitizeMatches(bundle.matches);
-  const references = sanitizeMatches(bundle.references?.map(x => ({...x,players:[],lineups:x.lineups})));
+  const references = sanitizeMatches((bundle.references || []).map(x => ({...x,players:[],lineups:x.lineups})));
   const players = dedupePlayers(bundle.players || []);
-  const injuries = (Array.isArray(bundle.injuries) ? bundle.injuries : []).map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
-  const points = (Array.isArray(bundle.points) ? bundle.points : []).map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
-  const stats = (Array.isArray(bundle.stats) ? bundle.stats : []).map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
+  const injuries = (Array.isArray(bundle.injuries) ? bundle.injuries : [])
+    .map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}))
+    .filter(x => x.team || !x.team);
+  const points = (Array.isArray(bundle.points) ? bundle.points : [])
+    .map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
+  const stats = (Array.isArray(bundle.stats) ? bundle.stats : [])
+    .map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
   const normalizedPages = Array.isArray(bundle.pages) ? bundle.pages.map(page => ({...page})) : [];
   const sourceOkCount = normalizedPages.filter(page => page.ok === true).length;
   const sourceFailedCount = normalizedPages.filter(page => page.ok === false).length;
