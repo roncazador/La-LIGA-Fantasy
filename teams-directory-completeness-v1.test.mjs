@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const js=fs.readFileSync('teams-directory-completeness-v1.js','utf8');
+const client=fs.readFileSync('connection-client.js','utf8');
+assert.match(js,/const CLUBS=\[/);
+assert.equal((js.match(/'[^']+'/g)||[]).filter(x=>x.includes('CF')||x.includes('FC')||x.includes('Madrid')||x.includes('Athletic')||x.includes('Osasuna')).length>0,true);
+assert.match(js,/return CLUBS\.map/);
+assert.match(js,/ts\.length===20/);
+assert.match(js,/x\.rank\?\?'-'/);
+assert.match(js,/x\.points\?\?'-'/);
+assert.match(js,/20 clubes de referencia/);
+assert.match(client,/teams-directory-completeness-v1\.js/);
+console.log('teams-directory-completeness-v1: OK');
