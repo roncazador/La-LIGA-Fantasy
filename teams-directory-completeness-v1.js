@@ -1,0 +1,16 @@
+(()=>{'use strict';
+const CLUBS=['Athletic Club','Atlético de Madrid','CA Osasuna','Celta','Deportivo Alavés','Elche CF','FC Barcelona','Getafe CF','Levante UD','Málaga CF','R. Racing Club','Rayo Vallecano','RC Deportivo','RCD Espanyol de Barcelona','Real Betis','Real Madrid','Real Sociedad','Sevilla FC','Valencia CF','Villarreal CF'];
+const N=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+const A=v=>Array.isArray(v)?v:Array.isArray(v?.data)?v.data:Array.isArray(v?.items)?v.items:Array.isArray(v?.standings)?v.standings:[];
+const E=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+const num=v=>Number.isFinite(Number(v))?Number(v):null;
+const f=(...v)=>v.find(x=>x!=null&&String(x).trim()!=='');
+async function get(u){const r=await fetch(u,{credentials:'include',cache:'no-store'});if(!r.ok)throw Error(`HTTP_${r.status}`);return r.json()}
+function normalize(raw){return A(raw).map(x=>({name:f(x.team,x.teamName,x.name),rank:num(f(x.rank,x.position)),points:num(f(x.points,x.totalPoints)),played:num(f(x.played,x.matchesPlayed)),wins:num(f(x.wins,x.win)),draws:num(f(x.draws,x.draw)),losses:num(f(x.losses,x.lose)),gf:num(f(x.goalsFor,x.gf)),ga:num(f(x.goalsAgainst,x.ga)),gd:num(f(x.goalDiff,x.gd)),logo:f(x.logo,x.teamLogo)})).filter(x=>x.name)}
+function merge(teams,standing){const by=new Map(standing.map(x=>[N(x.name),x]));return CLUBS.map(name=>{const t=teams.find(x=>N(x.name)===N(name));const s=by.get(N(name));return {...s,name,logo:f(t?.logo,s?.logo)} })}
+function row(x){return `<tr><td><b>${x.rank??'—'}</b></td><td><div class="club">${x.logo?`<img src="${E(x.logo)}" alt="" loading="lazy">`:`<i>${E(x.name.slice(0,2).toUpperCase())}</i>`}<b>${E(x.name)}</b></div></td><td>${x.points??'—'}</td><td>${x.played??'—'}</td><td>${x.wins??'—'}</td><td>${x.draws??'—'}</td><td>${x.losses??'—'}</td><td>${x.gf??'—'}</td><td>${x.ga??'—'}</td><td>${x.gd??'—'}</td></tr>`}
+function patch(ts){const root=document.getElementById('teamsDataV5');if(!root)return false;const title=[...root.querySelectorAll('.card h3')].find(x=>x.textContent.includes('Clasificación completa'));const table=title?.closest('.card')?.querySelector('tbody');if(!table)return false;table.innerHTML=ts.map(row).join('');const note=title.closest('.card').querySelector('.note');if(note)note.textContent='20 clubes de referencia; las cifras solo se muestran cuando existen datos reales.';return true}
+async function run(){try{const [teams,standings]=await Promise.all([get('/api/data/teams'),get('/api/data/standings')]);const ts=merge(A(teams),normalize(standings));if(ts.length===20)patch(ts)}catch{ /* conserva la vista original si las fuentes no responden */ }}
+function boot(){if(window.__TEAM_DIRECTORY_COMPLETENESS_V1)return;window.__TEAM_DIRECTORY_COMPLETENESS_V1=true;const kick=()=>{if(document.querySelector('#teamsDataV5 .tv5'))run()};new MutationObserver(kick).observe(document.body,{childList:true,subtree:true});setTimeout(kick,500)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
