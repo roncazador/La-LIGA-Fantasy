@@ -6,6 +6,7 @@ import path from 'node:path';
 import { VERSION, readConfig, oidcConfigured, publicStaticPath } from './config.mjs';
 import { providerStatus, fetchApiFootballFixtures, fetchSportmonksFixtures, fetchMultiProviderFixtures } from './providers.mjs';
 import { fetchTeams, fetchPlayers, fetchStandings, fetchInjuries } from './realdata.mjs';
+import { fetchFutbolFantasyData } from './futbolfantasy-data-v30.mjs';
 
 const config = readConfig();
 const sessions = new Map();
@@ -155,7 +156,7 @@ function loginAllowed(ip) {
   const now = Date.now();
   const current = loginAttempts.get(ip);
   if (!current || now - current.startedAt > LOGIN_WINDOW_MS) {
-    loginAttempts.set(ip, {startedAt: now, count: 1});
+    loginAttempts.set(ip, {startedAt:now, count:1});
     return true;
   }
   if (current.count >= LOGIN_MAX_ATTEMPTS) return false;
@@ -183,13 +184,8 @@ async function refresh(session) {
   try {
     const clientId = session.clientId || config.laligaOAuthClientId || config.laligaPasswordClientId;
     const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent(session.policy || config.laligaSigninPolicy)}`;
-    const body = new URLSearchParams({
-      grant_type:'refresh_token',
-      refresh_token:session.refreshToken,
-      client_id:clientId,
-      scope:`openid ${clientId} offline_access`
-    });
-    const response = await fetch(tokenUrl, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body,cache:'no-store',signal:AbortSignal.timeout(12000)});
+    const body = new URLSearchParams({grant_type:'refresh_token',refresh_token:session.refreshToken,client_id:clientId,scope:`openid ${clientId} offline_access`});
+    const response = await fetch(tokenUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body,cache:'no-store',signal:AbortSignal.timeout(12000)});
     const data = await response.json().catch(() => ({}));
     const nextToken = data.access_token || data.id_token;
     if (!response.ok || !nextToken) return false;
@@ -318,7 +314,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const clientId = config.laligaPasswordClientId;
         const tokenUrl = `${config.laligaTokenUrl}?p=${encodeURIComponent('B2C_1A_ResourceOwnerv2')}`;
-        const tokenResponse = await fetch(tokenUrl, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'password',client_id:clientId,scope:`openid ${clientId} offline_access`,redirect_uri:config.laligaPasswordRedirectUri,username:email,password,response_type:'id_token'}),cache:'no-store',signal:AbortSignal.timeout(12000)});
+        const tokenResponse = await fetch(tokenUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'password',client_id:clientId,scope:`openid ${clientId} offline_access`,redirect_uri:config.laligaPasswordRedirectUri,username:email,password,response_type:'id_token'}),cache:'no-store',signal:AbortSignal.timeout(12000)});
         const token = await tokenResponse.json().catch(() => ({}));
         if (!tokenResponse.ok) return sendJson(res,tokenResponse.status === 429 ? 429 : 401,{error:'AUTHENTICATION_FAILED'});
         const accessToken = typeof token.access_token === 'string' ? token.access_token : '';
@@ -414,6 +410,15 @@ const server = http.createServer(async (req, res) => {
         }
       }
       return sendJson(res,200,output);
+    }
+
+    if (url.pathname === '/api/futbolfantasy/data' && req.method === 'GET') {
+      try {
+        const data = await fetchFutbolFantasyData({futbolFantasyUrl:process.env.FUTBOLFANTASY_URL});
+        return sendJson(res,200,data);
+      } catch {
+        return sendJson(res,502,{error:'FUTBOLFANTASY_UNAVAILABLE',readOnly:true,sourcePolicy:'public-contrast-only'});
+      }
     }
 
     if (url.pathname.startsWith('/api/fantasy/') && req.method === 'GET') {
