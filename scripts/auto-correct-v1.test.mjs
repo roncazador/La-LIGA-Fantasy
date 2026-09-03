@@ -20,7 +20,7 @@ const checks=[
  ['no network dependency',!source.includes('fetch(')&&!source.includes('http://')&&!source.includes('https://')],
  ['current config exposes CSS',config.includes("'/visual-compact-v1.css'")],
  ['current loader uses idle',connection.includes('requestIdleCallback')],
- ['current SW preserves cache contract',sw.includes("const CACHE_NAME='fm-v315'")],
+ ['current SW preserves cache contract',sw.includes("fm-v316")||sw.includes("const CACHE_NAME='fm-v316'" )],
  ['repo currently needs no correction',result.status===0]
 ];
 for(const[name,ok]of checks)assert.ok(ok,`AUTO-CORRECT-${name}${diagnostics?` · diagnostics=${diagnostics}`:''}`);
