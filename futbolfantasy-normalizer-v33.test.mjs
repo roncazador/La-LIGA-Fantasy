@@ -15,9 +15,11 @@ assert.equal(parsePercent('101%'),null);
 
 const lineupHtml=`<div data-player-name="Jugador Uno" data-team="Barcelona" data-position="MC" data-probability="90%" data-starter="true"></div>
 <div data-player-name="Jugador Dos" data-team="Celta" data-position="DL" data-probability="40%"></div>
+<div data-player-name="Jugador Dos" data-team="FC Barcelona" data-position="DL" data-probability="40%"></div>
+<div data-player-name="Jugador Sin Equipo" data-position="DL" data-probability="99%"></div>
 <h2>Barcelona - Celta</h2>`;
 const players=extractDataPlayers(lineupHtml);
-assert.equal(players.length,2);
+assert.equal(players.length,3);
 assert.equal(players[0].probability,90);
 assert.equal(players[0].probable,true);
 assert.deepEqual(extractMatchups(lineupHtml),[{home:'Barcelona',away:'Celta'}]);
@@ -46,4 +48,15 @@ assert.equal(bundle.matches[0].lineups.home.length,1);
 assert.equal(bundle.matches[0].lineups.away.length,1);
 assert.ok(bundle.players.length>=2);
 assert.equal(bundle.points.length,1);
-console.log('FUTBOLFANTASY NORMALIZER v33: current-team aliases, parser and duplicate-isolation assertions passed');
+
+const degraded=normalizeBundle([
+  {kind:'lineups',url:'https://example.test/lineups',status:200,html:lineupHtml},
+  {kind:'injuries',url:'https://example.test/injuries',status:502,html:''}
+]);
+assert.equal(degraded.ok,false);
+assert.equal(degraded.pages.filter(x=>x.ok).length,1);
+assert.equal(degraded.pages.filter(x=>!x.ok).length,1);
+assert.equal(degraded.matches[0].lineups.home.length,1);
+assert.equal(degraded.matches[0].lineups.away.length,0);
+
+console.log('FUTBOLFANTASY NORMALIZER v33: current-team aliases, parser, duplicate isolation and source-health assertions passed');
