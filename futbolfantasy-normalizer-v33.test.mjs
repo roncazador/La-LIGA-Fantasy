@@ -3,6 +3,13 @@ import { canonicalTeam, parsePercent, extractDataPlayers, extractMatchups, extra
 
 assert.equal(canonicalTeam('Real Madrid'),'Real Madrid');
 assert.equal(canonicalTeam('  Atlético  '),'Atlético');
+for (const [input,expected] of [
+  ['Málaga CF','Málaga'],['Racing Santander','R. Racing Club'],['RC Deportivo','RC Deportivo'],
+  ['FC Barcelona','Barcelona'],['RCD Espanyol de Barcelona','Espanyol']
+]) assert.equal(canonicalTeam(input),expected,input);
+assert.equal(canonicalTeam('Girona'),null);
+assert.equal(canonicalTeam('Mallorca'),null);
+assert.equal(canonicalTeam('Real Oviedo'),null);
 assert.equal(parsePercent('Titularidad 70%'),70);
 assert.equal(parsePercent('101%'),null);
 
@@ -39,4 +46,4 @@ assert.equal(bundle.matches[0].lineups.home.length,1);
 assert.equal(bundle.matches[0].lineups.away.length,1);
 assert.ok(bundle.players.length>=2);
 assert.equal(bundle.points.length,1);
-console.log('FUTBOLFANTASY NORMALIZER v33: 16/16 assertions passed');
+console.log('FUTBOLFANTASY NORMALIZER v33: current-team aliases, parser and duplicate-isolation assertions passed');
