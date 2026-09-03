@@ -13,7 +13,8 @@ assert.match(source,/candidate\.awayScore/);
 const win=daysWindow(30);
 const span=new Date(`${win.to}T00:00:00Z`).getTime()-new Date(`${win.from}T00:00:00Z`).getTime();
 assert.equal(Math.round(span/86400000),30);
-assert.equal(daysWindow(500).to,new Date(`${win.from}T00:00:00Z`.replace('T00:00:00Z','T00:00:00Z')).toISOString().slice(0,10));
+const long=daysWindow(500);
+assert.equal(new Date(`${long.to}T00:00:00Z`).getTime()-new Date(`${long.from}T00:00:00Z`).getTime(),90*86400000);
 
 const football=normalizeFootballData({matches:[{id:1,utcDate:'2026-09-05T18:00:00Z',homeTeam:{name:'Real Madrid',id:1},awayTeam:{name:'FC Barcelona',id:2},status:'FINISHED',score:{fullTime:{home:2,away:1}},matchday:4}]})[0];
 assert.equal(football.homeScore,2);
@@ -27,4 +28,4 @@ assert.equal(sport.awayScore,2);
 assert.equal(fixtureKey(football),fixtureKey(api));
 assert.notEqual(fixtureKey(football),fixtureKey({...football,home:'Sevilla FC'}));
 
-console.log('providers-results-integrity-v1: 16 checks OK');
+console.log('providers-results-integrity-v1: 17 checks OK');
