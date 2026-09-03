@@ -14,14 +14,14 @@ const ALIASES = new Map([
   ['betis','Betis'],['realbetis','Betis'],['realbetisbalompie','Betis'],
   ['celta','Celta'],['celtadevigo','Celta'],
   ['elche','Elche'],['elchecf','Elche'],
-  ['espanyol','Espanyol'],['rcdespanyoldabarcelona','Espanyol'],['rcdespanyoldebarcelona','Espanyol'],
+  ['espanyol','Espanyol'],['rcdespanyoldebarcelona','Espanyol'],
   ['getafe','Getafe'],['getafecf','Getafe'],
   ['levante','Levante'],['levanteud','Levante'],
   ['malaga','Málaga'],['malagacf','Málaga'],
   ['osasuna','Osasuna'],['caosasuna','Osasuna'],
   ['rayo','Rayo'],['rayovallecano','Rayo'],
-  ['rracingclub','R. Racing Club'],['racing','R. Racing Club'],['racingdesantander','R. Racing Club'],['racingclub','R. Racing Club'],
-  ['rcdeportivo','RC Deportivo'],['deportivo','RC Deportivo'],['deportivoalacoruna','RC Deportivo'],
+  ['rracingclub','R. Racing Club'],['racing','R. Racing Club'],['racingsantander','R. Racing Club'],['racingdesantander','R. Racing Club'],['racingclub','R. Racing Club'],
+  ['rcdeportivo','RC Deportivo'],['deportivo','RC Deportivo'],['deportivodelacoruna','RC Deportivo'],['deportivoalacoruna','RC Deportivo'],
   ['realmadrid','Real Madrid'],
   ['realsociedad','Real Sociedad'],
   ['sevilla','Sevilla'],['sevillafc','Sevilla'],
@@ -57,11 +57,7 @@ function dedupePlayers(players) {
       ...Object.fromEntries(Object.entries(item).filter(([,v]) => v != null && v !== ''))
     } : item);
   }
-  return {
-    rows:[...map.values()],
-    dropped,
-    deduped:Math.max(0,input.length-dropped-map.size)
-  };
+  return {rows:[...map.values()],dropped,deduped:Math.max(0,input.length-dropped-map.size)};
 }
 
 function sanitizeLineup(players, matchTeam) {
@@ -83,22 +79,19 @@ function sanitizeMatches(matches) {
       ...raw,
       home,
       away,
-      players: dedupePlayers(raw?.players || []).rows.filter(p => p.team === home || p.team === away),
-      lineups: {
-        home: sanitizeLineup(raw?.lineups?.home, home),
-        away: sanitizeLineup(raw?.lineups?.away, away)
-      }
+      players:dedupePlayers(raw?.players || []).rows.filter(p => p.team === home || p.team === away),
+      lineups:{home:sanitizeLineup(raw?.lineups?.home,home),away:sanitizeLineup(raw?.lineups?.away,away)}
     };
     const id = `${key(home)}|${key(away)}`;
     const previous = out.get(id);
     if (!previous) { out.set(id,item); continue; }
-    out.set(id, {
+    out.set(id,{
       ...previous,
       ...Object.fromEntries(Object.entries(item).filter(([,v]) => v != null && v !== '')),
-      players: dedupePlayers([...(previous.players||[]),...(item.players||[])]).rows,
-      lineups: {
-        home: dedupePlayers([...(previous.lineups?.home||[]),...(item.lineups?.home||[])]).rows,
-        away: dedupePlayers([...(previous.lineups?.away||[]),...(item.lineups?.away||[])]).rows
+      players:dedupePlayers([...(previous.players||[]),...(item.players||[])]).rows,
+      lineups:{
+        home:dedupePlayers([...(previous.lineups?.home||[]),...(item.lineups?.home||[])]).rows,
+        away:dedupePlayers([...(previous.lineups?.away||[]),...(item.lineups?.away||[])]).rows
       },
       evidence:[...(previous.evidence||[]),...(item.evidence||[])]
     });
@@ -108,41 +101,23 @@ function sanitizeMatches(matches) {
 }
 
 export function sanitizeFutbolFantasyBundle(bundle={}) {
-  const matches = sanitizeMatches(bundle.matches);
-  const references = sanitizeMatches((bundle.references || []).map(x => ({...x,players:[],lineups:x.lineups})));
-  const players = dedupePlayers(bundle.players || []);
-  const injuries = (Array.isArray(bundle.injuries) ? bundle.injuries : [])
-    .map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}))
-    .filter(x => x.team || !x.team);
-  const points = (Array.isArray(bundle.points) ? bundle.points : [])
-    .map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
-  const stats = (Array.isArray(bundle.stats) ? bundle.stats : [])
-    .map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
-  const normalizedPages = Array.isArray(bundle.pages) ? bundle.pages.map(page => ({...page})) : [];
-  const sourceOkCount = normalizedPages.filter(page => page.ok === true).length;
-  const sourceFailedCount = normalizedPages.filter(page => page.ok === false).length;
-  const parserHasData = matches.rows.length > 0 || players.rows.length > 0 || injuries.length > 0 || points.length > 0 || stats.length > 0;
+  const matches=sanitizeMatches(bundle.matches);
+  const references=sanitizeMatches((bundle.references||[]).map(x => ({...x,players:[],lineups:x.lineups})));
+  const players=dedupePlayers(bundle.players||[]);
+  const injuries=(Array.isArray(bundle.injuries)?bundle.injuries:[]).map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
+  const points=(Array.isArray(bundle.points)?bundle.points:[]).map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
+  const stats=(Array.isArray(bundle.stats)?bundle.stats:[]).map(x => ({...x,team:canonicalTeamName(x?.team?.name ?? x?.teamName ?? x?.team)}));
+  const normalizedPages=Array.isArray(bundle.pages)?bundle.pages.map(page => ({...page})):[];
+  const sourceOkCount=normalizedPages.filter(page => page.ok===true).length;
+  const sourceFailedCount=normalizedPages.filter(page => page.ok===false).length;
+  const parserHasData=matches.rows.length>0||players.rows.length>0||injuries.length>0||points.length>0||stats.length>0;
   return {
-    ...bundle,
-    matches:matches.rows,
-    references:references.rows,
-    players:players.rows,
-    injuries,
-    points,
-    stats,
-    pages:normalizedPages,
+    ...bundle,matches:matches.rows,references:references.rows,players:players.rows,injuries,points,stats,pages:normalizedPages,
     integrity:{
-      schema:'futbolfantasy-integrity/v1',
-      allowedTeams:TEAMS,
-      sourceOkCount,
-      sourceFailedCount,
-      partialSources:sourceFailedCount>0 && sourceOkCount>0,
-      noSuccessfulSources:sourceOkCount===0 && normalizedPages.length>0,
-      parserEmpty:sourceOkCount>0 && !parserHasData,
-      droppedMatches:matches.dropped,
-      droppedReferences:references.dropped,
-      droppedPlayers:players.dropped,
-      dedupedPlayers:players.deduped
+      schema:'futbolfantasy-integrity/v1',allowedTeams:TEAMS,sourceOkCount,sourceFailedCount,
+      partialSources:sourceFailedCount>0&&sourceOkCount>0,noSuccessfulSources:sourceOkCount===0&&normalizedPages.length>0,
+      parserEmpty:sourceOkCount>0&&!parserHasData,droppedMatches:matches.dropped,droppedReferences:references.dropped,
+      droppedPlayers:players.dropped,dedupedPlayers:players.deduped
     }
   };
 }
