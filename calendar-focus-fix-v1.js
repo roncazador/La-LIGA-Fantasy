@@ -1,12 +1,57 @@
 (()=>{'use strict';
-/* Compatibility bridge for cached clients: one shared interaction core, with stable team-name normalization at the data boundary. */
+/* Compatibility bridge: team-name normalization at the data boundary; no duplicate calendar engine. */
 const core=()=>window.LALIGA_CALENDAR_FOCUS_V1||null;
 const N=v=>String(v??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
-const FF=new Map([['athleticclub','Athletic'],['athletic','Athletic'],['atleticodemadrid','Atlético'],['atletico','Atlético'],['caosasuna','Osasuna'],['osasuna','Osasuna'],['deportivoalaves','Alavés'],['alaves','Alavés'],['fcbarcelona','Barcelona'],['barcelona','Barcelona'],['rcdespanyoldebarcelona','Espanyol'],['espanyol','Espanyol'],['realbetis','Betis'],['betis','Betis'],['realmadrid','Real Madrid'],['realsociedad','Real Sociedad'],['sevillafc','Sevilla'],['sevilla','Sevilla'],['valenciacf','Valencia'],['valencia','Valencia'],['villarrealcf','Villarreal'],['villarreal','Villarreal'],['rayovallecano','Rayo'],['rayo','Rayo'],['getafecf','Getafe'],['getafe','Getafe'],['levanteud','Levante'],['levante','Levante'],['elchecf','Elche'],['elche','Elche'],['celta','Celta'],['malagacf','Málaga'],['malaga','Málaga'],['rracingclub','Racing'],['racing','Racing'],['rcdeportivo','Deportivo'],['deportivo','Deportivo']]);
-const ffName=v=>FF.get(N(v))||String(v??'').trim();
+const FF=new Map([
+['athleticclub','Athletic'],['athletic','Athletic'],['atleticodemadrid','Atlético'],['atletico','Atlético'],
+['caosasuna','Osasuna'],['osasuna','Osasuna'],['deportivoalaves','Alavés'],['alaves','Alavés'],
+['fcbarcelona','Barcelona'],['barcelona','Barcelona'],['rcdespanyoldebarcelona','Espanyol'],['espanyol','Espanyol'],
+['realbetis','Betis'],['betis','Betis'],['realmadrid','Real Madrid'],['realsociedad','Real Sociedad'],
+['sevillafc','Sevilla'],['sevilla','Sevilla'],['valenciacf','Valencia'],['valencia','Valencia'],
+['villarrealcf','Villarreal'],['villarreal','Villarreal'],['rayovallecano','Rayo'],['rayo','Rayo'],
+['getafecf','Getafe'],['getafe','Getafe'],['levanteud','Levante'],['levante','Levante'],
+['elchecf','Elche'],['elche','Elche'],['celta','Celta'],['malagacf','Málaga'],['malaga','Málaga'],
+['rracingclub','Racing'],['racing','Racing'],['rcdeportivo','Deportivo'],['deportivo','Deportivo']
+]);
+const ffName=v=>FF.get(N(v))??'';
 const adaptMatch=m=>m?({...m,home:ffName(m.home),away:ffName(m.away)}):m;
-function wrap(){const c=core();if(!c||c.__teamIdentityBridge)return false;if(typeof c.openMatch==='function'){const openMatch=c.openMatch;c.openMatch=match=>openMatch(adaptMatch(match))}if(typeof c.openTeam==='function'){const openTeam=c.openTeam;c.openTeam=async team=>{const saved=window.fetch;window.fetch=async(url,...args)=>{const u=String(url);if(u.includes('/api/fixtures')){const r=await saved(url,...args),data=await r.clone().json().catch(()=>null);if(data&&typeof data==='object'){const mapList=value=>Array.isArray(value)?value.map(x=>({...x,home:ffName(x.home??x.homeTeam?.name),away:ffName(x.away??x.awayTeam?.name)})):value;return new Response(JSON.stringify({...data,matches:mapList(data.matches),fixtures:mapList(data.fixtures),merged:mapList(data.merged)}),{status:r.status,headers:{'Content-Type':'application/json'}})}}return saved(url,...args)};try{return await openTeam(team)}finally{window.fetch=saved}};c.__teamIdentityBridge=true;return true}
-function boot(){let n=0;const t=setInterval(()=>{n++;wrap();if(n>40)clearInterval(t)},250)}
+const adaptFixtures=data=>{
+ const mapList=value=>Array.isArray(value)?value.map(item=>({...item,home:ffName(item?.home??item?.homeTeam?.name),away:ffName(item?.away??item?.awayTeam?.name)})):value;
+ if(!data||typeof data!=='object')return data;
+ return {...data,matches:mapList(data.matches),fixtures:mapList(data.fixtures),merged:mapList(data.merged)};
+};
+function wrap(){
+ const c=core();
+ if(!c||c.__teamIdentityBridge)return false;
+ if(typeof c.openMatch==='function'){
+  const originalOpenMatch=c.openMatch;
+  c.openMatch=match=>originalOpenMatch(adaptMatch(match));
+ }
+ if(typeof c.openTeam==='function'){
+  const originalOpenTeam=c.openTeam;
+  c.openTeam=async team=>{
+   const savedFetch=window.fetch;
+   window.fetch=async(url,...args)=>{
+    const response=await savedFetch(url,...args);
+    if(!String(url).includes('/api/fixtures'))return response;
+    const data=await response.clone().json().catch(()=>null);
+    if(!data||typeof data!=='object')return response;
+    return new Response(JSON.stringify(adaptFixtures(data)),{status:response.status,headers:{'Content-Type':'application/json'}});
+   };
+   try{return await originalOpenTeam(team)}finally{window.fetch=savedFetch}
+  };
+ }
+ c.__teamIdentityBridge=true;
+ return true;
+}
+function boot(){
+ let attempts=0;
+ const timer=setInterval(()=>{attempts+=1;if(wrap()||attempts>=40)clearInterval(timer)},250);
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-window.LALIGA_CALENDAR_FOCUS_FIX_V1=Object.freeze({refreshStandings:()=>core()?.refreshStandings?.()||Promise.resolve(false),logoFor:team=>core()?.logoFor?.(team)||'',ffName});
+window.LALIGA_CALENDAR_FOCUS_FIX_V1=Object.freeze({
+ refreshStandings:()=>core()?.refreshStandings?.()??Promise.resolve(false),
+ logoFor:team=>core()?.logoFor?.(team)??'',
+ ffName
+});
 })();
