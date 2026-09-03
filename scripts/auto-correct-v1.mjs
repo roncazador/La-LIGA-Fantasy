@@ -2,11 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT=process.cwd();
+const IDLE="function idle(fn){if('requestIdleCallback' in window)return window.requestIdleCallback(fn,{timeout:1500});return setTimeout(fn,250)}";
 const RULES=[
   {file:'automation-contract-v1.test.mjs',find:"host.includes('./cultivos-v1.mjs')",replace:"host.includes('./cultivos-v1.4.mjs')",reason:'canonical Cultivos import'},
   {file:'config.mjs',find:"'/teams-futbolfantasy-v1.js'",replace:"'/visual-compact-v1.css'",reason:'public visual asset',ready:before=>before.includes("'/visual-compact-v1.css'")},
-  {file:'connection-client.js',find:"setTimeout(()=>{loadInline('/app-dynamics-v37.js','37');loadInline('/calendar-autonomous-v35.js','35');loadInline('/focus-ui-v30.js','30');loadInline('/futbolfantasy-ui-v30.js','30');loadInline('/match-detail-ui-v31.js','33')},0)",replace:"idle(()=>{loadInline('/app-dynamics-v37.js','37');loadInline('/calendar-autonomous-v35.js','35');loadInline('/focus-ui-v30.js','30');loadInline('/futbolfantasy-ui-v30.js','30');loadInline('/match-detail-ui-v31.js','33')})",reason:'defer secondary UI work'},
-  {file:'connection-client.js',find:"function loadCss(src,version){",replace:"function idle(fn){if('requestIdleCallback' in window)return window.requestIdleCallback(fn,{timeout:1500});return setTimeout(fn,250)}function loadCss(src,version){",reason:'bounded idle scheduler',ready:before=>before.includes("function idle(fn){if('requestIdleCallback' in window)return window.requestIdleCallback(fn,{timeout:1500});return setTimeout(fn,250)})")},
+  {file:'connection-client.js',find:"function loadCss(src,version){",replace:`${IDLE}function loadCss(src,version){`,reason:'bounded idle scheduler',ready:before=>before.includes(IDLE)},
   {file:'sw.js',find:"const CACHE_NAME='fm-v314'",replace:"const CACHE_NAME='fm-v315'",reason:'service worker contract'},
 ];
 const allowed=new Set(RULES.map(r=>r.file));
