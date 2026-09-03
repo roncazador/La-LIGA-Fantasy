@@ -13,6 +13,7 @@ const files = [
   'futbolfantasy-normalizer-v33.mjs',
   'teams-data-v5.js',
   'calendar-focus-v1.js',
+  'calendar-focus-fix-v1.js',
   'official-standings-seed-2026-27.json'
 ];
 
