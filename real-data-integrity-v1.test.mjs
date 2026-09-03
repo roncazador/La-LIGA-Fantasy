@@ -19,4 +19,8 @@ check(!detail.includes("f(x.status,x.date,'—')"),'fixture status never display
 check(!detail.includes("${ps.length||'—'}"),'team roster count does not convert a known zero into an ambiguous fallback');
 check(!detail.includes("${fs.length}</div>"),'fixture count is gated by endpoint readiness');
 
+check(teams.includes("status:f(x.status,'Estado no disponible')"),'team calendar renders an explicit unknown status when the API omits status');
+check(!teams.includes("status:f(x.status,'PROGRAMADO')"),'team calendar never fabricates PROGRAMADO when status is absent');
+check(teams.includes("const a=[...(raw?.merged||[]),...(raw?.matches||[]),...(raw?.fixtures||[])]"),'calendar preserves supported API response shapes');
+
 console.log(`real-data-integrity-v1: ${n}/${n} checks OK`);
