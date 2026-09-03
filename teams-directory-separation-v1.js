@@ -1,0 +1,15 @@
+(()=>{'use strict';
+const ROOT='#teamsDataV5';
+const normalize=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function css(){if(document.getElementById('tdSepV1'))return;const s=document.createElement('style');s.id='tdSepV1';s.textContent=`#teamsDataV5 .td-sep-title{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid #263141;border-radius:10px;background:#0c1219;margin-bottom:8px}#teamsDataV5 .td-sep-title strong{font-size:10px;letter-spacing:.02em}#teamsDataV5 .td-sep-title span{font-size:6px;color:#7f8b9c}#teamsDataV5 .td-calendar-view .card h3,#teamsDataV5 .td-ranking-view .card h3{font-size:9px}@media(max-width:740px){#teamsDataV5 .td-sep-title{padding:9px 10px}}
+`;document.head.appendChild(s)}
+function setLabel(root){root.querySelectorAll('.tv5tabs button').forEach(b=>{if(b.dataset.sepLabeled)return;b.dataset.sepLabeled='1';if(b.dataset.tab==='equipos')b.textContent='Clasificación';if(b.dataset.tab==='calendario')b.textContent='Calendario'})}
+function decorate(root){setLabel(root);const view=root.querySelector('#tv5view');if(!view)return;view.classList.remove('td-ranking-view','td-calendar-view');view.querySelectorAll('.td-sep-title').forEach(x=>x.remove());const active=[...root.querySelectorAll('.tv5tabs button')].find(b=>b.classList.contains('on'))?.dataset.tab;
+if(active==='equipos'){view.classList.add('td-ranking-view');const c=view.querySelector('.card');if(c){const h=c.querySelector('h3');if(h)h.textContent='Clasificación · 20 clubes';const sep=document.createElement('div');sep.className='td-sep-title';sep.innerHTML='<strong>Clasificación</strong><span>Posición y puntos de los 20 equipos</span>';view.prepend(sep)}}
+if(active==='calendario'){view.classList.add('td-calendar-view');const sep=document.createElement('div');sep.className='td-sep-title';sep.innerHTML='<strong>Calendario</strong><span>Partidos y jornadas · sin datos de clasificación</span>';view.prepend(sep)}
+}
+function cleanSummary(root){const cards=[...root.querySelectorAll('#tv5view .card')];cards.forEach(c=>{const h=normalize(c.querySelector('h3')?.textContent);if(h.includes('proximos partidos')||h.includes('ultimos resultados')){c.remove()}});const summary=[...root.querySelectorAll('#tv5view .card')].find(c=>normalize(c.querySelector('h3')?.textContent).includes('clasificacion'));if(summary&&!summary.querySelector('.td-summary-note')){const n=document.createElement('div');n.className='note td-summary-note';n.textContent='Calendario separado en la pestaña «Calendario».';summary.appendChild(n)}}
+function run(){const root=document.querySelector(ROOT);if(!root)return;css();setLabel(root);const active=[...root.querySelectorAll('.tv5tabs button')].find(b=>b.classList.contains('on'))?.dataset.tab;if(active==='resumen')cleanSummary(root);decorate(root)}
+function boot(){const o=new MutationObserver(run);o.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});run()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
