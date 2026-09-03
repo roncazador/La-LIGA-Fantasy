@@ -1,0 +1,13 @@
+@media (max-width:740px){
+  #teamsDataV5 .td-ranking-view .table{overflow:hidden}
+  #teamsDataV5 .td-ranking-view table{min-width:0;table-layout:fixed;width:100%}
+  #teamsDataV5 .td-ranking-view th,#teamsDataV5 .td-ranking-view td{padding:6px 5px}
+  #teamsDataV5 .td-ranking-view th:nth-child(n+5),#teamsDataV5 .td-ranking-view td:nth-child(n+5){display:none}
+  #teamsDataV5 .td-ranking-view th:first-child,#teamsDataV5 .td-ranking-view td:first-child{width:30px}
+  #teamsDataV5 .td-ranking-view th:nth-child(3),#teamsDataV5 .td-ranking-view td:nth-child(3),#teamsDataV5 .td-ranking-view th:nth-child(4),#teamsDataV5 .td-ranking-view td:nth-child(4){width:44px}
+  #teamsDataV5 .td-ranking-view .club{min-width:0;gap:5px}
+  #teamsDataV5 .td-ranking-view .club img,#teamsDataV5 .td-ranking-view .club i{width:20px;height:20px;flex-basis:20px}
+  #teamsDataV5 .td-ranking-view .club b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #teamsDataV5 .td-ranking-view .td-open-team{display:inline-flex}
+  #teamsDataV5 .td-calendar-view .match{grid-template-columns:74px 1fr auto;gap:6px;padding:9px 8px}
+}
