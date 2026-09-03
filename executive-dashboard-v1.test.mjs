@@ -13,7 +13,7 @@ assert.ok(ui.includes("'CANCELADO'"), 'cancelled status must render as CANCELADO
 assert.ok(ui.includes('const fixtureDate='), 'calendar date formatter missing');
 assert.ok(ui.includes("timeZone:'Europe/Madrid'"), 'calendar dates must be rendered in Spain timezone');
 assert.ok(ui.includes('fixtureDate(m)'), 'calendar cards must use the safe date formatter');
-assert.ok(ui.includes('fixtureStatus(m.status)'), 'calendar cards must use the safe status formatter');
+assert.ok(ui.includes('fixtureStatus(first(m.status,m.state,m.fixtureStatus))'), 'calendar cards must normalize string and object status inputs');
 assert.ok(!ui.includes("first(m.date,m.utcDate,m.kickoff,'Sin fecha')"), 'raw calendar date rendering leaked back into dashboard');
 
 console.log('EXECUTIVE DASHBOARD v1: calendar date/status presentation contract OK');
