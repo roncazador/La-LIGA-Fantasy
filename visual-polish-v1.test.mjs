@@ -3,7 +3,7 @@ import fs from 'node:fs';
 
 const css = fs.readFileSync('./visual-compact-v1.css','utf8');
 const html = fs.readFileSync('./index.html','utf8');
-const navCss = css.split('.tv5tabs button::before')[0];
+const navCss = css.replace(/\.tv5tabs button(?:\[data-tab="(?:resumen|equipos|jugadores|lesiones|calendario)"\])?::before\{content:'[^']*'\}/g,'');
 let n = 0;
 const check = (ok,msg) => { n++; assert.ok(ok, `VISUAL-POLISH-${String(n).padStart(3,'0')}: ${msg}`); };
 
