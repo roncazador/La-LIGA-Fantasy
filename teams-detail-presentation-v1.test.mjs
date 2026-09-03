@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const src=fs.readFileSync('./teams-detail-v1.js','utf8');
+let n=0;const check=(ok,msg)=>{n++;assert.ok(ok,`TEAM-DETAIL-${String(n).padStart(2,'0')}: ${msg}`)};
+check(src.includes("const status=v=>"),'team detail centralizes fixture status normalization');
+check(src.includes("'EN DIRECTO'"),'live status is user-facing');
+check(src.includes("'FINALIZADO'"),'final status is user-facing');
+check(src.includes("'PRÓXIMO'"),'scheduled status is user-facing');
+check(src.includes("'ESTADO NO DISPONIBLE'"),'missing status is explicit');
+check(src.includes("timeZone:'Europe/Madrid'"),'fixture dates use Spanish local timezone');
+check(src.includes("const date=v=>"),'fixture date formatting is centralized');
+check(src.includes("${E(date(x))}"),'team detail renders formatted date instead of raw date');
+check(!src.includes("E(f(x.status,'Estado no disponible'))"),'team detail never renders raw fixture status');
+console.log(`TEAM DETAIL PRESENTATION v1: ${n}/${n} checks passed`);
