@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const VERSION='1.0.0',REFRESH_MS=3000,FF_API='/api/futbolfantasy/data';
+const VERSION='1.0.1',REFRESH_MS=3000,FF_API='/api/futbolfantasy/data?realtime=1';
 let timer=null,running=false,last=0,visible=document.visibilityState!=='hidden',online=navigator.onLine!==false;
 const event=(name,detail={})=>window.dispatchEvent(new CustomEvent(name,{detail:{version:VERSION,at:Date.now(),...detail}}));
 const readJson=async(url)=>{const r=await fetch(url,{credentials:'include',cache:'no-store',headers:{Accept:'application/json','Cache-Control':'no-cache'},signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error(`HTTP_${r.status}`);return r.json()};
