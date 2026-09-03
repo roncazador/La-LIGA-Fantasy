@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const js=fs.readFileSync('teams-detail-futbolfantasy-v1.js','utf8');
+assert.match(js,/\/api\/futbolfantasy\/data/);
+assert.match(js,/Datos FutbolFantasy/);
+assert.match(js,/Jugadores vinculados/);
+assert.match(js,/Bajas vinculadas/);
+assert.match(js,/Solo se muestran datos realmente devueltos por FutbolFantasy/);
+assert.match(js,/No se completan cifras ausentes/);
+console.log('teams-detail-futbolfantasy-v1: incremental real-source detail contract OK');
