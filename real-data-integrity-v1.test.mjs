@@ -11,10 +11,11 @@ check(teams.includes("${t.played??'—'}"),'classification renders unknown playe
 check(teams.includes("${x.rating??'—'}"),'player rating keeps unknown data explicit');
 check(teams.includes("${x.goals??'—'}")&&teams.includes("${x.assists??'—'}"),'player goal/assist unknown values stay explicit');
 
-check(detail.includes("const teamsReady=out[0].status==='fulfilled',standReady=out[1].status==='fulfilled',playersReady=out[2].status==='fulfilled',fixtureReady=out[3].status==='fulfilled'"),'detail view tracks endpoint readiness independently');
+check(detail.includes("const teamsReady=out[0].status==='fulfilled',standReady=out[1].status==='fulfilled',playersReady=out[2].status==='fulfilled',fixtureReady=out[3].status==='fulfilled"),'detail view tracks endpoint readiness independently');
 check(detail.includes("${playersReady?ps.length:'—'}"),'team roster count is unknown when the players endpoint failed');
 check(detail.includes("${fixtureReady?fs.length:'—'}"),'fixture count is unknown when the fixtures endpoint failed');
-check(detail.includes("f(x.status,'Estado no disponible')"),'missing fixture status does not fall back to a date or fabricated state');
+check(detail.includes("const status=v=>")&&detail.includes("return'ESTADO NO DISPONIBLE'"),'missing fixture status is normalized explicitly instead of falling back to a date or fabricated state');
+check(detail.includes("const st=status(x.status)"),'fixture status is rendered only through the normalized status formatter');
 check(!detail.includes("f(x.status,x.date,'—')"),'fixture status never displays the raw date as a status');
 check(!detail.includes("${ps.length||'—'}"),'team roster count does not convert a known zero into an ambiguous fallback');
 check(!detail.includes("${fs.length}</div>"),'fixture count is gated by endpoint readiness');

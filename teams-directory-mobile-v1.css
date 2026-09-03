@@ -1,0 +1,12 @@
+@media (max-width:740px){
+  #teamsDataV5 #tv5s + .table{overflow:hidden}
+  #teamsDataV5 #tv5s + .table table{min-width:0;table-layout:fixed;width:100%}
+  #teamsDataV5 #tv5s + .table th,#teamsDataV5 #tv5s + .table td{padding:6px 5px}
+  #teamsDataV5 #tv5s + .table th:nth-child(n+8),#teamsDataV5 #tv5s + .table td:nth-child(n+8){display:none}
+  #teamsDataV5 #tv5s + .table th:first-child,#teamsDataV5 #tv5s + .table td:first-child{width:30px}
+  #teamsDataV5 #tv5s + .table th:nth-child(2),#teamsDataV5 #tv5s + .table td:nth-child(2){width:auto}
+  #teamsDataV5 #tv5s + .table th:nth-child(n+3),#teamsDataV5 #tv5s + .table td:nth-child(n+3){width:38px}
+  #teamsDataV5 #tv5s + .table .club{min-width:0;gap:5px}
+  #teamsDataV5 #tv5s + .table .club img,#teamsDataV5 #tv5s + .table .club i{width:20px;height:20px;flex-basis:20px}
+  #teamsDataV5 #tv5s + .table .club b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
