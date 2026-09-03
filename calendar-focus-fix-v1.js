@@ -1,5 +1,5 @@
 (()=>{'use strict';
-/* Compatibility bridge: team-name normalization at the data boundary; no duplicate calendar engine. */
+/* Compatibility bridge: team-name normalization plus unified team-detail enrichment; no duplicate calendar engine. */
 const core=()=>window.LALIGA_CALENDAR_FOCUS_V1||null;
 const N=v=>String(v??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 const FF=new Map([
@@ -20,6 +20,13 @@ const adaptFixtures=data=>{
  if(!data||typeof data!=='object')return data;
  return {...data,matches:mapList(data.matches),fixtures:mapList(data.fixtures),merged:mapList(data.merged)};
 };
+const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+const rows=(data,key)=>Array.isArray(data?.[key])?data[key]:(Array.isArray(data)?data:[]);
+const teamFrom=v=>ffName(v)||String(v??'').trim();
+function injectStyle(){if(document.getElementById('cfteam-style'))return;const s=document.createElement('style');s.id='cfteam-style';s.textContent='.cfteamextra{margin-top:9px;padding:9px 10px;border:1px solid #2b374c;border-radius:12px;background:#101928}.cfteamextra h4{margin:0 0 7px;font-size:10px}.cfteamstats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.cfteamstat{padding:7px;border-radius:9px;background:#151f2f;text-align:center}.cfteamstat b{display:block;font-size:13px}.cfteamstat span{display:block;margin-top:2px;color:#8f9bb2;font-size:7px;text-transform:uppercase}.cfteammatch{margin-top:7px;padding-top:7px;border-top:1px solid #283348;font-size:8px}.cfteammatch strong{font-size:9px}.cfteammuted{color:#8f9bb2;font-size:8px;line-height:1.4}@media(max-width:700px){.cfteamstats{grid-template-columns:repeat(2,1fr)}}';document.head.appendChild(s)}
+function latestNextFixture(raw,team){const list=rows(raw,'matches').concat(rows(raw,'fixtures'),rows(raw,'merged')).map(x=>({home:first(x.home,x.homeTeam?.name,x.localTeam?.name),away:first(x.away,x.awayTeam?.name,x.visitorTeam?.name),date:first(x.utcDate,x.date,x.startDate,x.starting_at),matchday:first(x.matchday,x.officialMatchday,x.week,x.gameweek?.week),status:first(x.status?.label,x.status)})).filter(x=>x.home&&x.away&&x.date&&Number.isFinite(Date.parse(x.date))&&[teamFrom(x.home),teamFrom(x.away)].includes(teamFrom(team))).sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));const now=Date.now();return list.find(x=>Date.parse(x.date)>=now)||list[0]||null}
+function appendTeamExtra(team){injectStyle();const modal=document.getElementById('cfocus-modal'),panel=modal?.querySelector('.cfp');if(!panel||panel.querySelector('.cfteamextra'))return;const extra=document.createElement('div');extra.className='cfteamextra';extra.innerHTML=`<h4>Datos del equipo</h4><div class="cfteammuted">Cargando cobertura real…</div>`;panel.appendChild(extra);Promise.allSettled([fetch('/api/futbolfantasy/data',{credentials:'include',cache:'no-store',headers:{Accept:'application/json'}}).then(r=>{if(!r.ok)throw Error(`HTTP_${r.status}`);return r.json()}),fetch('/api/fixtures',{credentials:'include',cache:'no-store',headers:{Accept:'application/json'}}).then(r=>{if(!r.ok)throw Error(`HTTP_${r.status}`);return r.json()})]).then(results=>{const ff=results[0].status==='fulfilled'?results[0].value:null,fixtures=results[1].status==='fulfilled'?adaptFixtures(results[1].value):null;const canonical=teamFrom(team);const players=ff?rows(ff,'players').filter(x=>teamFrom(x.team??x.teamName??x.club??x.clubName)===canonical):null;const injuries=ff?rows(ff,'injuries').filter(x=>teamFrom(x.team??x.teamName??x.club??x.clubName)===canonical):null;const next=fixtures?latestNextFixture(fixtures,canonical):null;if(!ff&&!fixtures){extra.innerHTML='<h4>Datos del equipo</h4><div class="cfteammuted">No hay datos de fuente disponibles.</div>';return}const fmt=next?.date&&Number.isFinite(Date.parse(next.date))?new Intl.DateTimeFormat('es-ES',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Madrid'}).format(new Date(next.date)):null;extra.innerHTML=`<h4>Datos del equipo</h4><div class="cfteamstats"><div class="cfteamstat"><b>${players==null?'—':players.length}</b><span>Jugadores recibidos</span></div><div class="cfteamstat"><b>${injuries==null?'—':injuries.length}</b><span>Lesiones recibidas</span></div><div class="cfteamstat"><b>${next?.matchday==null?'—':esc(next.matchday)}</b><span>Próxima jornada</span></div></div><div class="cfteammatch">${next?`<strong>Siguiente partido</strong><div>${esc(teamFrom(next.home))} vs ${esc(teamFrom(next.away))}${fmt?` · ${esc(fmt)}`:''}</div>`:'<span class="cfteammuted">Siguiente partido no disponible en la fuente.</span>'}</div>`}).catch(()=>{extra.innerHTML='<h4>Datos del equipo</h4><div class="cfteammuted">No hay datos de fuente disponibles.</div>'})}
+function first(...values){return values.find(x=>x!=null&&String(x).trim()!=='')??null}
 function wrap(){
  const c=core();
  if(!c||c.__teamIdentityBridge)return false;
@@ -38,7 +45,7 @@ function wrap(){
     if(!data||typeof data!=='object')return response;
     return new Response(JSON.stringify(adaptFixtures(data)),{status:response.status,headers:{'Content-Type':'application/json'}});
    };
-   try{return await originalOpenTeam(team)}finally{window.fetch=savedFetch}
+   try{const result=await originalOpenTeam(team);setTimeout(()=>appendTeamExtra(team),0);return result}finally{window.fetch=savedFetch}
   };
  }
  c.__teamIdentityBridge=true;
