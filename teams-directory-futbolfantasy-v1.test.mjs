@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const js=fs.readFileSync('teams-directory-futbolfantasy-v1.js','utf8');
+const client=fs.readFileSync('connection-client.js','utf8');
+assert.match(js,/\/api\/futbolfantasy\/data/);
+assert.match(js,/data\?\.degraded/);
+assert.match(js,/Datos FutbolFantasy disponibles/);
+assert.match(js,/Sin datos FutbolFantasy para este equipo/);
+assert.match(js,/no se muestran cifras no verificadas/);
+assert.match(js,/dataset\.available/);
+assert.match(client,/teams-directory-futbolfantasy-v1\.js/);
+console.log('teams-directory-futbolfantasy-v1: 7 checks OK');
