@@ -3,7 +3,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {performance} from 'node:perf_hooks';
 
-const files=['connection-client.js','automation-hub-v1.js','executive-dashboard-v1.js','evidence-isolation-v1.js','teams-futbolfantasy-v1.js'];
+const files=['connection-client.js','automation-hub-v1.js','executive-dashboard-v1.js','evidence-isolation-v1.js','teams-data-v5.js'];
 const root=process.cwd();
 const bytes=file=>fs.statSync(path.join(root,file)).size;
 const measurements={
