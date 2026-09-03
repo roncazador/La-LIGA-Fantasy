@@ -5,9 +5,9 @@ const required = [
   'package.json','config.mjs','server.mjs','brain-host-v27.mjs','brain-core-v27.mjs',
   'brain-history-v28.mjs','brain-history-hook-v28.mjs','brain-calibration-v28.mjs',
   'brain-reliability-v29.mjs','brain-reliability-hook-v29.mjs',
-  'calendar-service-v29.mjs','calendar-autonomous-v30.js','futbolfantasy-data-v30.mjs',
+  'calendar-service-v29.mjs','calendar-autonomous-v35.js','futbolfantasy-data-v30.mjs',
   'index.html','connection-client.js','sw.js','render.yaml','visual-compact-v1.css',
-  'teams-data-v5.js','decision-learning-v1.js','teams-detail-v1.js'
+  'teams-data-v5.js','decision-learning-v1.js','calendar-focus-v1.js','calendar-focus-fix-v1.js','match-center-ui-v1.js'
 ];
 for (const file of required) {
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) throw new Error(`RENDER_PREFLIGHT_MISSING:${file}`);
@@ -25,13 +25,13 @@ if (!start.includes('--import ./brain-history-hook-v28.mjs') || !start.includes(
 }
 if (!render.includes('healthCheckPath: /api/health')) throw new Error('RENDER_PREFLIGHT_HEALTH_PATH_MISMATCH');
 if (!render.includes('buildCommand: npm install --no-audit --no-fund && npm run render:verify && npm run test:render-runtime')) throw new Error('RENDER_PREFLIGHT_BUILD_COMMAND_MISMATCH');
-for (const asset of ['/teams-data-v5.js','/decision-learning-v1.js','/teams-detail-v1.js']) {
+for (const asset of ['/teams-data-v5.js','/decision-learning-v1.js','/calendar-focus-v1.js','/calendar-focus-fix-v1.js','/match-center-ui-v1.js']) {
   if (!config.includes(`'${asset}'`)) throw new Error(`RENDER_PREFLIGHT_ASSET_NOT_PUBLIC:${asset}`);
 }
-for (const asset of ['./teams-data-v5.js','./decision-learning-v1.js','./teams-detail-v1.js','./visual-compact-v1.css']) {
+for (const asset of ['./teams-data-v5.js','./decision-learning-v1.js','./calendar-autonomous-v35.js','./calendar-focus-v1.js','./calendar-focus-fix-v1.js','./match-center-ui-v1.js','./visual-compact-v1.css']) {
   if (!sw.includes(`'${asset}'`)) throw new Error(`RENDER_PREFLIGHT_ASSET_NOT_CACHED:${asset}`);
 }
-for (const asset of ["loadCss('/visual-compact-v1.css','1')","loadInline('/teams-data-v5.js','5')","loadInline('/decision-learning-v1.js','2')","loadInline('/teams-detail-v1.js','1')"]) {
+for (const asset of ["loadCss('/visual-compact-v1.css','1')","loadInline('/teams-data-v5.js','5')","loadInline('/decision-learning-v1.js','2')","loadInline('/calendar-autonomous-v35.js','35')","loadInline('/calendar-focus-v1.js','1')","loadInline('/calendar-focus-fix-v1.js','1')","loadInline('/match-center-ui-v1.js','1')"]) {
   if (!connection.includes(asset)) throw new Error(`RENDER_PREFLIGHT_LOADER_MISMATCH:${asset}`);
 }
 if (fs.statSync('visual-compact-v1.css').size > 4096) throw new Error('RENDER_PREFLIGHT_VISUAL_CSS_TOO_LARGE');

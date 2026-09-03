@@ -26,11 +26,11 @@ const checks=[
   ['runtime smoke waits for backend',smoke.includes('body.backendReady')],
   ['runtime smoke verifies read-only',smoke.includes("body.readOnly,true")],
   ['preflight includes render yaml',file.includes("'render.yaml'")],
-  ['preflight checks widget assets',file.includes("'visual-compact-v1.css'")&&file.includes("'decision-learning-v1.js'")&&file.includes("'teams-detail-v1.js'")],
-  ['preflight checks widget loader',file.includes("loadCss('/visual-compact-v1.css','1')")&&file.includes("loadInline('/decision-learning-v1.js','2')")],
+  ['preflight checks active assets',file.includes("'calendar-focus-v1.js'")&&file.includes("'match-center-ui-v1.js'")&&file.includes("'calendar-autonomous-v35.js'")],
+  ['preflight checks active loader',file.includes("loadInline('/calendar-autonomous-v35.js','35')")&&file.includes("loadInline('/calendar-focus-v1.js','1')")&&file.includes("loadInline('/match-center-ui-v1.js','1')")],
   ['widget regression in npm test',pkg.scripts.test.includes('widget-ui-v1.test.mjs')]
 ];
 for(const[name,ok]of checks)assert.ok(ok,`RENDER-${name}`);
 execFileSync(process.execPath,['render-preflight.mjs'],{encoding:'utf8',env:{...process.env,RENDER:'true',PORT:'10000'}});
 assert.equal(checks.length,22);
-console.log('RENDER PREFLIGHT CONTRACT v3: 22/22 checks passed');
+console.log('RENDER PREFLIGHT CONTRACT v4: 22/22 checks passed');

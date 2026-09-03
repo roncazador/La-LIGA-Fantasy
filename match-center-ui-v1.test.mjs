@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const ui=fs.readFileSync('./match-center-ui-v1.js','utf8');
+const conn=fs.readFileSync('./connection-client.js','utf8');
+const config=fs.readFileSync('./config.mjs','utf8');
+assert.ok(ui.includes('#calendar30.mc1'),'match center root skin');
+for(const token of ['Todos','En directo','Próximos','Finalizados','c35filters','mc-hidden']) assert.ok(ui.includes(token),`missing ${token}`);
+assert.ok(!ui.includes('/api/'),'presentation layer must not fetch backend data');
+assert.ok(conn.includes("loadInline('/match-center-ui-v1.js','1')"),'match center loader missing');
+assert.ok(config.includes("'/match-center-ui-v1.js'"),'match center asset not public');
+console.log('MATCH CENTER UI v1: compact Flashscore-like presentation contract OK');

@@ -3,14 +3,23 @@ import { canonicalTeam, parsePercent, extractDataPlayers, extractMatchups, extra
 
 assert.equal(canonicalTeam('Real Madrid'),'Real Madrid');
 assert.equal(canonicalTeam('  Atlético  '),'Atlético');
+for (const [input,expected] of [
+  ['Málaga CF','Málaga'],['Racing Santander','R. Racing Club'],['RC Deportivo','RC Deportivo'],
+  ['FC Barcelona','Barcelona'],['RCD Espanyol de Barcelona','Espanyol']
+]) assert.equal(canonicalTeam(input),expected,input);
+assert.equal(canonicalTeam('Girona'),null);
+assert.equal(canonicalTeam('Mallorca'),null);
+assert.equal(canonicalTeam('Real Oviedo'),null);
 assert.equal(parsePercent('Titularidad 70%'),70);
 assert.equal(parsePercent('101%'),null);
 
 const lineupHtml=`<div data-player-name="Jugador Uno" data-team="Barcelona" data-position="MC" data-probability="90%" data-starter="true"></div>
 <div data-player-name="Jugador Dos" data-team="Celta" data-position="DL" data-probability="40%"></div>
+<div data-player-name="Jugador Dos" data-team="Barcelona" data-position="DL" data-probability="40%"></div>
+<div data-player-name="Jugador Sin Equipo" data-position="DL" data-probability="99%"></div>
 <h2>Barcelona - Celta</h2>`;
 const players=extractDataPlayers(lineupHtml);
-assert.equal(players.length,2);
+assert.equal(players.length,4);
 assert.equal(players[0].probability,90);
 assert.equal(players[0].probable,true);
 assert.deepEqual(extractMatchups(lineupHtml),[{home:'Barcelona',away:'Celta'}]);
@@ -35,8 +44,21 @@ assert.equal(bundle.ok,true);
 assert.equal(bundle.pages.length,3);
 assert.equal(bundle.matches.length,1);
 assert.ok(bundle.matches[0].evidence.length>=1);
-assert.equal(bundle.matches[0].lineups.home.length,1);
+assert.equal(bundle.matches[0].lineups.home.length,2);
 assert.equal(bundle.matches[0].lineups.away.length,1);
-assert.ok(bundle.players.length>=2);
+assert.ok(bundle.players.length>=3);
 assert.equal(bundle.points.length,1);
-console.log('FUTBOLFANTASY NORMALIZER v33: 16/16 assertions passed');
+
+const degraded=normalizeBundle([
+  {kind:'lineups',url:'https://example.test/lineups',status:200,html:lineupHtml},
+  {kind:'injuries',url:'https://example.test/injuries',status:502,html:''}
+]);
+assert.equal(degraded.ok,false);
+assert.equal(degraded.pages.filter(x=>x.ok).length,1);
+assert.equal(degraded.pages.filter(x=>!x.ok).length,1);
+assert.equal(degraded.matches[0].lineups.home.length,2);
+assert.equal(degraded.matches[0].lineups.away.length,1);
+assert.ok(!degraded.matches[0].lineups.home.some(x=>!x.team));
+assert.ok(!degraded.matches[0].lineups.away.some(x=>!x.team));
+
+console.log('FUTBOLFANTASY NORMALIZER v33: current-team aliases, parser, duplicate isolation and source-health assertions passed');

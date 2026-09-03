@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const shim=fs.readFileSync('./calendar-focus-fix-v1.js','utf8');
+const core=fs.readFileSync('./calendar-focus-v1.js','utf8');
+const config=fs.readFileSync('./config.mjs','utf8');
+const conn=fs.readFileSync('./connection-client.js','utf8');
+assert.ok(shim.includes('Compatibility bridge'),'fix layer remains a boundary bridge');
+for(const token of ['ffName','adaptMatch','/api/fixtures','team-name normalization'])assert.ok(shim.includes(token),`missing bridge token ${token}`);
+for(const token of ['stopImmediatePropagation','stopPropagation','loadAllPlayers','/api/data/standings','STANDINGS_SEED','logoFor'])assert.ok(core.includes(token),`missing ${token}`);
+assert.ok(config.includes("'/calendar-focus-fix-v1.js'"),'missing public path');
+assert.ok(conn.includes("'/calendar-focus-fix-v1.js'"),'bridge loader missing');
+console.log('CALENDAR FOCUS FIX v1: compatibility + team identity boundary contract OK');

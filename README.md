@@ -1,4 +1,4 @@
-# LALIGA Fantasy Manager · roncazador · v2.15.0
+# LALIGA Fantasy Manager · roncazador · v2.18.0
 
 Aplicación web/PWA para análisis de LALIGA Fantasy, preparada para GitHub + Render y uso principal desde iPhone.
 
@@ -7,7 +7,8 @@ Aplicación web/PWA para análisis de LALIGA Fantasy, preparada para GitHub + Re
 - `server.mjs` — backend Node, proxy de lectura y autenticación OIDC.
 - `brain-host-v27.mjs` / `brain-core-v27.mjs` — runtime y modelo adaptativo.
 - `brain-history-v28.mjs`, `brain-calibration-v28.mjs`, `brain-reliability-v29.mjs` — memoria, calibración y fiabilidad del cerebro.
-- `calendar-service-v29.mjs`, `calendar-autonomous-v30.js` — calendario único y su renderizador activo.
+- `calendar-service-v29.mjs`, `calendar-autonomous-v35.js` — calendario único y su renderizador activo.
+- `calendar-focus-v1.js` / `calendar-focus-fix-v1.js` / `match-center-ui-v1.js` — flujo activo de partido/equipo y presentación compacta.
 - `connection-client.js`, `dashboard-client.js`, `data-client.js`, `recording-client.js` — clientes especializados.
 - `manifest.json`, `sw.js` — soporte PWA.
 - `.env.example` — nombres correctos de variables de entorno.
@@ -16,7 +17,7 @@ Aplicación web/PWA para análisis de LALIGA Fantasy, preparada para GitHub + Re
 ## Render
 - Runtime: Node 24.14.1.
 - Root Directory: vacío.
-- Build Command: `npm install --no-audit --no-fund && npm run render:verify`.
+- Build Command: `npm install --no-audit --no-fund && npm run render:verify && npm run test:render-runtime`.
 - Start Command: `npm start`.
 - Health Check Path: `/api/health`.
 - El servicio usa `0.0.0.0:10000`.
@@ -58,13 +59,14 @@ Los secretos deben existir únicamente como variables de entorno de Render. No s
 - Las credenciales de usuario nunca se reciben en `index.html`, `connection-client.js` ni GitHub.
 - El estado LIVE se distingue del estado local o de referencia.
 - Cuando faltan datos, el motor conserva `N/D` en lugar de inventar valores.
+- Los datos externos pasan por normalización de identidad e integridad antes de entrar al flujo de calendario/equipo.
 - El endpoint de aprendizaje del cerebro permanece protegido por `BRAIN_ADMIN_TOKEN`.
 
 ## Cerebro
 El modelo conserva el scoring existente y añade únicamente capas ya integradas de memoria histórica, calibración y fiabilidad. Aprende de resultados observados, pero solo aplica el aprendizaje a resultados marcados como finales; una observación parcial permanece pendiente. Los errores recientes reducen la confianza para evitar sobreconfianza sin alterar el score. Los pesos, errores, deriva y calibración se persisten de forma atómica y auditable.
 
 ## Calendario
-El calendario visible es único y se carga automáticamente. La fuente oficial LALIGA mantiene la identidad primaria; FutbolFantasy se utiliza como contraste. Al fusionar registros, una fuente secundaria puede completar únicamente campos que falten y aportar un estado más avanzado, pero nunca desplaza un resultado oficial final ni degrada información ya válida. Los marcadores inválidos se descartan.
+El calendario visible es único y se carga automáticamente. La fuente oficial LALIGA mantiene la identidad primaria; FutbolFantasy se utiliza como contraste. Al fusionar registros, una fuente secundaria puede completar únicamente campos que falten y aportar un estado más avanzado, pero nunca desplaza un resultado oficial final ni degrada información ya válida. Los marcadores inválidos se descartan. Los nombres de clubes se normalizan contra el roster vigente y los jugadores sin equipo verificable no se asignan a un partido por inferencia.
 
 ## Pruebas
-Ejecutar `npm test`. La batería incluye regresión profunda del cerebro, fuzz y recuperación, memoria histórica, calibración, fiabilidad, calendario autónomo, preflight de Render, contrato de despliegue, auto-reparación y contratos de interfaz/datos.
+Ejecutar `npm test`. La batería incluye regresión profunda del cerebro, fuzz y recuperación, memoria histórica, calibración, fiabilidad, calendario autónomo, preflight de Render, contrato de despliegue, auto-reparación y contratos de interfaz/datos. Antes de fusionar a `main`, deben estar verdes los siete workflows obligatorios del PR.
