@@ -22,5 +22,7 @@ check(!detail.includes("${fs.length}</div>"),'fixture count is gated by endpoint
 check(teams.includes("status:f(x.status,'Estado no disponible')"),'team calendar renders an explicit unknown status when the API omits status');
 check(!teams.includes("status:f(x.status,'PROGRAMADO')"),'team calendar never fabricates PROGRAMADO when status is absent');
 check(teams.includes("const a=[...(raw?.merged||[]),...(raw?.matches||[]),...(raw?.fixtures||[])]"),'calendar preserves supported API response shapes');
+check(detail.includes("f(x.home,x.homeTeam?.name,'—')")&&detail.includes("f(x.away,x.awayTeam?.name,'—')"),'team detail keeps missing opponent names explicit');
+check(!detail.includes("f(x.home,x.homeTeam?.name,'Local')")&&!detail.includes("f(x.away,x.awayTeam?.name,'Visitante')"),'team detail never invents Local/Visitante when an opponent name is absent');
 
 console.log(`real-data-integrity-v1: ${n}/${n} checks OK`);
