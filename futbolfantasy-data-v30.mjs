@@ -1,5 +1,6 @@
 import { fetchFutbolFantasy } from './calendar-service-v29.mjs';
 import { fetchPublicSources, FUTBOLFANTASY_PUBLIC_SOURCES } from './futbolfantasy-normalizer-v33.mjs';
+import { sanitizeFutbolFantasyBundle } from './futbolfantasy-integrity-v1.mjs';
 
 let cache=null;
 let lastGood=null;
@@ -14,8 +15,13 @@ export async function fetchFutbolFantasyData(config={}){
 
   let normalized=null;
   let normalizedError=null;
-  try { normalized=await fetchPublicSources({baseUrl:base}); }
-  catch (error) { normalizedError=error; }
+  try {
+    const raw=await fetchPublicSources({baseUrl:base});
+    normalized=sanitizeFutbolFantasyBundle(raw);
+    const health=normalized.integrity||{};
+    if(health.noSuccessfulSources) normalizedError=Error('FUTBOLFANTASY_PUBLIC_SOURCES_UNAVAILABLE');
+    else if(health.parserEmpty) normalizedError=Error('FUTBOLFANTASY_NORMALIZER_EMPTY');
+  } catch (error) { normalizedError=error; }
 
   let calendar=[];
   let calendarError=null;
@@ -47,12 +53,20 @@ export async function fetchFutbolFantasyData(config={}){
     references:!hasRows(normalized?.references)&&hasRows(previous?.references)
   };
 
+  const integrity=normalized?.integrity||null;
+  const degradedReason=[
+    normalizedError?.message||null,
+    calendarError?.message||null,
+    integrity?.partialSources?'FUTBOLFANTASY_PUBLIC_SOURCES_PARTIAL':null,
+    Object.values(usedStale).some(Boolean)?'FUTBOLFANTASY_STALE_DATA':null
+  ].filter(Boolean);
+
   const data={
     version:'3.3.1',
     source:'public-fantasy-contrast',
     readOnly:true,
     sourcePolicy:'public-contrast-only',
-    degraded:Boolean(normalizedError||calendarError||Object.values(usedStale).some(Boolean)),
+    degraded:degradedReason.length>0,
     stale:Object.values(usedStale).some(Boolean),
     calendar:sections.calendar,
     matches:sections.matches,
@@ -64,14 +78,16 @@ export async function fetchFutbolFantasyData(config={}){
     references:sections.references,
     availableSources:FUTBOLFANTASY_PUBLIC_SOURCES.map(({key,path})=>({key,path})),
     counts:Object.fromEntries(Object.entries(sections).filter(([key])=>key!=='references').map(([key,value])=>[key,value.length])),
+    integrity,
     errors:{
       normalized:normalizedError?.message||null,
-      calendar:calendarError?.message||null
+      calendar:calendarError?.message||null,
+      degradedReasons:degradedReason
     },
     staleSections:Object.entries(usedStale).filter(([,value])=>value).map(([key])=>key),
     checkedAt:normalized?.retrievedAt||new Date().toISOString()
   };
   cache={at:Date.now(),base,data};
-  if (hasRows(calendar)||normalized) lastGood={at:Date.now(),base,data};
+  if (hasRows(calendar)||normalized?.integrity?.sourceOkCount>0) lastGood={at:Date.now(),base,data};
   return data;
 }
