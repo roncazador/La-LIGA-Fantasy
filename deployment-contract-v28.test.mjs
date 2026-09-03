@@ -17,34 +17,7 @@ const evidence=read('./evidence-isolation-v1.js');
 const sw=read('./sw.js');
 const config=read('./config.mjs');
 const checks=[
- ['Node pinned',pkg.engines.node==='24.14.1'],
- ['Brain host start',pkg.scripts.start.includes('brain-host-v27.mjs')],
- ['Render checksPass',render.includes('autoDeployTrigger: checksPass')],
- ['Render health',render.includes('healthCheckPath: /api/health')],
- ['Render brain state',render.includes('BRAIN_STATE_DIR')],
- ['Render AI secret slot',render.includes('OPENAI_API_KEY')&&render.includes('sync: false')],
- ['Cultivos enabled',render.includes('CULTIVOS_ENABLED')],
- ['Automation enabled',render.includes('AUTOMATION_ENABLED')],
- ['Brain status route',host.includes('/api/brain/status')],
- ['Brain health read-only',host.includes('{readOnly:true,...brain.status()')],
- ['Cultivos status route',host.includes('/api/cultivos/status')],
- ['Final-only learning guard',core.includes('outcomeIsFinal')&&core.includes('sample.final!==true')],
- ['Calendar v35 live state',calendar.includes('EN DIRECTO')&&calendar.includes('inferCurrentMatchday')],
- ['Calendar retry bounded',dynamics.includes('RETRY_DELAYS=[5000,15000,30000]')],
- ['Calendar retry scoped',dynamics.includes('if(!isCalendarFailure(e))')],
- ['Automation contract current',automation.includes('AUTOMATION CONTRACT v2: 89/89')],
- ['Cultivos v1.4',cultivos.includes("CULTIVOS_VERSION='1.4.0'")],
- ['Cultivos video sync',cultivos.includes('syncFromVideoEvidence')],
- ['Cultivos handoff sync',cultivos.includes('syncFromHandoff')],
- ['Cultivos regression',cultivosTest.includes('CULTIVOS v1.4')],
- ['Video hash',/"sha256": "[a-f0-9]{64}"/.test(video)],
- ['Video human gate',video.includes('"humanConfirmed": false')&&video.includes('"cultivosEligible": false')],
- ['Video regression',videoTest.includes('cultivos gated')],
- ['Cultivos handoff regression',pkg.scripts.test.includes('cultivos-handoff-v1.test.mjs')],
- ['Executive order',executive.indexOf('Puntos Fantasy')<executive.indexOf('Saldo')&&executive.indexOf('Saldo')<executive.indexOf('Plantilla')&&executive.indexOf('Plantilla')<executive.indexOf('Alineación recomendada')&&executive.indexOf('Alineación recomendada')<executive.indexOf('Jugadores con más puntos probables')&&executive.indexOf('Jugadores con más puntos probables')<executive.indexOf('Fichajes recomendados')&&executive.indexOf('Fichajes recomendados')<executive.indexOf('IA de cerebro')&&executive.indexOf('IA de cerebro')<executive.indexOf('Calendario')],
- ['Evidence isolation',evidence.includes('evidenceV1')],
- ['PWA current assets',sw.includes('./automation-hub-v1.js')&&sw.includes('./calendar-autonomous-v35.js')&&sw.includes('./executive-dashboard-v1.js')],
- ['Public hub registry',config.includes("'/automation-hub-v1.js'")]
+ ['Node pinned',pkg.engines.node==='24.14.1'],['Brain host start',pkg.scripts.start.includes('brain-host-v27.mjs')],['Render checksPass',render.includes('autoDeployTrigger: checksPass')],['Render health',render.includes('healthCheckPath: /api/health')],['Render brain state',render.includes('BRAIN_STATE_DIR')],['Render AI secret slot',render.includes('OPENAI_API_KEY')&&render.includes('sync: false')],['Cultivos enabled',render.includes('CULTIVOS_ENABLED')],['Automation enabled',render.includes('AUTOMATION_ENABLED')],['Brain status route',host.includes('/api/brain/status')],['Brain health read-only',host.includes('{readOnly:true,...brain.status()')],['Cultivos status route',host.includes('/api/cultivos/status')],['Final-only learning guard',core.includes('outcomeIsFinal')&&core.includes('sample.final!==true')],['Calendar v35 live state',calendar.includes('EN DIRECTO')&&calendar.includes('inferCurrentMatchday')],['Calendar retry bounded',dynamics.includes('RETRY_DELAYS=[5000,15000,30000]')],['Calendar retry scoped',dynamics.includes('if(!isCalendarFailure(e))')],['Automation contract current',automation.includes('AUTOMATION CONTRACT v2: 89/89')],['Cultivos v1.4',cultivos.includes("CULTIVOS_VERSION='1.4.0'")],['Cultivos video sync',cultivos.includes('syncFromVideoEvidence')],['Cultivos handoff sync',cultivos.includes('syncFromHandoff')],['Cultivos regression',cultivosTest.includes('CULTIVOS v1.4')],['Video hash',/"sha256": "[a-f0-9]{64}"/.test(video)],['Video human gate',video.includes('"humanConfirmed": false')&&video.includes('"cultivosEligible": false')],['Video regression',videoTest.includes('cultivos gated')],['Cultivos handoff regression',pkg.scripts.test.includes('cultivos-handoff-v1.test.mjs')],['Executive order',executive.indexOf('Puntos Fantasy')<executive.indexOf('Saldo')&&executive.indexOf('Saldo')<executive.indexOf('Plantilla')&&executive.indexOf('Plantilla')<executive.indexOf('Alineación recomendada')&&executive.indexOf('Alineación recomendada')<executive.indexOf('Jugadores con más puntos probables')&&executive.indexOf('Jugadores con más puntos probables')<executive.indexOf('Fichajes recomendados')&&executive.indexOf('Fichajes recomendados')<executive.indexOf('IA de cerebro')&&executive.indexOf('IA de cerebro')<executive.indexOf('Calendario')],['Evidence isolation',evidence.includes('evidenceV1')],['PWA current assets',sw.includes('./automation-hub-v1.js')&&sw.includes('./calendar-autonomous-v35.js')&&sw.includes('./executive-dashboard-v1.js')],['Public hub registry',config.includes("'/automation-hub-v1.js'")]
 ];
 assert.equal(checks.length,28);
 for(const[i,[name,ok]]of checks.entries())assert.ok(ok,`DEPLOY28-${String(i+1).padStart(3,'0')}: ${name}`);
