@@ -31,7 +31,7 @@ for (const asset of ['/teams-data-v5.js','/decision-learning-v1.js','/teams-deta
 for (const asset of ['./teams-data-v5.js','./decision-learning-v1.js','./teams-detail-v1.js','./visual-compact-v1.css']) {
   if (!sw.includes(`'${asset}'`)) throw new Error(`RENDER_PREFLIGHT_ASSET_NOT_CACHED:${asset}`);
 }
-for (const asset of ["loadCss('/visual-compact-v1.css','1')","loadInline('/teams-data-v5.js','5')","loadInline('/decision-learning-v1.js','1')","loadInline('/teams-detail-v1.js','1')"]) {
+for (const asset of ["loadCss('/visual-compact-v1.css','1')","loadInline('/teams-data-v5.js','5')","loadInline('/decision-learning-v1.js','2')","loadInline('/teams-detail-v1.js','1')"]) {
   if (!connection.includes(asset)) throw new Error(`RENDER_PREFLIGHT_LOADER_MISMATCH:${asset}`);
 }
 if (fs.statSync('visual-compact-v1.css').size > 4096) throw new Error('RENDER_PREFLIGHT_VISUAL_CSS_TOO_LARGE');
