@@ -62,32 +62,20 @@ export async function fetchFutbolFantasyData(config={}){
   ].filter(Boolean);
 
   const data={
-    version:'3.3.1',
-    source:'public-fantasy-contrast',
-    readOnly:true,
-    sourcePolicy:'public-contrast-only',
-    degraded:degradedReason.length>0,
-    stale:Object.values(usedStale).some(Boolean),
-    calendar:sections.calendar,
-    matches:sections.matches,
-    players:sections.players,
-    injuries:sections.injuries,
-    stats:sections.stats,
-    points:sections.points,
-    pages:sections.pages,
-    references:sections.references,
+    version:'3.3.1',source:'public-fantasy-contrast',readOnly:true,sourcePolicy:'public-contrast-only',
+    degraded:degradedReason.length>0,stale:Object.values(usedStale).some(Boolean),calendar:sections.calendar,
+    matches:sections.matches,players:sections.players,injuries:sections.injuries,stats:sections.stats,points:sections.points,
+    pages:sections.pages,references:sections.references,
     availableSources:FUTBOLFANTASY_PUBLIC_SOURCES.map(({key,path})=>({key,path})),
     counts:Object.fromEntries(Object.entries(sections).filter(([key])=>key!=='references').map(([key,value])=>[key,value.length])),
     integrity,
-    errors:{
-      normalized:normalizedError?.message||null,
-      calendar:calendarError?.message||null,
-      degradedReasons:degradedReason
-    },
+    errors:{normalized:normalizedError?.message||null,calendar:calendarError?.message||null,degradedReasons:degradedReason},
     staleSections:Object.entries(usedStale).filter(([,value])=>value).map(([key])=>key),
     checkedAt:normalized?.retrievedAt||new Date().toISOString()
   };
+
   cache={at:Date.now(),base,data};
-  if (hasRows(calendar)||normalized?.integrity?.sourceOkCount>0) lastGood={at:Date.now(),base,data};
+  const safeToPromote=Boolean((hasRows(calendar)||integrity?.sourceOkCount>0)&&!normalizedError&&!calendarError&&!integrity?.partialSources&&!integrity?.parserEmpty);
+  if(safeToPromote)lastGood={at:Date.now(),base,data};
   return data;
 }
