@@ -27,7 +27,7 @@ const checks=[
   ['runtime smoke verifies read-only',smoke.includes("body.readOnly,true")],
   ['preflight includes render yaml',file.includes("'render.yaml'")],
   ['preflight checks widget assets',file.includes("'visual-compact-v1.css'")&&file.includes("'decision-learning-v1.js'")&&file.includes("'teams-detail-v1.js'")],
-  ['preflight checks widget loader',file.includes("loadCss('/visual-compact-v1.css','1')")],
+  ['preflight checks widget loader',file.includes("loadCss('/visual-compact-v1.css','1')")&&file.includes("loadInline('/decision-learning-v1.js','2')")],
   ['widget regression in npm test',pkg.scripts.test.includes('widget-ui-v1.test.mjs')]
 ];
 for(const[name,ok]of checks)assert.ok(ok,`RENDER-${name}`);
