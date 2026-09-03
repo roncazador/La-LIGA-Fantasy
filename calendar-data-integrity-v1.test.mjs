@@ -17,4 +17,6 @@ for(const row of seed.standings){
 }
 assert.ok(core.includes("'/official-standings-seed-2026-27.json'"),'core standings fallback missing');
 assert.ok(core.includes('No se muestran datos inventados.'),'no-fabrication disclaimer missing');
-console.log('CALENDAR DATA INTEGRITY v1: 20-club standings seed and fallback contracts OK');
+assert.ok(core.includes("fallback.filter(p=>!p.team||teamKey(p.team)===teamKey(match.home))"),'home fallback must remain team-scoped at the UI boundary');
+assert.ok(core.includes("fallback.filter(p=>!p.team||teamKey(p.team)===teamKey(match.away))"),'away fallback must remain team-scoped at the UI boundary');
+console.log('CALENDAR DATA INTEGRITY v1: 20-club standings seed, fallback disclosure and team-scoped lineup contracts OK');
