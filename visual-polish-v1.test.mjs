@@ -13,6 +13,11 @@ check(css.includes('env(safe-area-inset-top)'), 'mobile sticky navigation respec
 check(css.includes('.table-wrap,.table-responsive'), 'wide tables have a mobile containment strategy');
 check(css.includes('min-width:560px'), 'wide tables remain readable through horizontal scrolling');
 check(css.includes('prefers-reduced-motion:reduce'), 'motion reduction is supported');
+check(css.includes('min-width:0'), 'grid and flex children can shrink instead of forcing overflow');
+check(css.includes('overflow-wrap:anywhere'), 'long labels and dynamic values can wrap');
+check(css.includes('.card{') && css.includes('overflow:hidden'), 'cards contain visual spill from dynamic content');
+check(css.includes('.player>div,.provider>span,.provider>b'), 'player/provider rows contain narrow children');
+check(css.includes('input,select,textarea{max-width:100%}'), 'form controls cannot exceed the viewport');
 check(!css.includes('data-tab="equipos"]::before'), 'stale teams selector removed from main navigation');
 check(!css.includes('data-tab="jugadores"]::before'), 'stale players selector removed from main navigation');
 check(!css.includes('data-tab="calendario"]::before'), 'stale calendar selector removed from main navigation');
