@@ -8,5 +8,5 @@ assert.match(bridge,/Siguiente partido/);
 assert.match(bridge,/Jugadores recibidos/);
 assert.match(bridge,/Lesiones recibidas/);
 assert.match(bridge,/No hay datos de fuente/);
+assert.match(bridge,/Date\.parse\(x\.date\)>=Date\.now\(\)/,'next fixture must be future-only');
 console.log('calendar-focus-team-detail-v1: ok');
-// Explicitly kept as a branch change so CI maintenance discovers and executes this contract.
