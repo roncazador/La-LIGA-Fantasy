@@ -10,7 +10,8 @@ const check=(condition,message)=>assert.ok(condition,message);
 check(calendar.includes("const API='/api/calendar/autonomous'"),'Debe conservarse el contrato autónomo anterior.');
 check(calendar.includes('EN DIRECTO'),'Debe conservarse el estado LIVE anterior.');
 check(calendarNext.includes("API='/api/calendar/autonomous'"),'La versión nueva usa el endpoint autónomo.');
-check(calendarNext.includes('REFRESH_MS=15000'),'Debe existir refresco automático.');
+check(calendarNext.includes('REFRESH_MS=3000'),'Debe existir refresco automático cada 3 segundos.');
+check(calendarNext.includes('setInterval(()=>void refresh(),REFRESH_MS)'),'El refresco debe ser periódico y automático.');
 check(calendarNext.includes('new MutationObserver'),'Debe existir montaje persistente ante cambios del DOM.');
 check(calendarNext.includes('removeLegacy')&&calendarNext.includes("'loadFixtures'")&&calendarNext.includes("'loadSeed'"),'Debe eliminar los controles manuales heredados.');
 check(!calendarNext.includes("host.innerHTML='';"),'No debe vaciar #partidos ni destruir su DOM padre.');
@@ -23,4 +24,4 @@ check(connection.includes('data-fantasy-layer'),'El loader debe impedir scripts 
 check(connection.includes('calendar-focus-v1.js')&&connection.includes('calendar-focus-fix-v1.js'),'El loader debe incluir el detalle interactivo del partido.');
 check(index.includes('id="partidos"'),'La pantalla Partidos debe existir.');
 check(index.includes('id="loadFixtures"')&&index.includes('id="loadSeed"'),'Los controles heredados siguen presentes en HTML y el calendario debe retirarlos en runtime.');
-console.log('CALENDAR UI v35: 16/16 structural assertions passed');
+console.log('CALENDAR UI v35: 17/17 structural assertions passed');
