@@ -18,7 +18,7 @@ assert.ok(sw.includes("'./teams-data-v5.js'"));
 assert.ok(!sw.includes("'./teams-data-v4.js'"));
 assert.ok(!sw.includes("'./teams-futbolfantasy-v1.js'"));
 for(const endpoint of ['/api/data/teams','/api/data/players','/api/data/standings','/api/data/injuries','/api/fixtures'])assert.ok(ui.includes(endpoint),`missing ${endpoint}`);
-for(const tab of ['resumen','equipos','jugadores','lesiones','calendario'])assert.ok(ui.includes(`data-tab="${tab}"`),`missing ${tab}`);
+assert.ok(/\['resumen','equipos','jugadores','lesiones','calendario'\]/.test(ui),'missing tabs contract');
 for(const token of ['tab:\'resumen\'','merged','matches','fixtures','homeScore','awayScore','top 40','Próximos partidos','Últimos resultados','Clasificación completa','LALIGA oficial'])assert.ok(ui.includes(token),`missing ${token}`);
 assert.ok(seed.includes('"season":"2026/27"'));
 assert.ok(seed.includes('"source":"LALIGA oficial"'));
