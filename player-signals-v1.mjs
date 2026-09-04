@@ -15,6 +15,10 @@ export function sourceConfidence({sources=[],degraded=false,timestamp=null,confl
   const diversity=clamp(valid.length*25);
   const freshness=timestamp?sourceFreshness(timestamp,{now,maxHours:maxAgeHours}):0;
   const conflictPenalty=Math.min(50,Math.max(0,Number(conflicts)||0)*20);
+  // A provided observation that is already outside its freshness window is not
+  // evidence for a current decision. Keep the confidence at zero rather than
+  // allowing source diversity to mask stale data.
+  if(timestamp && freshness<=0)return {score:0,label:'SIN EVIDENCIA',sources:valid.length,conflicts:Math.max(0,Number(conflicts)||0)};
   const score=clamp(Math.round((diversity*0.35)+(freshness*0.45)+((degraded?0:100)*0.20)-conflictPenalty));
   return {score,label:score>=80?'ALTA':score>=55?'MEDIA':score>0?'BAJA':'SIN EVIDENCIA',sources:valid.length,conflicts:Math.max(0,Number(conflicts)||0)};
 }
