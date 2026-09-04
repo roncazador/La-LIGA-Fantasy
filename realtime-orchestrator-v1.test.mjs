@@ -13,7 +13,7 @@ const checks=[
  ['offline state',realtime.includes("addEventListener('offline'")],
  ['visibility recovery',realtime.includes('visibilitychange')],
  ['single-flight guard',realtime.includes('running||!visible||!online')],
- ['team data endpoint',realtime.includes("'/api/futbolfantasy/data'")],
+ ['team data endpoint',realtime.includes("FF_API='/api/futbolfantasy/data?realtime=1'")||realtime.includes("'/api/futbolfantasy/data'")],
  ['detail reuses realtime payload',detail.includes('window.LALIGA_REALTIME_DATA||await get()')],
  ['detail listens for updates',detail.includes('laliga:fantasy-data-updated')],
  ['loader activates orchestrator',connection.includes("loadInline('/realtime-orchestrator-v1.js','1')")],
