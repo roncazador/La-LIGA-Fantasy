@@ -51,3 +51,7 @@ Aplicación inmediata: todos los adaptadores externos deben validar tamaño, for
 ## Regla de oro
 
 Toda nueva fuente externa debe entrar como `observación + fuente + timestamp + estado de calidad`. Solo después de pasar validación, normalización, detección de conflictos y reglas de confianza puede alimentar una decisión.
+
+## Sincronización CI
+
+Commit de sincronización funcional: se mantiene este documento sin cambios de producto; su única finalidad es forzar la reevaluación completa de los contratos CI sobre el HEAD actual del PR.
